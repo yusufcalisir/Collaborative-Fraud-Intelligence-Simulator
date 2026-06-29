@@ -1,0 +1,29 @@
+export const DEFAULT_SIMULATION_CONFIG = {
+  num_rounds: 10,
+  local_epochs: 3,
+  learning_rate: 0.001,
+  batch_size: 64,
+  min_clients_per_round: 2,
+  enable_latency_simulation: false,
+  latency_min_ms: 50,
+  latency_max_ms: 500,
+  enable_dropout_simulation: false,
+  dropout_probability: 0.2,
+  enable_reconnect_simulation: true,
+  privacy_mechanism: 'none' as const,
+  dp_epsilon: 1.0,
+  dp_delta: 1e-5,
+  dp_max_grad_norm: 1.0,
+  bank_a_transactions: 50000,
+  bank_b_transactions: 30000,
+  bank_c_transactions: 20000,
+};
+
+export const METRIC_LABELS: Record<string, string> = {
+  accuracy: 'Accuracy',
+  precision: 'Precision',
+  recall: 'Recall',
+  f1_score: 'F1 Score',
+  auc_roc: 'AUC-ROC',
+  loss: 'Loss',
+};

@@ -1,0 +1,100 @@
+"""Domain entities.
+
+Core business objects with identity. These represent the primary concepts
+in the federated learning simulation domain.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+from app.domain.enums import BankTier, ClientStatus, SimulationStatus
+from app.domain.value_objects import BankDataProfile, EvaluationMetrics, SimulationConfig
+
+
+@dataclass
+class Bank:
+    """A participating financial institution in the federated learning simulation.
+
+    Each bank owns independent transaction data with distinct statistical
+    properties (Non-IID). Banks never share raw data — only model parameters.
+    """
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = ""
+    tier: BankTier = BankTier.MEDIUM
+    fraud_ratio: float = 0.01
+    num_transactions: int = 10000
+    status: ClientStatus = ClientStatus.ACTIVE
+    data_profile: BankDataProfile | None = None
+    local_metrics: EvaluationMetrics | None = None
+    federated_metrics: EvaluationMetrics | None = None
+
+    @property
+    def improvement(self) -> dict[str, float] | None:
+        """Calculate metric improvements from local to federated model."""
+        if not self.local_metrics or not self.federated_metrics:
+            return None
+        return {
+            "accuracy": self.federated_metrics.accuracy - self.local_metrics.accuracy,
+            "precision": self.federated_metrics.precision - self.local_metrics.precision,
+            "recall": self.federated_metrics.recall - self.local_metrics.recall,
+            "f1_score": self.federated_metrics.f1_score - self.local_metrics.f1_score,
+            "auc_roc": self.federated_metrics.auc_roc - self.local_metrics.auc_roc,
+        }
+
+
+@dataclass
+class SimulationRun:
+    """A complete end-to-end federated learning simulation.
+
+    Tracks lifecycle from data generation through training to evaluation.
+    """
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    status: SimulationStatus = SimulationStatus.PENDING
+    config: SimulationConfig = field(default_factory=SimulationConfig)
+    banks: list[Bank] = field(default_factory=list)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    current_round: int = 0
+    total_rounds: int = 10
+    error_message: str | None = None
+
+    @property
+    def duration_seconds(self) -> float | None:
+        """Wall-clock duration of the simulation."""
+        if not self.started_at or not self.completed_at:
+            return None
+        return (self.completed_at - self.started_at).total_seconds()
+
+    @property
+    def progress_pct(self) -> float:
+        """Completion percentage based on current round."""
+        if self.total_rounds == 0:
+            return 0.0
+        return min(100.0, (self.current_round / self.total_rounds) * 100)
+
+
+@dataclass
+class TrainingRound:
+    """A single round of federated training.
+
+    In each round, participating banks train locally and send model
+    updates to the aggregator. Some banks may drop out.
+    """
+
+    round_number: int
+    simulation_id: str
+    participating_bank_ids: list[str] = field(default_factory=list)
+    dropped_bank_ids: list[str] = field(default_factory=list)
+    global_loss: float = 0.0
+    per_bank_loss: dict[str, float] = field(default_factory=dict)
+    per_bank_samples: dict[str, int] = field(default_factory=dict)
+    aggregation_time_ms: float = 0.0
+    round_duration_ms: float = 0.0
+    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: datetime | None = None

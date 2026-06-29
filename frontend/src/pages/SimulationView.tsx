@@ -1,0 +1,213 @@
+import { useParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useSimulation, useTrainingRounds } from '../api/queries';
+import MetricsComparison from '../components/dashboard/MetricsComparison';
+import TrainingTimeline from '../components/dashboard/TrainingTimeline';
+import LossChart from '../components/charts/LossChart';
+import ROCCurve from '../components/charts/ROCCurve';
+import ConfusionMatrix from '../components/charts/ConfusionMatrix';
+import FeatureImportance from '../components/charts/FeatureImportance';
+import MetricsRadar from '../components/charts/MetricsRadar';
+import { formatDuration, formatPercent } from '../utils/formatters';
+
+export default function SimulationView() {
+  const { id } = useParams<{ id: string }>();
+  const { data: simulation, isLoading } = useSimulation(id);
+  const { data: rounds } = useTrainingRounds(id);
+
+  if (isLoading || !simulation) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[var(--color-accent-indigo)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-[var(--color-text-muted)]">Loading simulation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isComplete = simulation.status === 'completed';
+  const isFailed = simulation.status === 'failed';
+  const isRunning = !isComplete && !isFailed;
+  const banks = simulation.banks ?? [];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-start justify-between"
+      >
+        <div>
+          <Link
+            to="/"
+            className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors mb-2 inline-block"
+          >
+            ← Back to Dashboard
+          </Link>
+          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">
+            Simulation Results
+          </h1>
+          <p className="text-xs font-mono text-[var(--color-text-muted)] mt-0.5">{simulation.id}</p>
+        </div>
+        <div className="text-right">
+          <SimStatusBadge status={simulation.status} />
+          {simulation.duration_seconds && (
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+              Duration: {formatDuration(simulation.duration_seconds)}
+            </p>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Error */}
+      {isFailed && simulation.error_message && (
+        <div className="glass-card p-4 border-[var(--color-status-error)]/50">
+          <p className="text-sm text-[var(--color-status-error)]">
+            <span className="font-medium">Error: </span>
+            {simulation.error_message}
+          </p>
+        </div>
+      )}
+
+      {/* Running indicator */}
+      {isRunning && (
+        <div className="glass-card p-4 animate-pulse-glow">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-[var(--color-accent-indigo)] border-t-transparent rounded-full animate-spin" />
+            <div>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                Training in progress...
+              </p>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Round {simulation.current_round}/{simulation.total_rounds} — {simulation.progress_pct.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary stats */}
+      {banks.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            {
+              label: 'Banks',
+              value: banks.length.toString(),
+              sub: 'participating institutions',
+            },
+            {
+              label: 'Rounds',
+              value: `${simulation.current_round}/${simulation.total_rounds}`,
+              sub: 'communication rounds',
+            },
+            {
+              label: 'Avg Fraud Rate',
+              value: formatPercent(banks.reduce((s, b) => s + b.fraud_ratio, 0) / banks.length),
+              sub: 'across all banks',
+            },
+            {
+              label: 'Status',
+              value: simulation.status.replace(/_/g, ' '),
+              sub: isComplete ? 'all rounds completed' : 'in progress',
+            },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="glass-card p-4"
+            >
+              <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</p>
+              <p className="text-lg font-bold font-mono text-[var(--color-text-primary)] mt-1">{stat.value}</p>
+              <p className="text-[10px] text-[var(--color-text-muted)]">{stat.sub}</p>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Training timeline + Loss chart */}
+      {rounds && rounds.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <LossChart rounds={rounds} />
+          </div>
+          <TrainingTimeline
+            rounds={rounds}
+            currentRound={simulation.current_round}
+            totalRounds={simulation.total_rounds}
+          />
+        </div>
+      )}
+
+      {/* Metrics comparison */}
+      {isComplete && banks.length > 0 && banks[0]?.local_metrics && (
+        <>
+          <MetricsComparison banks={banks} />
+          <MetricsRadar banks={banks} />
+
+          {/* ROC Curves — side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ROCCurve banks={banks} modelType="local" />
+            <ROCCurve banks={banks} modelType="federated" />
+          </div>
+
+          {/* Confusion Matrices */}
+          <div>
+            <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+              Confusion Matrices — Local vs Federated
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {banks.map((bank) => (
+                <div key={bank.id} className="space-y-4">
+                  <ConfusionMatrix bank={bank} modelType="local" />
+                  <ConfusionMatrix bank={bank} modelType="federated" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Feature Importance */}
+          <div>
+            <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+              Feature Importance — Federated Model
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {banks.map((bank) => (
+                <FeatureImportance key={bank.id} bank={bank} modelType="federated" />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SimStatusBadge({ status }: { status: string }) {
+  const colorMap: Record<string, string> = {
+    completed: 'var(--color-status-success)',
+    failed: 'var(--color-status-error)',
+    pending: 'var(--color-status-pending)',
+    training_federated: 'var(--color-status-info)',
+    training_local: 'var(--color-status-info)',
+    generating_data: 'var(--color-status-warning)',
+    evaluating: 'var(--color-accent-teal)',
+  };
+
+  const color = colorMap[status] ?? colorMap.pending;
+
+  return (
+    <span
+      className="text-xs px-3 py-1 rounded-full font-medium capitalize"
+      style={{
+        background: `color-mix(in srgb, ${color} 15%, transparent)`,
+        color: color,
+      }}
+    >
+      {status.replace(/_/g, ' ')}
+    </span>
+  );
+}
