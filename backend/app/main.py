@@ -6,6 +6,7 @@ Wires together all routers, middleware, and lifecycle hooks.
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -67,18 +68,28 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://collaborative-fraud-intelligence-si.vercel.app",
+]
+
+additional_origins = os.getenv("API_CORS_ORIGINS")
+if additional_origins:
+    cors_origins.extend(
+        [origin.strip() for origin in additional_origins.split(",") if origin.strip()]
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ── Routers ───────────────────────────────────
 # Phase 1: Federated Learning
