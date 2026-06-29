@@ -28,5 +28,14 @@ celery_app.conf.update(
     result_expires=3600,  # 1 hour
 )
 
+# Configure SSL options for Redis TLS connection (needed for Upstash)
+if settings.celery_broker_url.startswith("rediss://"):
+    import ssl
+
+    celery_app.conf.update(
+        broker_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+        redis_backend_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+    )
+
 # Auto-discover tasks in the tasks module
 celery_app.autodiscover_tasks(["app.tasks"])

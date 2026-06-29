@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 redis_client = redis.from_url(
-    settings.redis_url,
+    settings.celery_broker_url,
     decode_responses=True,
+    ssl_cert_reqs="none" if settings.celery_broker_url.startswith("rediss://") else None,
 )
 
 
