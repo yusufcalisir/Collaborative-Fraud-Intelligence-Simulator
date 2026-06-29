@@ -150,130 +150,82 @@ export default function FederatedTrainingAnimation({
           </defs>
 
           {/* Connection lines between banks and server */}
-          {BANK_POSITIONS.map((pos, i) => (
-            <g key={`conn-${i}`}>
-              {/* Base line */}
-              <line
-                x1={pos.x} y1={pos.y}
-                x2={SERVER_POS.x} y2={SERVER_POS.y}
-                stroke="var(--color-border)"
-                strokeWidth="1.5"
-                strokeDasharray={isFederated || isEvaluating ? "none" : "4 4"}
-                opacity={0.4}
-              />
-
-              {/* Animated flow line - bank to server (upload) */}
-              {isFederated && (
-                <>
-                  {/* Upload flow line */}
-                  <line
-                    x1={pos.x} y1={pos.y}
-                    x2={SERVER_POS.x} y2={SERVER_POS.y}
-                    stroke={BANK_COLORS[i]!.main}
-                    strokeWidth="2"
-                    strokeDasharray="8 6"
-                    opacity={0.7}
-                    filter="url(#glow)"
-                  >
-                    <animate
-                      attributeName="stroke-dashoffset"
-                      from="28"
-                      to="0"
-                      dur={`${1.6 + i * 0.3}s`}
-                      repeatCount="indefinite"
-                    />
-                  </line>
-                  {/* Download flow line (reverse direction) */}
-                  <line
-                    x1={SERVER_POS.x} y1={SERVER_POS.y}
-                    x2={pos.x} y2={pos.y}
-                    stroke="var(--color-accent-teal)"
-                    strokeWidth="1.5"
-                    strokeDasharray="6 8"
-                    opacity={0.6}
-                    filter="url(#glow)"
-                  >
-                    <animate
-                      attributeName="stroke-dashoffset"
-                      from="0"
-                      to="28"
-                      dur={`${1.8 + i * 0.3}s`}
-                      repeatCount="indefinite"
-                    />
-                  </line>
-                </>
-              )}
-
-              {/* Animated flow line - server to bank (download, evaluating) */}
-              {isEvaluating && (
-                <line
-                  x1={SERVER_POS.x} y1={SERVER_POS.y}
-                  x2={pos.x} y2={pos.y}
-                  stroke="var(--color-status-success)"
-                  strokeWidth="2"
-                  strokeDasharray="8 6"
-                  opacity={0.8}
-                  filter="url(#glow)"
-                >
-                  <animate
-                    attributeName="stroke-dashoffset"
-                    from="28"
-                    to="0"
-                    dur={`${1.0 + i * 0.2}s`}
-                    repeatCount="indefinite"
-                  />
-                </line>
-              )}
-
-              {/* Completed: solid green */}
-              {isCompleted && (
+          {BANK_POSITIONS.map((pos, i) => {
+            const isPipeGlowing = isFederated || isEvaluating;
+            return (
+              <g key={`conn-${i}`}>
+                {/* Thick glow backing for the pipe/cable */}
                 <line
                   x1={pos.x} y1={pos.y}
                   x2={SERVER_POS.x} y2={SERVER_POS.y}
-                  stroke="var(--color-status-success)"
-                  strokeWidth="2"
-                  opacity={0.6}
+                  stroke={isPipeGlowing ? BANK_COLORS[i]!.main : "var(--color-border)"}
+                  strokeWidth={isPipeGlowing ? "5" : "2"}
+                  opacity={isPipeGlowing ? 0.15 : 0.2}
                 />
-              )}
-            </g>
-          ))}
+                
+                {/* Inner cable line */}
+                <line
+                  x1={pos.x} y1={pos.y}
+                  x2={SERVER_POS.x} y2={SERVER_POS.y}
+                  stroke={isPipeGlowing ? BANK_COLORS[i]!.main : "var(--color-border)"}
+                  strokeWidth="1.5"
+                  strokeDasharray={isPipeGlowing ? "none" : "3 3"}
+                  opacity={isPipeGlowing ? 0.6 : 0.4}
+                  filter={isPipeGlowing ? "url(#glow)" : undefined}
+                />
+              </g>
+            );
+          })}
 
           {/* Bidirectional Data packets flowing (federated phase) */}
           {isFederated && BANK_POSITIONS.map((pos, i) => (
             <g key={`packets-${i}`}>
-              {/* Uplink packet (Bank -> Server) */}
-              <circle r="4" fill={BANK_COLORS[i]!.main} filter="url(#glow)">
+              {/* Uplink data package: Document/Metrics updating (Bank -> Server) */}
+              <g>
                 <animateMotion
-                  dur="2s"
+                  dur="2.5s"
                   repeatCount="indefinite"
                   path={`M${pos.x},${pos.y} L${SERVER_POS.x},${SERVER_POS.y}`}
-                  begin={`${i * 0.3}s`}
+                  begin={`${i * 0.4}s`}
                 />
-                <animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite" />
-              </circle>
-              {/* Downlink packet (Server -> Bank) */}
-              <circle r="3.5" fill="var(--color-accent-teal)" filter="url(#glow)">
+                {/* Document paper icon */}
+                <text x="-7" y="5" fontSize="13" filter="url(#glow)">
+                  📄
+                </text>
+                <text x="5" y="-3" fontSize="8" fill="var(--color-accent-teal)" fontWeight="bold">
+                  w
+                </text>
+              </g>
+
+              {/* Downlink model package: Updated global parameters (Server -> Bank) */}
+              <g>
                 <animateMotion
-                  dur="2s"
+                  dur="2.5s"
                   repeatCount="indefinite"
                   path={`M${SERVER_POS.x},${SERVER_POS.y} L${pos.x},${pos.y}`}
-                  begin={`${1.0 + i * 0.3}s`}
+                  begin={`${1.25 + i * 0.4}s`}
                 />
-                <animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite" />
-              </circle>
+                {/* Security lock or network sphere icon representing shared intelligence */}
+                <text x="-7" y="5" fontSize="13" filter="url(#glow)">
+                  🔒
+                </text>
+              </g>
             </g>
           ))}
 
           {/* Return packets (evaluating phase) */}
           {isEvaluating && BANK_POSITIONS.map((pos, i) => (
-            <circle key={`ret-${i}`} r="4" fill="var(--color-status-success)" filter="url(#glow)">
+            <g key={`ret-${i}`}>
               <animateMotion
-                dur={`${1.5 + i * 0.2}s`}
+                dur={`${1.6 + i * 0.2}s`}
                 repeatCount="indefinite"
                 path={`M${SERVER_POS.x},${SERVER_POS.y} L${pos.x},${pos.y}`}
               />
-              <animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite" />
-            </circle>
+              {/* Checkmark or dashboard analytics showing comparison */}
+              <text x="-7" y="5" fontSize="13" filter="url(#glow)">
+                📊
+              </text>
+            </g>
           ))}
 
           {/* Bank nodes */}
@@ -313,6 +265,17 @@ export default function FederatedTrainingAnimation({
                 >
                   {BANK_LABELS[i]}
                 </text>
+
+                {/* Data Generation indicator */}
+                {isGenerating && (
+                  <g>
+                    <circle cx={pos.x + 18} cy={pos.y - 18} r="8" fill="var(--color-accent-teal)" />
+                    <text x={pos.x + 18} y={pos.y - 17} textAnchor="middle" dominantBaseline="central" fontSize="8" fill="white">
+                      🗄️
+                    </text>
+                    <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite" />
+                  </g>
+                )}
 
                 {/* Training indicator */}
                 {isLocal && (
