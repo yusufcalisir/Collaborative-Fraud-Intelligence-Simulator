@@ -276,8 +276,24 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
         # Progress callback: updates in-memory state and event log
         def progress_cb(sim_id: str, event_type: str, data: dict[str, Any]) -> None:
             sim = _simulation_results.get(sim_id)
-            if sim and event_type == "round_complete":
-                sim["current_round"] = data.get("round", sim.get("current_round", 0))
+            if sim:
+                if event_type == "status":
+                    status_val = data.get("status")
+                    if status_val:
+                        if hasattr(status_val, "value"):
+                            sim["status"] = status_val.value
+                        else:
+                            sim["status"] = str(status_val)
+                elif event_type == "round_complete":
+                    sim["current_round"] = data.get("round", sim.get("current_round", 0))
+                    # Ensure status reflects federated training
+                    sim["status"] = SimulationStatus.TRAINING_FEDERATED.value
+                elif event_type == "completed":
+                    sim["status"] = SimulationStatus.COMPLETED.value
+                elif event_type == "error":
+                    sim["status"] = SimulationStatus.FAILED.value
+                    sim["error_message"] = data.get("error", "Simulation failed.")
+
             # Store every event so the training router can serve them
             _simulation_events.setdefault(sim_id, []).append(
                 {"event_type": event_type, "data": data}
@@ -340,11 +356,27 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
 
 
 def _calc_progress(sim: dict) -> float:
+    status = sim.get("status")
+    if status == SimulationStatus.COMPLETED.value:
+        return 100.0
+    if status == SimulationStatus.FAILED.value:
+        return 100.0
+    if status == SimulationStatus.EVALUATING.value:
+        return 95.0
+
     total = sim.get("total_rounds", 10)
     current = sim.get("current_round", 0)
+
+    if status == SimulationStatus.GENERATING_DATA.value:
+        return 5.0
+    if status == SimulationStatus.TRAINING_LOCAL.value:
+        return 15.0
+
+    # For training_federated, scale from 15% to 90%
     if total == 0:
-        return 0.0
-    return min(100.0, (current / total) * 100)
+        return 15.0
+    fed_progress = 15.0 + (current / total) * 75.0
+    return min(90.0, fed_progress)
 
 
 def _build_metrics_response(data: dict | None) -> MetricsResponse | None:

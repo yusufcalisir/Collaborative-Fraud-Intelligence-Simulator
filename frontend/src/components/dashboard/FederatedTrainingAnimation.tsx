@@ -164,23 +164,44 @@ export default function FederatedTrainingAnimation({
 
               {/* Animated flow line - bank to server (upload) */}
               {isFederated && (
-                <line
-                  x1={pos.x} y1={pos.y}
-                  x2={SERVER_POS.x} y2={SERVER_POS.y}
-                  stroke={BANK_COLORS[i]!.main}
-                  strokeWidth="2"
-                  strokeDasharray="8 6"
-                  opacity={0.8}
-                  filter="url(#glow)"
-                >
-                  <animate
-                    attributeName="stroke-dashoffset"
-                    from="28"
-                    to="0"
-                    dur={`${1.2 + i * 0.3}s`}
-                    repeatCount="indefinite"
-                  />
-                </line>
+                <>
+                  {/* Upload flow line */}
+                  <line
+                    x1={pos.x} y1={pos.y}
+                    x2={SERVER_POS.x} y2={SERVER_POS.y}
+                    stroke={BANK_COLORS[i]!.main}
+                    strokeWidth="2"
+                    strokeDasharray="8 6"
+                    opacity={0.7}
+                    filter="url(#glow)"
+                  >
+                    <animate
+                      attributeName="stroke-dashoffset"
+                      from="28"
+                      to="0"
+                      dur={`${1.6 + i * 0.3}s`}
+                      repeatCount="indefinite"
+                    />
+                  </line>
+                  {/* Download flow line (reverse direction) */}
+                  <line
+                    x1={SERVER_POS.x} y1={SERVER_POS.y}
+                    x2={pos.x} y2={pos.y}
+                    stroke="var(--color-accent-teal)"
+                    strokeWidth="1.5"
+                    strokeDasharray="6 8"
+                    opacity={0.6}
+                    filter="url(#glow)"
+                  >
+                    <animate
+                      attributeName="stroke-dashoffset"
+                      from="0"
+                      to="28"
+                      dur={`${1.8 + i * 0.3}s`}
+                      repeatCount="indefinite"
+                    />
+                  </line>
+                </>
               )}
 
               {/* Animated flow line - server to bank (download, evaluating) */}
@@ -217,16 +238,30 @@ export default function FederatedTrainingAnimation({
             </g>
           ))}
 
-          {/* Data packets flowing (federated phase) */}
+          {/* Bidirectional Data packets flowing (federated phase) */}
           {isFederated && BANK_POSITIONS.map((pos, i) => (
-            <circle key={`packet-${i}`} r="4" fill={BANK_COLORS[i]!.main} filter="url(#glow)">
-              <animateMotion
-                dur={`${1.5 + i * 0.3}s`}
-                repeatCount="indefinite"
-                path={`M${pos.x},${pos.y} L${SERVER_POS.x},${SERVER_POS.y}`}
-              />
-              <animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite" />
-            </circle>
+            <g key={`packets-${i}`}>
+              {/* Uplink packet (Bank -> Server) */}
+              <circle r="4" fill={BANK_COLORS[i]!.main} filter="url(#glow)">
+                <animateMotion
+                  dur="2s"
+                  repeatCount="indefinite"
+                  path={`M${pos.x},${pos.y} L${SERVER_POS.x},${SERVER_POS.y}`}
+                  begin={`${i * 0.3}s`}
+                />
+                <animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite" />
+              </circle>
+              {/* Downlink packet (Server -> Bank) */}
+              <circle r="3.5" fill="var(--color-accent-teal)" filter="url(#glow)">
+                <animateMotion
+                  dur="2s"
+                  repeatCount="indefinite"
+                  path={`M${SERVER_POS.x},${SERVER_POS.y} L${pos.x},${pos.y}`}
+                  begin={`${1.0 + i * 0.3}s`}
+                />
+                <animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite" />
+              </circle>
+            </g>
           ))}
 
           {/* Return packets (evaluating phase) */}
