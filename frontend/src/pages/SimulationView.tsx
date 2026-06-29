@@ -62,21 +62,20 @@ export default function SimulationView() {
 
   const isComplete = simulation.status === 'completed';
   const isFailed = simulation.status === 'failed';
-  const isRunning = !isComplete && !isFailed;
   const banks = simulation.banks ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col gap-4 overflow-hidden">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 shrink-0"
       >
         <div>
           <Link
             to="/"
-            className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors mb-2 inline-block"
+            className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors mb-1 inline-block"
           >
             ← Back to Dashboard
           </Link>
@@ -85,7 +84,7 @@ export default function SimulationView() {
           </h1>
           <p className="text-xs font-mono text-[var(--color-text-muted)] mt-0.5 break-all">{simulation.id}</p>
         </div>
-        <div className="text-left sm:text-right">
+        <div className="text-left sm:text-right shrink-0">
           <SimStatusBadge status={simulation.status} />
           {simulation.duration_seconds && (
             <p className="text-xs text-[var(--color-text-muted)] mt-1">
@@ -97,117 +96,128 @@ export default function SimulationView() {
 
       {/* Error */}
       {isFailed && simulation.error_message && (
-        <div className="glass-card p-4 border-[var(--color-status-error)]/50">
-          <p className="text-sm text-[var(--color-status-error)]">
+        <div className="glass-card p-3 border-[var(--color-status-error)]/50 shrink-0">
+          <p className="text-xs text-[var(--color-status-error)]">
             <span className="font-medium">Error: </span>
             {simulation.error_message}
           </p>
         </div>
       )}
 
-      {/* FL Training Animation — shown during active training */}
-      {(isRunning || isComplete) && (
-        <FederatedTrainingAnimation
-          status={simulation.status}
-          currentRound={simulation.current_round}
-          totalRounds={simulation.total_rounds}
-        />
-      )}
-
-      {/* Summary stats */}
-      {banks.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            {
-              label: 'Banks',
-              value: banks.length.toString(),
-              sub: 'participating institutions',
-            },
-            {
-              label: 'Rounds',
-              value: `${simulation.current_round}/${simulation.total_rounds}`,
-              sub: 'communication rounds',
-            },
-            {
-              label: 'Avg Fraud Rate',
-              value: formatPercent(banks.reduce((s, b) => s + b.fraud_ratio, 0) / banks.length),
-              sub: 'across all banks',
-            },
-            {
-              label: 'Status',
-              value: simulation.status.replace(/_/g, ' '),
-              sub: isComplete ? 'all rounds completed' : 'in progress',
-            },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="glass-card p-4"
-            >
-              <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</p>
-              <p className="text-lg font-bold font-mono text-[var(--color-text-primary)] mt-1">{stat.value}</p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">{stat.sub}</p>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Training timeline + Loss chart */}
-      {rounds && rounds.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <LossChart rounds={rounds} />
-          </div>
-          <TrainingTimeline
-            rounds={rounds}
-            currentRound={simulation.current_round}
-            totalRounds={simulation.total_rounds}
-          />
-        </div>
-      )}
-
-      {/* Metrics comparison */}
-      {isComplete && banks.length > 0 && banks[0]?.local_metrics && (
-        <>
-          <MetricsComparison banks={banks} />
-          <MetricsRadar banks={banks} />
-
-          {/* ROC Curves — side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ROCCurve banks={banks} modelType="local" />
-            <ROCCurve banks={banks} modelType="federated" />
+      {/* Main Simulation View Area */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 pb-4">
+        {/* Main Dashboard Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          {/* Left Panel: Animation */}
+          <div className="lg:col-span-5 flex flex-col">
+            <FederatedTrainingAnimation
+              status={simulation.status}
+              currentRound={simulation.current_round}
+              totalRounds={simulation.total_rounds}
+            />
           </div>
 
-          {/* Confusion Matrices */}
-          <div>
-            <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
-              Confusion Matrices — Local vs Federated
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {banks.map((bank) => (
-                <div key={bank.id} className="space-y-4">
-                  <ConfusionMatrix bank={bank} modelType="local" />
-                  <ConfusionMatrix bank={bank} modelType="federated" />
+          {/* Right Panel: Stats & Charts */}
+          <div className="lg:col-span-7 flex flex-col gap-4">
+            {/* Stats */}
+            {banks.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+                {[
+                  {
+                    label: 'Banks',
+                    value: banks.length.toString(),
+                    sub: 'participating',
+                  },
+                  {
+                    label: 'Rounds',
+                    value: `${simulation.current_round}/${simulation.total_rounds}`,
+                    sub: 'communication rounds',
+                  },
+                  {
+                    label: 'Avg Fraud Rate',
+                    value: formatPercent(banks.reduce((s, b) => s + b.fraud_ratio, 0) / banks.length),
+                    sub: 'across banks',
+                  },
+                  {
+                    label: 'Status',
+                    value: simulation.status.replace(/_/g, ' '),
+                    sub: isComplete ? 'finished' : 'in progress',
+                  },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="glass-card p-3 flex flex-col justify-between"
+                  >
+                    <p className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</p>
+                    <p className="text-sm font-bold font-mono text-[var(--color-text-primary)] mt-0.5 truncate">{stat.value}</p>
+                    <p className="text-[9px] text-[var(--color-text-muted)] truncate">{stat.sub}</p>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Timeline & Loss chart */}
+            {rounds && rounds.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 min-h-0">
+                <div className="sm:col-span-2 flex flex-col">
+                  <LossChart rounds={rounds} />
                 </div>
-              ))}
-            </div>
+                <div className="sm:col-span-1 flex flex-col">
+                  <TrainingTimeline
+                    rounds={rounds}
+                    currentRound={simulation.current_round}
+                    totalRounds={simulation.total_rounds}
+                  />
+                </div>
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Feature Importance */}
-          <div>
-            <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
-              Feature Importance — Federated Model
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {banks.map((bank) => (
-                <FeatureImportance key={bank.id} bank={bank} modelType="federated" />
-              ))}
+        {/* Detailed Metrics Comparison Charts (visible when complete) */}
+        {isComplete && banks.length > 0 && banks[0]?.local_metrics && (
+          <div className="border-t border-[var(--color-border-subtle)] pt-4 space-y-6">
+            <MetricsComparison banks={banks} />
+            <MetricsRadar banks={banks} />
+
+            {/* ROC Curves — side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ROCCurve banks={banks} modelType="local" />
+              <ROCCurve banks={banks} modelType="federated" />
+            </div>
+
+            {/* Confusion Matrices */}
+            <div>
+              <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+                Confusion Matrices — Local vs Federated
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {banks.map((bank) => (
+                  <div key={bank.id} className="space-y-4">
+                    <ConfusionMatrix bank={bank} modelType="local" />
+                    <ConfusionMatrix bank={bank} modelType="federated" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Feature Importance */}
+            <div>
+              <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+                Feature Importance — Federated Model
+              </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {banks.map((bank) => (
+                  <FeatureImportance key={bank.id} bank={bank} modelType="federated" />
+                ))}
+              </div>
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
