@@ -14,7 +14,7 @@ from app.application.services.model_service import ModelService
 from app.application.services.privacy_service import PrivacyService
 from app.application.services.simulation_service import SimulationService
 from app.config import get_settings
-from app.domain.enums import ClientStatus, PrivacyMechanism, SimulationStatus
+from app.domain.enums import ClientStatus, SimulationStatus
 from app.domain.value_objects import SimulationConfig
 
 logger = logging.getLogger(__name__)
