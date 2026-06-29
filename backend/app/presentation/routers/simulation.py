@@ -293,15 +293,23 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
                             sim["status"] = status_val.value
                         else:
                             sim["status"] = str(status_val)
+                    logger.info(
+                        "Sim %s status -> %s: %s",
+                        simulation_id,
+                        sim["status"],
+                        data.get("message", ""),
+                    )
                 elif event_type == "round_complete":
                     sim["current_round"] = data.get("round", sim.get("current_round", 0))
-                    # Ensure status reflects federated training
                     sim["status"] = SimulationStatus.TRAINING_FEDERATED.value
                 elif event_type == "completed":
                     sim["status"] = SimulationStatus.COMPLETED.value
                 elif event_type == "error":
                     sim["status"] = SimulationStatus.FAILED.value
                     sim["error_message"] = data.get("error", "Simulation failed.")
+
+                # Keep progress_pct fresh for polling endpoints
+                sim["progress_pct"] = _calc_progress(sim)
 
             # Store every event so the training router can serve them
             _simulation_events.setdefault(simulation_id, []).append(
@@ -356,11 +364,15 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
             "Background simulation %s completed: %s", simulation_id, simulation.status.value
         )
 
-    except Exception:
+    except Exception as exc:
+        import traceback
+
+        tb = traceback.format_exc()
         logger.exception("Background simulation %s failed", simulation_id)
         sim = _simulation_results.get(simulation_id, {})
         sim["status"] = SimulationStatus.FAILED.value
-        sim["error_message"] = "Simulation failed. Check server logs."
+        # Surface the real error to the frontend so it can be debugged
+        sim["error_message"] = f"{type(exc).__name__}: {exc}\n{tb[-500:]}"
         _simulation_results[simulation_id] = sim
 
 

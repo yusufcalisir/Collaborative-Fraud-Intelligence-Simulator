@@ -7,6 +7,14 @@ from __future__ import annotations
 
 import logging
 import os
+
+# Limit CPU threading for PyTorch, NumPy, OpenBLAS, MKL to prevent CPU starvation on low-spec servers
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -48,6 +56,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown hooks."""
     logger.info("Starting Collaborative Fraud Intelligence Simulator")
     logger.info("Environment: %s", settings.app_env)
+
+    # Ensure PyTorch threading limits are applied at runtime
+    import torch
+
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+
     yield
     logger.info("Shutting down")
 
@@ -68,24 +83,11 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────
-cors_origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "https://collaborative-fraud-intelligence-si.vercel.app",
-]
-
-additional_origins = os.getenv("API_CORS_ORIGINS")
-if additional_origins:
-    cors_origins.extend(
-        [origin.strip() for origin in additional_origins.split(",") if origin.strip()]
-    )
-
+# Allow all origins and disable credentials to avoid any CORS issues on Vercel preview/production links.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

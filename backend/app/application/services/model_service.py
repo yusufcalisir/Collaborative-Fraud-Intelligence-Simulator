@@ -112,6 +112,8 @@ class ModelService:
 
         # Use standard BCE since model has sigmoid
         criterion = nn.BCELoss()
+        import time
+
         loss_history: list[float] = []
 
         for epoch in range(epochs):
@@ -128,9 +130,15 @@ class ModelService:
                 epoch_loss += loss.item()
                 n_batches += 1
 
+                # Yield control to event loop/other threads to prevent GIL starvation
+                time.sleep(0.005)
+
             avg_loss = epoch_loss / max(n_batches, 1)
             loss_history.append(avg_loss)
             logger.debug("Epoch %d/%d — loss: %.4f", epoch + 1, epochs, avg_loss)
+
+            # Additional yield between epochs
+            time.sleep(0.02)
 
         return model, loss_history
 
