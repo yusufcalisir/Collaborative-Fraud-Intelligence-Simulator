@@ -28,10 +28,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/simulations", tags=["simulations"])
 
 
-# ── In-memory store for simulation results ─────
-# In a full deployment, these would come from the database.
-# For the simulator, we store results from completed Celery tasks here.
+# ── In-memory stores ───────────────────────────
+# In a full deployment these would come from a database.
 _simulation_results: dict[str, dict] = {}
+_simulation_events: dict[str, list[dict]] = {}  # simulation_id → list of progress events
 
 
 @router.post(
@@ -273,11 +273,15 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
             model_service=model_service,
         )
 
-        # Optional progress callback that updates in-memory state
+        # Progress callback: updates in-memory state and event log
         def progress_cb(sim_id: str, event_type: str, data: dict[str, Any]) -> None:
             sim = _simulation_results.get(sim_id)
             if sim and event_type == "round_complete":
                 sim["current_round"] = data.get("round", sim.get("current_round", 0))
+            # Store every event so the training router can serve them
+            _simulation_events.setdefault(sim_id, []).append(
+                {"event_type": event_type, "data": data}
+            )
 
         simulation = simulation_service.run_simulation(
             config=config,

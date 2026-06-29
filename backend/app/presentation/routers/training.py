@@ -1,11 +1,11 @@
 """Training progress endpoints.
 
 Provides access to per-round training data for a simulation.
+Reads from the in-memory event store (no Redis required).
 """
 
 from __future__ import annotations
 
-import json
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -22,20 +22,12 @@ async def get_training_rounds(simulation_id: str) -> list[dict]:
     Returns round-by-round metrics including loss, participants,
     dropouts, and timing data.
     """
-    import redis as sync_redis
+    from app.presentation.routers.simulation import _simulation_events
 
-    from app.config import get_settings
-
-    settings = get_settings()
-    r = sync_redis.from_url(settings.redis_url, decode_responses=True)
-
-    # Retrieve all events for this simulation
-    events_key = f"simulation:{simulation_id}:events"
-    raw_events = r.lrange(events_key, 0, -1)
+    events = _simulation_events.get(simulation_id, [])
 
     rounds = []
-    for raw in raw_events:
-        event = json.loads(raw)
+    for event in events:
         if event.get("event_type") == "round_complete":
             data = event["data"]
             rounds.append(
@@ -71,17 +63,11 @@ async def get_training_round(simulation_id: str, round_number: int) -> dict:
 @router.get("/{simulation_id}/progress")
 async def get_training_progress(simulation_id: str) -> dict:
     """Get the latest progress update for a running simulation."""
-    import redis as sync_redis
+    from app.presentation.routers.simulation import _simulation_events
 
-    from app.config import get_settings
+    events = _simulation_events.get(simulation_id, [])
 
-    settings = get_settings()
-    r = sync_redis.from_url(settings.redis_url, decode_responses=True)
-
-    progress_key = f"simulation:{simulation_id}:progress"
-    raw = r.get(progress_key)
-
-    if raw:
-        return json.loads(raw)
+    if events:
+        return events[-1]
 
     return {"event_type": "unknown", "data": {"message": "No progress data available"}}
