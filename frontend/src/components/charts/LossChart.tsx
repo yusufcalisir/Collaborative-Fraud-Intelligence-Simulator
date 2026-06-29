@@ -8,7 +8,8 @@ interface LossChartProps {
 }
 
 export default function LossChart({ rounds }: LossChartProps) {
-  const data = rounds.map((r) => ({
+  const hasData = rounds && rounds.length > 0;
+  const data = (rounds ?? []).map((r) => ({
     round: r.round_number,
     loss: parseFloat(r.global_loss.toFixed(4)),
     participants: r.participating_banks.length,
@@ -16,11 +17,19 @@ export default function LossChart({ rounds }: LossChartProps) {
   }));
 
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-5 h-full flex flex-col">
       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
         Training Loss Convergence
       </h3>
-      <div className="h-64">
+      <div className="h-64 relative flex-1 min-h-0">
+        {!hasData && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-bg-card)]/40 rounded-lg backdrop-blur-[1px] z-10 border border-[var(--color-border-subtle)]">
+            <span className="text-2xl mb-2 animate-pulse">📈</span>
+            <span className="text-xs text-[var(--color-text-muted)] font-medium">
+              Waiting for first round to complete...
+            </span>
+          </div>
+        )}
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
