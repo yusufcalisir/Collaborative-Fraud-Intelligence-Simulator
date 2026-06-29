@@ -94,8 +94,8 @@ export default function AlertsPage() {
           )}
         </div>
 
-        {/* Explainability Panel */}
-        <div className="lg:col-span-1">
+        {/* Explainability Panel (Desktop) */}
+        <div className="hidden lg:block lg:col-span-1">
           {selectedAlert ? (
             <ExplainabilityPanel alert={selectedAlert} />
           ) : (
@@ -110,6 +110,33 @@ export default function AlertsPage() {
           )}
         </div>
       </div>
+
+      {/* Mobile Explainability Modal */}
+      {selectedAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm lg:hidden">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="glass-card w-full max-w-lg max-h-[85vh] overflow-y-auto relative flex flex-col p-0"
+          >
+            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between sticky top-0 bg-[var(--color-bg-card)] z-10">
+              <h3 className="font-bold text-[var(--color-text-primary)]">Alert Details</h3>
+              <button
+                onClick={() => setSelectedAlert(null)}
+                className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-card-hover)] focus:outline-none"
+                aria-label="Close details"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto">
+              <ExplainabilityPanel alert={selectedAlert} />
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

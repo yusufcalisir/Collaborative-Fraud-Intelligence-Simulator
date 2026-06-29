@@ -54,7 +54,7 @@ export default function ScenariosPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-4 flex items-center gap-4"
+        className="glass-card p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
       >
         <span className="text-sm text-[var(--color-text-muted)]">Replay Speed:</span>
         <input
@@ -64,9 +64,9 @@ export default function ScenariosPage() {
           step="0.5"
           value={speed}
           onChange={(e) => setSpeed(parseFloat(e.target.value))}
-          className="flex-1 max-w-xs accent-[var(--color-primary)]"
+          className="w-full sm:flex-1 max-w-xs accent-[var(--color-primary)]"
         />
-        <span className="text-sm font-mono font-bold w-12">{speed}x</span>
+        <span className="text-sm font-mono font-bold w-12 text-left sm:text-right">{speed}x</span>
       </motion.div>
 
       {/* Active Scenario Status */}
@@ -157,8 +157,8 @@ export default function ScenariosPage() {
                   {scenario.description}
                 </p>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-1">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex flex-wrap gap-1">
                     {scenario.banks_involved.map((bankId) => (
                       <span
                         key={bankId}
@@ -172,7 +172,7 @@ export default function ScenariosPage() {
                   <button
                     onClick={() => handleStart(scenario.type)}
                     disabled={startScenario.isPending || status?.status === 'running'}
-                    className="px-4 py-2 text-sm font-semibold rounded-lg text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    className="px-4 py-2 text-sm font-semibold rounded-lg text-white hover:opacity-90 disabled:opacity-50 transition-opacity w-full sm:w-auto shrink-0 text-center"
                     style={{ background: SCENARIO_GRADIENTS[scenario.type] || SCENARIO_GRADIENTS.fraud_ring }}
                   >
                     {startScenario.isPending ? 'Starting...' : '▶ Run'}

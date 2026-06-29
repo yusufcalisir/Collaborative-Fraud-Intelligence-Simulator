@@ -65,7 +65,7 @@ export default function GraphPage() {
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="flex flex-col-reverse lg:grid lg:grid-cols-4 gap-6">
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Graph Stats */}
@@ -166,8 +166,7 @@ export default function GraphPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-card overflow-hidden"
-            style={{ height: '600px' }}
+            className="glass-card overflow-hidden h-[450px] sm:h-[550px] lg:h-[600px]"
           >
             {!selectedEntityId ? (
               <div className="flex items-center justify-center h-full text-[var(--color-text-muted)]">

@@ -37,7 +37,7 @@ export default function SimulationView() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-start justify-between"
+        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
       >
         <div>
           <Link
@@ -49,9 +49,9 @@ export default function SimulationView() {
           <h1 className="text-xl font-bold text-[var(--color-text-primary)]">
             Simulation Results
           </h1>
-          <p className="text-xs font-mono text-[var(--color-text-muted)] mt-0.5">{simulation.id}</p>
+          <p className="text-xs font-mono text-[var(--color-text-muted)] mt-0.5 break-all">{simulation.id}</p>
         </div>
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <SimStatusBadge status={simulation.status} />
           {simulation.duration_seconds && (
             <p className="text-xs text-[var(--color-text-muted)] mt-1">

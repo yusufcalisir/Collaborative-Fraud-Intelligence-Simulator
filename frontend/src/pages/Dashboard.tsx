@@ -42,7 +42,7 @@ export default function Dashboard() {
           Participating Institutions
         </h2>
         {banksLoading ? (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[0, 1, 2].map((i) => (
               <div key={i} className="glass-card p-5 h-48 animate-pulse" />
             ))}

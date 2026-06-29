@@ -45,7 +45,7 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
       </div>
 
       {/* Core Settings — always visible */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <label className="block text-xs text-[var(--color-text-muted)] mb-1">Rounds</label>
           <input
@@ -95,7 +95,7 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
             <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
               Failure Simulation
             </h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -173,7 +173,7 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
             <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
               Data Volume
             </h4>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {(['bank_a_transactions', 'bank_b_transactions', 'bank_c_transactions'] as const).map((key, i) => (
                 <div key={key}>
                   <label className="block text-xs text-[var(--color-text-muted)] mb-1">

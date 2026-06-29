@@ -74,10 +74,10 @@ export default function CaseDetailPage() {
         animate={{ opacity: 1, y: 0 }}
         className="glass-card p-5"
       >
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
           <div>
-            <h1 className="text-xl font-bold mb-1">{caseData.title}</h1>
-            <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
+            <h1 className="text-xl font-bold mb-1 break-words">{caseData.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-[var(--color-text-muted)]">
               <span>ID: {caseData.id.slice(0, 8)}</span>
               <span>•</span>
               <span>{PRIORITY_LABELS[caseData.priority] || caseData.priority}</span>
@@ -90,7 +90,7 @@ export default function CaseDetailPage() {
             </div>
           </div>
           <span
-            className="px-3 py-1 rounded-lg text-sm font-bold text-white"
+            className="px-3 py-1 rounded-lg text-sm font-bold text-white self-start sm:self-auto"
             style={{ backgroundColor: statusColor }}
           >
             {CASE_STATUS_LABELS[caseData.status] || caseData.status}
@@ -98,14 +98,14 @@ export default function CaseDetailPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-4 gap-4 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
           {[
             { label: 'Linked Alerts', value: caseData.alert_ids.length },
             { label: 'Notes', value: caseData.notes.length },
             { label: 'Timeline Events', value: caseData.timeline.length },
             { label: 'Duration', value: caseData.duration_hours ? `${caseData.duration_hours.toFixed(1)}h` : '—' },
           ].map((stat) => (
-            <div key={stat.label} className="text-center">
+            <div key={stat.label} className="text-center p-2 bg-[var(--color-bg-elevated)]/30 rounded-lg">
               <div className="text-lg font-bold">{stat.value}</div>
               <div className="text-[10px] uppercase text-[var(--color-text-muted)]">{stat.label}</div>
             </div>
@@ -114,7 +114,7 @@ export default function CaseDetailPage() {
 
         {/* Status Actions */}
         {caseData.is_open && (
-          <div className="flex gap-2 mt-4 pt-3 border-t border-[var(--color-border)]">
+          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-[var(--color-border)]">
             <span className="text-xs text-[var(--color-text-muted)] self-center mr-2">Change status:</span>
             {Object.entries(CASE_STATUS_LABELS)
               .filter(([k]) => k !== caseData.status)

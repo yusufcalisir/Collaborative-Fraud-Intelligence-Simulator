@@ -1,12 +1,27 @@
-export default function Header() {
+interface HeaderProps {
+  onMenuClick: () => void;
+}
+
+export default function Header({ onMenuClick }: HeaderProps) {
   return (
-    <header className="h-14 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-md flex items-center px-6 sticky top-0 z-40">
-      <div className="flex-1">
-        <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
+    <header className="h-14 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-md flex items-center px-4 md:px-6 sticky top-0 z-40">
+      {/* Menu toggle button on mobile */}
+      <button
+        onClick={onMenuClick}
+        className="p-2 -ml-2 mr-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)] md:hidden focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-indigo)]/50"
+        aria-label="Open navigation menu"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <h2 className="text-sm font-medium text-[var(--color-text-secondary)] truncate">
           Collaborative Fraud Intelligence Simulator
         </h2>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 md:gap-4 shrink-0">
         <a
           href="/docs"
           target="_blank"
@@ -21,3 +36,4 @@ export default function Header() {
     </header>
   );
 }
+
