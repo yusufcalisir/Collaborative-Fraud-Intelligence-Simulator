@@ -25,7 +25,7 @@ jobs:
       - name: Ruff format check
         run: ruff format --check app/ tests/
       - name: Mypy type check
-        run: mypy app/ --ignore-missing-imports --no-strict
+        run: mypy app/ --ignore-missing-imports
 
   backend-test:
     name: Backend Tests
