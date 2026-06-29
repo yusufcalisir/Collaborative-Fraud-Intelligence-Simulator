@@ -1,7 +1,7 @@
 """Simulation API endpoints.
 
 Handles creating, listing, and retrieving simulation runs.
-Simulation execution is dispatched to Celery workers.
+Simulation execution runs in background threads within the web process.
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ from app.application.schemas.simulation import (
     SimulationSummaryResponse,
 )
 from app.domain.enums import PrivacyMechanism, SimulationStatus
-from app.tasks.simulation_tasks import run_simulation_task
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ router = APIRouter(prefix="/api/v1/simulations", tags=["simulations"])
 # In a full deployment, these would come from the database.
 # For the simulator, we store results from completed Celery tasks here.
 _simulation_results: dict[str, dict] = {}
-_simulation_tasks: dict[str, str] = {}  # simulation_id → celery_task_id
 
 
 @router.post(
@@ -46,14 +44,15 @@ async def create_simulation(
 ) -> SimulationCreateResponse:
     """Start a new federated learning simulation.
 
-    The simulation runs asynchronously in a Celery worker.
-    Poll GET /simulations/{id} or connect to the WebSocket for progress.
+    Runs the simulation in a background thread within the web process.
+    Poll GET /simulations/{id} for progress.
     """
+    import threading
     import uuid
 
     simulation_id = str(uuid.uuid4())
 
-    # Build config dict for Celery task
+    # Build config dict
     config_dict = {
         "num_rounds": config.num_rounds,
         "local_epochs": config.local_epochs,
@@ -83,10 +82,6 @@ async def create_simulation(
         "bank_c_transactions": config.bank_c_transactions,
     }
 
-    # Dispatch to Celery
-    task = run_simulation_task.delay(config_dict)
-    _simulation_tasks[simulation_id] = task.id
-
     # Store pending status
     _simulation_results[simulation_id] = {
         "id": simulation_id,
@@ -94,25 +89,31 @@ async def create_simulation(
         "config": config_dict,
         "current_round": 0,
         "total_rounds": config.num_rounds,
-        "celery_task_id": task.id,
         "banks": [],
         "rounds": [],
     }
 
-    logger.info("Dispatched simulation %s as Celery task %s", simulation_id, task.id)
+    # Run simulation in a background thread (no Celery worker needed)
+    thread = threading.Thread(
+        target=_run_simulation_in_process,
+        args=(simulation_id, config_dict),
+        daemon=True,
+    )
+    thread.start()
+
+    logger.info("Started in-process simulation %s", simulation_id)
 
     return SimulationCreateResponse(
         id=simulation_id,
         status=SimulationStatus.PENDING,
-        message=f"Simulation queued. Task ID: {task.id}",
+        message=f"Simulation started in-process. ID: {simulation_id}",
     )
 
 
 @router.get("", response_model=list[SimulationSummaryResponse])
 async def list_simulations() -> list[SimulationSummaryResponse]:
     """List all simulation runs."""
-    # Check for completed Celery tasks and update results
-    _sync_task_results()
+    # Results are updated in-place by background threads
 
     summaries = []
     for sim in _simulation_results.values():
@@ -135,7 +136,6 @@ async def list_simulations() -> list[SimulationSummaryResponse]:
 @router.get("/{simulation_id}", response_model=SimulationDetailResponse)
 async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
     """Get full simulation details including metrics."""
-    _sync_task_results()
 
     sim = _simulation_results.get(simulation_id)
     if not sim:
@@ -185,7 +185,6 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
 @router.get("/{simulation_id}/comparison", response_model=ComparisonResponse)
 async def get_comparison(simulation_id: str) -> ComparisonResponse:
     """Get local vs federated comparison for all banks."""
-    _sync_task_results()
 
     sim = _simulation_results.get(simulation_id)
     if not sim:
@@ -230,27 +229,110 @@ async def get_comparison(simulation_id: str) -> ComparisonResponse:
 # ── Helpers ─────────────────────────────────────
 
 
-def _sync_task_results() -> None:
-    """Check for completed Celery tasks and merge results."""
-    from celery.result import AsyncResult
+def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
+    """Run the full simulation pipeline in a background thread.
 
-    for sim_id, task_id in list(_simulation_tasks.items()):
-        result = AsyncResult(task_id)
-        if result.ready():
-            try:
-                task_result = result.get(timeout=1)
-                if isinstance(task_result, dict):
-                    # Merge task results into our store
-                    existing = _simulation_results.get(sim_id, {})
-                    existing.update(task_result)
-                    existing["id"] = sim_id  # Keep original ID
-                    _simulation_results[sim_id] = existing
-            except Exception:
-                logger.warning("Failed to get result for task %s", task_id)
-                sim = _simulation_results.get(sim_id, {})
-                sim["status"] = SimulationStatus.FAILED.value
-            finally:
-                del _simulation_tasks[sim_id]
+    Updates ``_simulation_results`` in-place so the polling endpoints
+    can return real-time progress without Celery or Redis.
+    """
+    from dataclasses import asdict
+    from typing import Any
+
+    from app.application.services.data_generator import DataGenerator
+    from app.application.services.fl_engine import FederatedLearningEngine
+    from app.application.services.metrics_service import MetricsService
+    from app.application.services.model_service import ModelService
+    from app.application.services.privacy_service import PrivacyService
+    from app.application.services.simulation_service import SimulationService
+    from app.config import get_settings
+    from app.domain.value_objects import SimulationConfig
+
+    settings = get_settings()
+    logger.info("Background simulation %s starting", simulation_id)
+
+    try:
+        # Mark as running
+        _simulation_results[simulation_id]["status"] = SimulationStatus.RUNNING.value
+
+        config = SimulationConfig(**config_dict)
+
+        model_service = ModelService(settings)
+        privacy_service = PrivacyService()
+        fl_engine = FederatedLearningEngine(settings, model_service, privacy_service)
+        data_generator = DataGenerator()
+        metrics_service = MetricsService()
+
+        simulation_service = SimulationService(
+            settings=settings,
+            simulation_repo=None,
+            bank_repo=None,
+            metrics_repo=None,
+            data_generator=data_generator,
+            fl_engine=fl_engine,
+            metrics_service=metrics_service,
+            model_service=model_service,
+        )
+
+        # Optional progress callback that updates in-memory state
+        def progress_cb(sim_id: str, event_type: str, data: dict[str, Any]) -> None:
+            sim = _simulation_results.get(sim_id)
+            if sim and event_type == "round_complete":
+                sim["current_round"] = data.get("round", sim.get("current_round", 0))
+
+        simulation = simulation_service.run_simulation(
+            config=config,
+            progress_callback=progress_cb,
+        )
+
+        # Serialize and store results
+        result: dict[str, Any] = {
+            "id": simulation_id,
+            "status": simulation.status.value,
+            "current_round": simulation.current_round,
+            "total_rounds": simulation.total_rounds,
+            "created_at": simulation.created_at.isoformat() if simulation.created_at else None,
+            "started_at": simulation.started_at.isoformat() if simulation.started_at else None,
+            "completed_at": simulation.completed_at.isoformat()
+            if simulation.completed_at
+            else None,
+            "duration_seconds": simulation.duration_seconds,
+            "error_message": simulation.error_message,
+            "banks": [],
+        }
+
+        for bank in simulation.banks:
+            bank_dict: dict[str, Any] = {
+                "id": bank.id,
+                "name": bank.name,
+                "tier": bank.tier.value,
+                "fraud_ratio": bank.fraud_ratio,
+                "num_transactions": bank.num_transactions,
+                "status": bank.status.value,
+            }
+            if bank.data_profile:
+                bank_dict["data_profile"] = asdict(bank.data_profile)
+            if bank.local_metrics:
+                bank_dict["local_metrics"] = asdict(bank.local_metrics)
+            if bank.federated_metrics:
+                bank_dict["federated_metrics"] = asdict(bank.federated_metrics)
+            if bank.improvement:
+                bank_dict["improvement"] = bank.improvement
+            result["banks"].append(bank_dict)
+
+        # Preserve config in the stored result
+        result["config"] = config_dict
+        _simulation_results[simulation_id] = result
+
+        logger.info(
+            "Background simulation %s completed: %s", simulation_id, simulation.status.value
+        )
+
+    except Exception:
+        logger.exception("Background simulation %s failed", simulation_id)
+        sim = _simulation_results.get(simulation_id, {})
+        sim["status"] = SimulationStatus.FAILED.value
+        sim["error_message"] = "Simulation failed. Check server logs."
+        _simulation_results[simulation_id] = sim
 
 
 def _calc_progress(sim: dict) -> float:
