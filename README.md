@@ -2,7 +2,7 @@
 
 **Privacy-Preserving Cross-Institution Fraud Detection using Federated Learning**
 
-[![CI](https://github.com/yourusername/fraud-intelligence-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/fraud-intelligence-simulator/actions)
+[![CI](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![React 19](https://img.shields.io/badge/react-19-61dafb.svg)](https://react.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
