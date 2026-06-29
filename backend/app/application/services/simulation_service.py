@@ -125,7 +125,7 @@ class SimulationService:
                     y,
                     test_size=0.2,
                     random_state=42,
-                    stratify=y.tolist(),
+                    stratify=cast("Any", y),
                 )
 
                 bank_data[bank_id] = {
