@@ -1,354 +1,189 @@
 # Collaborative Fraud Intelligence Simulator
 
-**Privacy-Preserving Cross-Institution Fraud Detection using Federated Learning**
+A production-grade simulation framework for privacy-preserving, cross-institution financial fraud detection and Collaborative Anti-Money Laundering (AML) intelligence. This platform showcases how financial institutions can collaboratively train machine learning models and share risk intelligence without exposing sensitive customer Personally Identifiable Information (PII) or violating global privacy regulations like GDPR, CCPA, and banking secrecy laws.
 
 [![CI](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![React 19](https://img.shields.io/badge/react-19-61dafb.svg)](https://react.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
----
+***
 
-## The Problem
+## The Core Challenge: Siloed Fraud Detection
 
-Financial institutions detect fraud in isolation. Each bank trains models on its own transaction data, missing cross-institution fraud patterns like:
+Financial institutions currently detect fraud and money laundering in absolute isolation. Each bank trains machine learning models solely on its own internal transaction datasets. This isolation creates significant vulnerabilities:
 
-- **Velocity fraud** that spans multiple banks
-- **Syndicate rings** operating across institutions
-- **Emerging fraud typologies** visible only with aggregate data
+*   **Velocity Fraud:** Fraudsters exploit the blind spot between institutions, transferring funds rapidly across multiple banks before any single bank detects the pattern.
+*   **Syndicate Rings:** Large-scale mule networks distribute accounts and transactions across several institutions to fly under detection thresholds.
+*   **Emerging Typologies:** New fraud techniques are often only visible when observing aggregate transaction behavior across the entire financial ecosystem.
 
-Sharing raw transaction data is prohibited by privacy regulations (GDPR, CCPA, banking secrecy laws). Banks need a way to **collaborate without exposing customer data**.
+Directly sharing transaction logs or database records between banks is strictly prohibited by privacy regulations and banking secrecy laws. This platform bridges that gap by demonstrating how banks can collaborate securely.
 
-## The Solution
+## The Technical Solution
 
-This project simulates **Federated Learning** — a distributed ML paradigm where multiple institutions collaboratively train a shared fraud detection model. Each bank trains locally on its own data and shares only **model weight updates** (gradients), never raw transactions.
+The Collaborative Fraud Intelligence Simulator demonstrates two parallel tracks of secure, multi-bank collaboration:
 
-The simulator demonstrates:
+### Track 1: Privacy-Preserving Federated Learning (Phase 1)
+Instead of centralizing raw customer transactions, the framework uses a distributed machine learning paradigm:
+1.  **Local Training:** Each bank trains a local PyTorch Multi-Layer Perceptron (MLP) on its own transaction data.
+2.  **Gradient Exchange:** Banks export only their local model weights (gradients), keeping all raw transactions strictly on-premise.
+3.  **Secure Aggregation:** An Aggregation Server averages the weights using the Federated Averaging (FedAvg) algorithm to create an improved global model.
+4.  **Differential Privacy (DP):** Calibrated Gaussian noise is injected into weight updates, backed by mathematical privacy budget tracking (epsilon, delta), preventing reconstruction of training inputs.
 
-| Feature | Description |
-|---------|-------------|
-| **Non-IID Data Generation** | Three banks with distinct fraud profiles, transaction distributions, and data volumes |
-| **Federated Averaging (FedAvg)** | Round-based aggregation of model updates from participating clients |
-| **Differential Privacy** | Calibrated Gaussian noise injection with privacy budget (ε, δ) tracking |
-| **Secure Aggregation** | Pairwise masking that cancels during summation (simulated) |
-| **Failure Injection** | Client dropout, reconnection, and network latency simulation |
-| **Real-time Monitoring** | WebSocket-based round-by-round training progress |
-| **Local vs Federated Comparison** | Side-by-side metrics proving collaborative advantage |
-| **AML Intelligence Feed** | Collaborative risk-indicator exchange stripping all customer PII |
-| **9-Signal Risk Engine** | Composite risk scoring combining ML predictions with velocity rules, device anomalies, and baseline deviations |
-| **Entity Relationship Graph** | Interactive network visualization of customers, cards, devices, and merchants using React Flow |
-| **Deterministic HMAC Resolution** | Privacy-preserving cross-bank entity linkage using HMAC-SHA256 hashes |
-| **Scenario Replay Engine** | Scripted multi-bank fraud scenarios (Fraud Ring, ATO, Layering, Card Testing) replayed in real time |
+### Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine (Phase 2)
+To provide real-time transaction screening and investigation capabilities:
+1.  **Deterministic Entity Resolution:** Cross-bank customer and device matching is achieved via one-way HMAC-SHA256 hashes, allowing linkage of malicious actors without revealing identity.
+2.  **9-Signal Risk Engine:** Combines machine learning inference with heuristic indicators (e.g., velocity anomalies, device mismatches, high-risk merchant categories, baseline deviations).
+3.  **Interactive Relationship Graphs:** A full visual graph of entities, devices, cards, and accounts built using React Flow, mapping suspicious clusters in real time.
+4.  **Scenario Replay Engine:** Scripted simulation flows representing typologies like Account Takeover (ATO), Card Testing, and Layering networks.
 
-## Architecture
+***
+
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    React Dashboard (Vite)                     │
-│  Simulation Controls │ Training Timeline │ Metrics Charts     │
-└──────────────┬───────────────────┬───────────────────────────┘
+│                    React Dashboard (Vite)                   │
+│  Simulation Controls │ Training Timeline │ Metrics Charts   │
+└──────────────┬───────────────────┬──────────────────────────┘
                │ REST API          │ WebSocket
-┌──────────────▼───────────────────▼───────────────────────────┐
-│                    FastAPI Application                        │
-│  Routers → Services → Domain Entities                        │
-│            │                                                  │
-│            ├─ SimulationService (orchestrator)                │
-│            ├─ FederatedLearningEngine (FedAvg + failure sim)  │
-│            ├─ ModelService (PyTorch MLP)                      │
-│            ├─ PrivacyService (DP + secure aggregation)        │
-│            └─ DataGenerator (Non-IID synthetic data)          │
-└──────────────┬───────────────────┬───────────────────────────┘
+┌──────────────▼───────────────────▼──────────────────────────┐
+│                    FastAPI Application                      │
+│  Routers -> Services -> Domain Entities                     │
+│            │                                                │
+│            ├─ SimulationService (Orchestrator)              │
+│            ├─ FederatedLearningEngine (FedAvg + dropouts)   │
+│            ├─ ModelService (PyTorch MLP)                    │
+│            ├─ PrivacyService (DP + Secure Aggregation)      │
+│            ├─ RiskEngine (9-Signal composite scoring)       │
+│            └─ DataGenerator (Non-IID synthetic profiles)    │
+└──────────────┬───────────────────┬──────────────────────────┘
                │                   │
     ┌──────────▼───────┐  ┌───────▼────────┐
-    │   PostgreSQL     │  │     Redis      │
-    │   (persistence)  │  │ (cache + pub/sub│
-    └──────────────────┘  │  + Celery)     │
+    │    PostgreSQL    │  │     Redis      │
+    │  (Persistence)   │  │ (Cache, PubSub │
+    └──────────────────┘  │  + Event Bus)  │
                           └────────────────┘
 ```
 
-> **Detailed architecture docs**: [`docs/architecture.md`](docs/architecture.md)
+The system is designed around Clean Architecture (Ports and Adapters) principles:
+*   **Domain Layer (`backend/app/domain`):** Pure business logic, value objects, and entities. Zero external framework dependencies.
+*   **Application Layer (`backend/app/application`):** Orchestrates use cases. Services implement business logic; schemas handle data validation.
+*   **Infrastructure Layer (`backend/app/infrastructure`):** Implements data persistence, external caching, event dispatching, and background workers.
+*   **Presentation Layer (`backend/app/presentation`):** Exposes async REST endpoints and WebSockets for live UI telemetry.
+
+Detailed technical breakdowns can be found in the [`docs/`](docs/) folder.
+
+***
 
 ## Quick Start
 
 ### Prerequisites
+*   Docker and Docker Compose
+*   Make (optional, for utility commands)
 
-- Docker & Docker Compose
-- Make (optional, for convenience commands)
-
-### Run with Docker
+### Running with Docker Compose
+To boot up the entire stack (FastAPI backend, React frontend, PostgreSQL database, Redis event bus) in development mode:
 
 ```bash
-# Clone
-git clone https://github.com/yourusername/fraud-intelligence-simulator.git
-cd fraud-intelligence-simulator
+# Clone the repository
+git clone https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator.git
+cd Collaborative-Fraud-Intelligence-Simulator
 
-# Copy environment file
+# Copy environment variables template
 cp .env.example .env
 
 # Start all services
 make dev
-# Or: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Alternative: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Dashboard | http://localhost:3000 |
-| API Docs (Swagger) | http://localhost:8000/docs |
-| API Docs (ReDoc) | http://localhost:8000/redoc |
-| Flower (task monitor) | http://localhost:5555 |
+Access urls once the containers are running:
+*   **Web Dashboard:** `http://localhost:3000`
+*   **Interactive Swagger API Docs:** `http://localhost:8000/docs`
+*   **ReDoc API Documentation:** `http://localhost:8000/redoc`
 
-### Run Without Docker
+### Local Development (Without Docker)
+Ensure you have local instances of PostgreSQL and Redis running, then execute:
 
 ```bash
-# Backend
+# 1. Setup and start Backend
 cd backend
-python -m venv .venv && source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+python -m venv .venv
+# On macOS/Linux: source .venv/bin/activate
+# On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# Frontend (separate terminal)
+# 2. Setup and start Frontend (in a separate terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-> **Note**: You'll need PostgreSQL and Redis running locally. See `.env.example` for connection strings.
+***
 
-## Running a Simulation
+## Detailed Feature Log
 
-1. Open the dashboard at `http://localhost:3000`
-2. Configure training parameters (rounds, learning rate, privacy settings)
-3. Click **Start Federated Training**
-4. Watch real-time progress via WebSocket updates
-5. When complete, explore:
-   - **Metrics comparison table** — local vs federated for all banks
-   - **Loss convergence chart** — with dropout annotations
-   - **ROC curves** — per-bank, per-model overlaid
-   - **Confusion matrices** — heatmap visualization
-   - **Feature importance** — first-layer weight analysis
+| Feature | Technical Implementation | Purpose |
+| :--- | :--- | :--- |
+| **Non-IID Synthetic Data** | `DataGenerator` generates skewed distributions per bank (skewed fraud rates, different feature means). | Simulates real-world heterogeneity where banks have distinct customer bases. |
+| **FedAvg Aggregation** | Weighted averaging of local weights based on relative client sample counts. | Central algorithm for model parameter synchronization in Federated Learning. |
+| **Differential Privacy** | Gaussian noise addition to gradients combined with L2 norm clipping. | Mathematically guarantees that individual transaction signatures cannot be leaked. |
+| **Client Failures** | Dynamic simulation of network latency, dropouts, and reconnection cycles. | Tests the resilience of the aggregation server against real-world connection drops. |
+| **Deterministic Linkage** | Linkage of cross-bank entities using salted HMAC-SHA256 identifiers. | Matches entities (e.g., suspicious cards/devices) without sharing raw names or emails. |
+| **9-Signal Risk Engine** | Custom pipeline weighting ML scores, device status, IP velocity, and behavioral shifts. | Builds a comprehensive risk profile for automated alert generation. |
+| **Real-time Replay** | Replays historical fraud scenarios event-by-event via WebSockets. | Provides a high-fidelity demonstration of how cross-bank intelligence is shared. |
 
-## API Reference
+***
 
-### Phase 1: Federated Learning
+## Configuration Options
 
-```bash
-# Start a simulation
-POST /api/v1/simulations
+When running a simulation from the dashboard, the following parameters are configurable:
 
-# List simulations
-GET /api/v1/simulations
+*   **Communication Rounds:** The number of aggregation cycles between banks and the central server.
+*   **Local Epochs:** How many training epochs each bank performs locally per round before uploading updates.
+*   **Learning Rate:** Step size optimization value for gradient descent.
+*   **Batch Size:** Size of training data subsets passed through the PyTorch MLP.
+*   **Privacy Mechanism:** Choose between *None*, *Differential Privacy*, *Secure Aggregation*, or *Both*.
+*   **DP Epsilon ($\epsilon$):** Privacy loss parameter. Lower values mean stronger privacy (more noise) but lower accuracy.
+*   **DP Delta ($\delta$):** Probability of accidental information leakage. Typically set to less than the inverse of the dataset size.
+*   **Client Dropout Probability:** Probability of a bank client dropping offline during a round.
 
-# Get simulation details
-GET /api/v1/simulations/{id}
+***
 
-# Get comparison metrics
-GET /api/v1/simulations/{id}/comparison
+## Testing and Verification
 
-# Get training rounds
-GET /api/v1/training/{id}/rounds
-
-# WebSocket training progress
-WS /ws/training/{id}
-
-# Bank reference data
-GET /api/v1/banks
-
-# Health checks
-GET /health
-GET /health/ready
-```
-
-### Phase 2: AML Intelligence Platform
+The repository contains a robust integration and unit test suite verifying the FL engine, risk engine, and API layers.
 
 ```bash
-# List and filter fraud alerts
-GET /api/v1/alerts
-
-# Get specific alert detail
-GET /api/v1/alerts/{id}
-
-# Get explainability report for a specific alert
-GET /api/v1/alerts/{id}/explain
-
-# List shared cross-bank intelligence items
-GET /api/v1/intelligence
-
-# Get shared intelligence aggregate stats
-GET /api/v1/intelligence/stats
-
-# CRUD investigation cases
-GET/POST /api/v1/cases
-GET/PATCH /api/v1/cases/{id}
-
-# Add case investigation notes
-POST /api/v1/cases/{id}/notes
-
-# Link alerts to an investigation case
-POST /api/v1/cases/{id}/alerts
-
-# Get case event timeline
-GET /api/v1/cases/{id}/timeline
-
-# Export case summary as markdown
-GET /api/v1/cases/{id}/export
-
-# List entities
-GET /api/v1/entities
-
-# Get entity profile with cross-bank risk metrics
-GET /api/v1/entities/{id}
-
-# Get relationships associated with an entity
-GET /api/v1/entities/{id}/relationships
-
-# Resolve cross-bank entity overlap
-POST /api/v1/entities/resolve
-
-# Get subgraph centered on an entity for React Flow
-GET /api/v1/graph/{id}
-
-# List suspicious entity clusters
-GET /api/v1/graph/clusters/list
-
-# Search graph nodes
-GET /api/v1/graph/search/nodes
-
-# Get graph stats summary
-GET /api/v1/graph/stats/summary
-
-# List pre-built scenarios
-GET /api/v1/scenarios
-
-# Start a real-time scenario stream
-POST /api/v1/scenarios/start
-
-# Get status of active scenario
-GET /api/v1/scenarios/{id}/status
-
-# Stop a scenario stream
-POST /api/v1/scenarios/{id}/stop
-
-# List active scenarios
-GET /api/v1/scenarios/active/list
-
-# WebSocket scenario streaming
-WS /ws/streaming/{scenario_id}
-
-# Get dashboard aggregated stats
-GET /api/v1/dashboard/stats
-
-# Get current risk engine scoring weights
-GET /api/v1/dashboard/risk-weights
-
-# Update risk weights config
-PUT /api/v1/dashboard/risk-weights
-```
-
-Full interactive docs available at `/docs` (Swagger UI) and `/redoc` (ReDoc).
-
-## Testing
-
-```bash
-# All tests
+# Execute full test suite
 make test
 
-# Unit tests only
-make test-unit
+# Execute backend integration tests only
+cd backend
+.venv/Scripts/pytest tests/integration/ -v
 
-# With coverage
-make test-coverage
-
-# Linting
-make lint
+# Run format and lint checks
+cd backend
+.venv/Scripts/ruff check app/ tests/
+.venv/Scripts/ruff format --check app/ tests/
 ```
 
-## Project Structure
+***
 
-```
-├── backend/
-│   ├── app/
-│   │   ├── domain/           # Entities, enums, value objects (Phase 1 & 2)
-│   │   │   ├── enums.py
-│   │   │   ├── entities.py
-│   │   │   ├── entities_phase2.py
-│   │   │   └── value_objects_phase2.py
-│   │   ├── application/      # Services, schemas, interfaces
-│   │   │   └── services/
-│   │   │       ├── data_generator.py    # Non-IID synthetic data
-│   │   │       ├── model_service.py     # PyTorch MLP
-│   │   │       ├── fl_engine.py         # FedAvg + failure simulation
-│   │   │       ├── privacy_service.py   # DP + secure aggregation
-│   │   │       ├── alert_service.py     # Alert intelligence (Phase 2)
-│   │   │       ├── risk_engine.py       # 9-signal Risk Engine (Phase 2)
-│   │   │       ├── case_service.py      # Case management (Phase 2)
-│   │   │       ├── entity_resolution.py # Cross-bank linkage (Phase 2)
-│   │   │       ├── graph_engine.py      # Relationship Graph (Phase 2)
-│   │   │       ├── explainability_service.py # Explainable AI (Phase 2)
-│   │   │       └── streaming_engine.py  # Event replay (Phase 2)
-│   │   ├── infrastructure/   # Database, cache, event bus, models
-│   │   │   ├── database.py
-│   │   │   ├── models.py
-│   │   │   └── event_bus.py
-│   │   ├── presentation/     # API routers, WebSocket (Phase 1 & 2)
-│   │   └── tasks/            # Celery async tasks
-│   ├── tests/                # Test suite (60 unit tests)
-│   ├── Dockerfile
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── api/              # Types, client, React Query hooks
-│   │   ├── components/       # Reusable UI components
-│   │   │   ├── layout/       # Sidebar, Header, Layout
-│   │   │   ├── dashboard/    # BankCard, Controls, Timeline
-│   │   │   └── charts/       # Loss, ROC, Confusion, Feature
-│   │   ├── pages/            # Dashboard, SimulationView
-│   │   └── utils/            # Formatters, constants
-│   ├── Dockerfile
-│   └── package.json
-├── docs/                     # Architecture, system design, threat model
-├── docker-compose.yml
-├── Makefile
-└── .github/                  # CI, templates
-```
+## Production Roadmap and Hardening Gaps
 
-## Engineering Documentation
+To transition this proof-of-concept into a production deployment, the following changes are required:
 
-| Document | Purpose |
-|----------|---------|
-| [`docs/architecture.md`](docs/architecture.md) | Clean Architecture breakdown, layer responsibilities, data flow |
-| [`docs/system_design.md`](docs/system_design.md) | System design interview-style walkthrough |
-| [`docs/engineering_decisions.md`](docs/engineering_decisions.md) | ADR-style decision log with tradeoffs |
-| [`docs/threat_model.md`](docs/threat_model.md) | Security analysis and privacy guarantees |
-| [`docs/aml-platform.md`](docs/aml-platform.md) | Overview of AML intelligence, entity resolution, and fraud scenarios |
-| [`docs/architecture-phase2.md`](docs/architecture-phase2.md) | Phase 2 system design, real-time data flows, and secure hashing details |
+1.  **Production Orchestration:** Replace the custom threaded aggregation runner with a framework like Flower (`flwr`) or PySyft, communicating over secure gRPC.
+2.  **Cryptographic Secure Aggregation:** Upgrade simulated pairwise masking to a Multi-Party Computation (MPC) library (such as SPDZ) running in trusted execution environments.
+3.  **Strict DP Accounting:** Replace basic sequential epsilon composition with Rényi Differential Privacy (RDP) using Opacus for optimal utility-privacy trade-offs.
+4.  **Transport & Auth:** Enforce mutual TLS (mTLS) for bank-to-server weight transfers and establish HSM-backed key management.
+5.  **Byzantine Robustness:** Implement aggregation defenses (e.g., Krum, Trimmed Mean, coordinate-wise median) to detect and reject poisoned model updates.
 
-## Key Design Decisions
-
-1. **Custom FL engine** over Flower (`flwr`) — maintains control over failure injection, round-based UI observability, and latency simulation. In production, `flwr` with gRPC is preferred for multi-machine deployment.
-
-2. **Clean Architecture** — strict layer separation with dependency inversion. Domain layer has zero external imports. Application services define interfaces that Infrastructure implements.
-
-3. **Synthetic Non-IID data** — three banks have distinct fraud profiles (velocity spikes, new-account fraud, card testing) to demonstrate real-world data heterogeneity.
-
-4. **Simulated secure aggregation** — pairwise masks that mathematically cancel during summation. A production system would use SMPC protocols.
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| API | FastAPI, Pydantic v2, Uvicorn |
-| ML | PyTorch, scikit-learn, NumPy |
-| Task Queue | Celery + Redis |
-| Database | PostgreSQL, SQLAlchemy 2.0, Alembic |
-| Cache/PubSub | Redis |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4 |
-| Charts | Recharts |
-| State | React Query (TanStack), Zustand |
-| Containerization | Docker, Docker Compose |
-| CI | GitHub Actions |
+***
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
-
-https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator.git
+MIT - see [LICENSE](LICENSE) for details.
