@@ -350,5 +350,5 @@ make lint
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
-#   C o l l a b o r a t i v e - F r a u d - I n t e l l i g e n c e - S i m u l a t o r  
- 
+
+https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator.git
