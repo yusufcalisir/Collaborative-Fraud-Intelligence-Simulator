@@ -252,6 +252,7 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
 
     # Prevent PyTorch thread throttling on single-core / shared CPU hosting
     import torch
+
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
 

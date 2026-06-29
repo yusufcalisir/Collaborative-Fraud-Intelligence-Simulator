@@ -84,7 +84,9 @@ def test_simulation_flow_success(simulation_service: SimulationService, sample_c
     assert "completed" in event_types
 
 
-def test_simulation_with_differential_privacy(simulation_service: SimulationService, sample_config: dict):
+def test_simulation_with_differential_privacy(
+    simulation_service: SimulationService, sample_config: dict
+):
     """Test FL simulation with Differential Privacy enabled."""
     sample_config["enable_differential_privacy"] = True
     sample_config.pop("privacy_mechanism", None)
@@ -101,7 +103,9 @@ def test_simulation_with_differential_privacy(simulation_service: SimulationServ
     assert simulation.current_round == 2
 
 
-def test_simulation_with_secure_aggregation(simulation_service: SimulationService, sample_config: dict):
+def test_simulation_with_secure_aggregation(
+    simulation_service: SimulationService, sample_config: dict
+):
     """Test FL simulation with Secure Aggregation enabled."""
     sample_config["enable_secure_aggregation"] = True
     sample_config.pop("privacy_mechanism", None)
@@ -114,7 +118,9 @@ def test_simulation_with_secure_aggregation(simulation_service: SimulationServic
     assert simulation.status == SimulationStatus.COMPLETED
 
 
-def test_simulation_with_client_dropouts(simulation_service: SimulationService, sample_config: dict):
+def test_simulation_with_client_dropouts(
+    simulation_service: SimulationService, sample_config: dict
+):
     """Test FL simulation with simulated dropout rates and client failures."""
     sample_config["enable_dropout_simulation"] = True
     sample_config["dropout_probability"] = 0.8  # High probability to force dropouts
@@ -127,4 +133,7 @@ def test_simulation_with_client_dropouts(simulation_service: SimulationService, 
     assert simulation.status == SimulationStatus.COMPLETED
     # Some banks might have been inactive/dropped
     statuses = [bank.status for bank in simulation.banks]
-    assert any(status in (ClientStatus.DROPPED, ClientStatus.ACTIVE, ClientStatus.RECONNECTED) for status in statuses)
+    assert any(
+        status in (ClientStatus.DROPPED, ClientStatus.ACTIVE, ClientStatus.RECONNECTED)
+        for status in statuses
+    )
