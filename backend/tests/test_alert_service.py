@@ -3,7 +3,7 @@
 import pytest
 
 from app.application.services.alert_service import AlertIntelligenceService
-from app.domain.enums import AlertSeverity, AlertStatus
+from app.domain.enums import AlertSeverity
 
 
 @pytest.fixture
@@ -45,7 +45,9 @@ def sample_transactions() -> list[dict]:
 
 class TestAlertGeneration:
     def test_generates_alerts_above_threshold(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         predictions = [0.85, 0.15]  # First above, second below threshold
         alerts = alert_service.generate_alerts("bank_a", sample_transactions, predictions)
@@ -61,7 +63,9 @@ class TestAlertGeneration:
         assert alert_service._classify_severity(0.10) == AlertSeverity.INFO
 
     def test_reason_codes_generated(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         predictions = [0.85]
         alerts = alert_service.generate_alerts("bank_a", sample_transactions[:1], predictions)
@@ -79,7 +83,9 @@ class TestAlertGeneration:
         assert len(alerts) == 2
 
     def test_alert_retrieval(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         alerts = alert_service.generate_alerts("bank_a", sample_transactions, [0.9, 0.8])
         retrieved = alert_service.get_alert(alerts[0].id)
@@ -87,7 +93,9 @@ class TestAlertGeneration:
         assert retrieved.id == alerts[0].id
 
     def test_filter_by_severity(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         alert_service.generate_alerts("bank_a", sample_transactions, [0.95, 0.6])
         critical = alert_service.get_alerts(severity=AlertSeverity.CRITICAL)
@@ -96,7 +104,9 @@ class TestAlertGeneration:
 
 class TestIntelligenceSharing:
     def test_publish_intelligence(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         alerts = alert_service.generate_alerts("bank_a", sample_transactions[:1], [0.9])
         intel = alert_service.publish_intelligence(alerts[0])
@@ -105,7 +115,9 @@ class TestIntelligenceSharing:
         assert len(intel.privacy_hash) == 16
 
     def test_consume_intelligence_excludes_own(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         alerts = alert_service.generate_alerts("bank_a", sample_transactions[:1], [0.9])
         alert_service.publish_intelligence(alerts[0])
@@ -119,7 +131,9 @@ class TestIntelligenceSharing:
         assert len(bank_b_intel) == 1
 
     def test_intelligence_stats(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         alerts = alert_service.generate_alerts("bank_a", sample_transactions[:1], [0.9])
         alert_service.publish_intelligence(alerts[0])
@@ -130,7 +144,9 @@ class TestIntelligenceSharing:
 
 class TestAlertCorrelation:
     def test_entity_overlap_detection(
-        self, alert_service: AlertIntelligenceService, sample_transactions: list[dict],
+        self,
+        alert_service: AlertIntelligenceService,
+        sample_transactions: list[dict],
     ) -> None:
         # Generate alerts with same customer (same entity ID)
         alerts = alert_service.generate_alerts("bank_a", sample_transactions, [0.9, 0.8])

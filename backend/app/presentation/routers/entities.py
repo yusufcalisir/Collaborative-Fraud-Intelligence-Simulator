@@ -7,7 +7,6 @@ import logging
 from fastapi import APIRouter, HTTPException, Query
 
 from app.application.schemas.phase2 import (
-    CrossInstitutionMatchResponse,
     EntityProfileResponse,
     EntityResolveRequest,
     EntityResponse,
@@ -37,7 +36,10 @@ async def list_entities(
     rl = RiskLevel(risk_level) if risk_level else None
 
     entities = _entity_service.get_entities(
-        entity_type=et, bank_id=bank_id, risk_level=rl, limit=limit,
+        entity_type=et,
+        bank_id=bank_id,
+        risk_level=rl,
+        limit=limit,
     )
     return [
         EntityResponse(
@@ -74,7 +76,8 @@ async def get_entity_relationships(entity_id: str) -> list[dict]:
         raise HTTPException(status_code=404, detail="Entity not found")
 
     rels = [
-        r for r in _entity_service.get_relationships()
+        r
+        for r in _entity_service.get_relationships()
         if r.source_entity_id == entity_id or r.target_entity_id == entity_id
     ]
     return [

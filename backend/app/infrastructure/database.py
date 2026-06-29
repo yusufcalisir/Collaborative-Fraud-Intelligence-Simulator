@@ -18,6 +18,7 @@ from app.config import get_settings
 
 class Base(DeclarativeBase):
     """SQLAlchemy declarative base for all ORM models."""
+
     pass
 
 

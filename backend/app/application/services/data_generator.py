@@ -36,15 +36,49 @@ FEATURE_NAMES: list[str] = [
 ]
 
 MERCHANT_CATEGORIES: list[str] = [
-    "grocery", "electronics", "travel", "dining", "fuel",
-    "entertainment", "healthcare", "clothing", "home", "automotive",
-    "jewelry", "gambling", "crypto", "wire_transfer", "online_marketplace",
-    "subscription", "insurance", "education", "charity", "atm_withdrawal",
+    "grocery",
+    "electronics",
+    "travel",
+    "dining",
+    "fuel",
+    "entertainment",
+    "healthcare",
+    "clothing",
+    "home",
+    "automotive",
+    "jewelry",
+    "gambling",
+    "crypto",
+    "wire_transfer",
+    "online_marketplace",
+    "subscription",
+    "insurance",
+    "education",
+    "charity",
+    "atm_withdrawal",
 ]
 
 COUNTRIES: list[str] = [
-    "US", "UK", "DE", "FR", "NL", "CA", "AU", "JP", "SG", "BR",
-    "NG", "RU", "CN", "IN", "AE", "KR", "MX", "ZA", "TR", "PH",
+    "US",
+    "UK",
+    "DE",
+    "FR",
+    "NL",
+    "CA",
+    "AU",
+    "JP",
+    "SG",
+    "BR",
+    "NG",
+    "RU",
+    "CN",
+    "IN",
+    "AE",
+    "KR",
+    "MX",
+    "ZA",
+    "TR",
+    "PH",
 ]
 
 DEVICES: list[str] = ["mobile_app", "web_browser", "pos_terminal", "atm", "phone_banking"]
@@ -98,11 +132,14 @@ class DataGenerator:
             "bank_c": self._generate_bank_c(bank_c_size, rng),
         }
 
-        for bank_id, (features, labels) in datasets.items():
+        for bank_id, (_features, labels) in datasets.items():
             fraud_count = int(labels.sum())
             logger.info(
                 "Generated %d transactions for %s (fraud: %d, ratio: %.2f%%)",
-                len(labels), bank_id, fraud_count, 100 * fraud_count / len(labels),
+                len(labels),
+                bank_id,
+                fraud_count,
+                100 * fraud_count / len(labels),
             )
 
         return datasets
@@ -127,7 +164,9 @@ class DataGenerator:
                 mean_transaction_amount=float(df["transaction_amount"].mean()),
                 std_transaction_amount=float(df["transaction_amount"].std()),
                 top_merchant_categories=df["merchant_category"]
-                    .value_counts().head(5).index.tolist(),
+                .value_counts()
+                .head(5)
+                .index.tolist(),
                 top_countries=df["country_code"].value_counts().head(5).index.tolist(),
                 mean_account_age_days=float(df["account_age_days"].mean()),
                 mean_velocity=float(df["velocity"].mean()),
@@ -150,21 +189,25 @@ class DataGenerator:
         banks = []
         for bank_id, (_, labels) in datasets.items():
             name, tier = bank_configs[bank_id]
-            banks.append(Bank(
-                id=bank_id,
-                name=name,
-                tier=tier,
-                fraud_ratio=float(labels.mean()),
-                num_transactions=len(labels),
-                data_profile=profiles.get(bank_id),
-            ))
+            banks.append(
+                Bank(
+                    id=bank_id,
+                    name=name,
+                    tier=tier,
+                    fraud_ratio=float(labels.mean()),
+                    num_transactions=len(labels),
+                    data_profile=profiles.get(bank_id),
+                )
+            )
 
         return banks
 
     # ── Private: Bank-specific generators ─────
 
     def _generate_bank_a(
-        self, n: int, rng: np.random.Generator,
+        self,
+        n: int,
+        rng: np.random.Generator,
     ) -> tuple[pd.DataFrame, pd.Series]:
         """Meridian National — Large retail bank, 0.8% fraud.
 
@@ -183,14 +226,16 @@ class DataGenerator:
         fraud["velocity"] = rng.uniform(8, 25, n_fraud)
         fraud["hour_of_day"] = rng.choice([0, 1, 2, 3, 4, 22, 23], n_fraud)
         fraud["merchant_category"] = rng.choice(
-            ["electronics", "jewelry", "gambling", "crypto"], n_fraud,
+            ["electronics", "jewelry", "gambling", "crypto"],
+            n_fraud,
         )
         fraud["transaction_amount"] = rng.lognormal(6.5, 1.2, n_fraud)
         fraud["merchant_risk_score"] = rng.uniform(0.6, 1.0, n_fraud)
 
         features = pd.concat([legit, fraud], ignore_index=True)
         labels = pd.Series(
-            [0] * n_legit + [1] * n_fraud, name="is_fraud",
+            [0] * n_legit + [1] * n_fraud,
+            name="is_fraud",
         )
 
         # Shuffle
@@ -198,7 +243,9 @@ class DataGenerator:
         return features.iloc[idx].reset_index(drop=True), labels.iloc[idx].reset_index(drop=True)
 
     def _generate_bank_b(
-        self, n: int, rng: np.random.Generator,
+        self,
+        n: int,
+        rng: np.random.Generator,
     ) -> tuple[pd.DataFrame, pd.Series]:
         """Nexus Digital — Digital bank, 2.5% fraud.
 
@@ -214,7 +261,8 @@ class DataGenerator:
         fraud["account_age_days"] = rng.integers(0, 30, n_fraud)
         fraud["country_code"] = rng.choice(list(HIGH_RISK_COUNTRIES), n_fraud)
         fraud["merchant_category"] = rng.choice(
-            ["crypto", "wire_transfer", "gambling", "online_marketplace"], n_fraud,
+            ["crypto", "wire_transfer", "gambling", "online_marketplace"],
+            n_fraud,
         )
         fraud["transaction_amount"] = rng.lognormal(7.0, 1.5, n_fraud)
         fraud["device_type"] = rng.choice(["mobile_app", "web_browser"], n_fraud)
@@ -227,7 +275,9 @@ class DataGenerator:
         return features.iloc[idx].reset_index(drop=True), labels.iloc[idx].reset_index(drop=True)
 
     def _generate_bank_c(
-        self, n: int, rng: np.random.Generator,
+        self,
+        n: int,
+        rng: np.random.Generator,
     ) -> tuple[pd.DataFrame, pd.Series]:
         """Heritage Regional — Regional bank, 1.2% fraud.
 
@@ -291,18 +341,20 @@ class DataGenerator:
         else:
             raise ValueError(f"Unknown transaction profile: {profile}")
 
-        return pd.DataFrame({
-            "transaction_amount": np.clip(amounts, 0.01, 50000),
-            "merchant_category": merchants,
-            "country_code": countries,
-            "device_type": devices,
-            "velocity": np.clip(velocities, 0, 30),
-            "hour_of_day": rng.integers(0, 24, n),
-            "merchant_risk_score": np.clip(rng.beta(2, 5, n), 0, 1),
-            "customer_history_score": np.clip(rng.beta(5, 2, n), 0, 1),
-            "chargeback_count": rng.poisson(0.3, n),
-            "account_age_days": account_ages,
-        })
+        return pd.DataFrame(
+            {
+                "transaction_amount": np.clip(amounts, 0.01, 50000),
+                "merchant_category": merchants,
+                "country_code": countries,
+                "device_type": devices,
+                "velocity": np.clip(velocities, 0, 30),
+                "hour_of_day": rng.integers(0, 24, n),
+                "merchant_risk_score": np.clip(rng.beta(2, 5, n), 0, 1),
+                "customer_history_score": np.clip(rng.beta(5, 2, n), 0, 1),
+                "chargeback_count": rng.poisson(0.3, n),
+                "account_age_days": account_ages,
+            }
+        )
 
     @staticmethod
     def encode_features(df: pd.DataFrame) -> np.ndarray:

@@ -64,7 +64,9 @@ async def create_case(req: CaseCreateRequest) -> CaseResponse:
     """Create a new investigation case."""
     priority = CasePriority(req.priority)
     case = _case_service.create_case(
-        title=req.title, priority=priority, alert_ids=req.alert_ids,
+        title=req.title,
+        priority=priority,
+        alert_ids=req.alert_ids,
     )
     return _serialize_case(case)
 
@@ -154,15 +156,20 @@ def _serialize_case(case) -> CaseResponse:
         alert_ids=case.alert_ids,
         notes=[
             CaseNoteResponse(
-                id=n.id, case_id=n.case_id, author=n.author,
-                content=n.content, created_at=n.created_at.isoformat(),
+                id=n.id,
+                case_id=n.case_id,
+                author=n.author,
+                content=n.content,
+                created_at=n.created_at.isoformat(),
             )
             for n in case.notes
         ],
         timeline=[
             CaseEventResponse(
-                event_type=e.event_type, description=e.description,
-                actor=e.actor, timestamp=e.timestamp.isoformat(),
+                event_type=e.event_type,
+                description=e.description,
+                actor=e.actor,
+                timestamp=e.timestamp.isoformat(),
                 metadata=e.metadata,
             )
             for e in case.timeline

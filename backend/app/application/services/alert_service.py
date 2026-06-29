@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
 
 from app.domain.entities_phase2 import Alert, SharedIntelligence
 from app.domain.enums import (
@@ -62,7 +61,7 @@ class AlertIntelligenceService:
         threshold = threshold or self.alert_threshold
         alerts: list[Alert] = []
 
-        for txn, score in zip(transactions, predictions):
+        for txn, score in zip(transactions, predictions, strict=False):
             if score < threshold:
                 continue
 
@@ -88,7 +87,9 @@ class AlertIntelligenceService:
 
         logger.info(
             "Generated %d alerts for %s (threshold=%.2f)",
-            len(alerts), bank_id, threshold,
+            len(alerts),
+            bank_id,
+            threshold,
         )
         return alerts
 
@@ -100,7 +101,8 @@ class AlertIntelligenceService:
         """
         # Hash the transaction ID for privacy
         privacy_hash = PrivacyPreservingIdentifier.compute(
-            alert.transaction_id, "transaction",
+            alert.transaction_id,
+            "transaction",
         )
 
         intelligence = SharedIntelligence(
@@ -116,7 +118,9 @@ class AlertIntelligenceService:
         self._intelligence_store.append(intelligence)
         logger.info(
             "Published intelligence from %s: hash=%s risk=%.2f",
-            alert.bank_id, privacy_hash, intelligence.risk_indicator,
+            alert.bank_id,
+            privacy_hash,
+            intelligence.risk_indicator,
         )
         return intelligence
 
@@ -126,10 +130,7 @@ class AlertIntelligenceService:
         A bank only sees intelligence published by other institutions,
         never its own (to avoid feedback loops).
         """
-        return [
-            intel for intel in self._intelligence_store
-            if intel.source_bank_id != bank_id
-        ]
+        return [intel for intel in self._intelligence_store if intel.source_bank_id != bank_id]
 
     def correlate_alerts(self, alerts: list[Alert]) -> list[dict]:
         """Find patterns across multiple alerts.
@@ -149,25 +150,31 @@ class AlertIntelligenceService:
 
         for entity_id, alert_ids in entity_to_alerts.items():
             if len(alert_ids) >= 2:
-                correlations.append({
-                    "type": "entity_overlap",
-                    "entity_id": entity_id,
-                    "alert_ids": alert_ids,
-                    "count": len(alert_ids),
-                    "description": f"Entity {entity_id[:8]} appears in {len(alert_ids)} alerts",
-                })
+                correlations.append(
+                    {
+                        "type": "entity_overlap",
+                        "entity_id": entity_id,
+                        "alert_ids": alert_ids,
+                        "count": len(alert_ids),
+                        "description": f"Entity {entity_id[:8]} appears in {len(alert_ids)} alerts",
+                    }
+                )
 
         # Velocity analysis — alerts within 60 seconds
         sorted_alerts = sorted(alerts, key=lambda a: a.created_at)
         for i in range(len(sorted_alerts) - 1):
-            time_diff = (sorted_alerts[i + 1].created_at - sorted_alerts[i].created_at).total_seconds()
+            time_diff = (
+                sorted_alerts[i + 1].created_at - sorted_alerts[i].created_at
+            ).total_seconds()
             if time_diff < 60 and sorted_alerts[i].bank_id == sorted_alerts[i + 1].bank_id:
-                correlations.append({
-                    "type": "velocity",
-                    "alert_ids": [sorted_alerts[i].id, sorted_alerts[i + 1].id],
-                    "time_diff_seconds": time_diff,
-                    "description": f"Two alerts within {time_diff:.0f}s from {sorted_alerts[i].bank_id}",
-                })
+                correlations.append(
+                    {
+                        "type": "velocity",
+                        "alert_ids": [sorted_alerts[i].id, sorted_alerts[i + 1].id],
+                        "time_diff_seconds": time_diff,
+                        "description": f"Two alerts within {time_diff:.0f}s from {sorted_alerts[i].bank_id}",
+                    }
+                )
 
         return correlations
 
@@ -198,7 +205,9 @@ class AlertIntelligenceService:
         total_risk = 0.0
 
         for intel in self._intelligence_store:
-            by_type[intel.intelligence_type.value] = by_type.get(intel.intelligence_type.value, 0) + 1
+            by_type[intel.intelligence_type.value] = (
+                by_type.get(intel.intelligence_type.value, 0) + 1
+            )
             by_bank[intel.source_bank_id] = by_bank.get(intel.source_bank_id, 0) + 1
             total_risk += intel.risk_indicator
 

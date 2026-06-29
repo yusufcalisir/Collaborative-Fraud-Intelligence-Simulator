@@ -7,6 +7,7 @@ real-time events as they are generated during scenario replay.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 
@@ -31,6 +32,7 @@ async def streaming_websocket(websocket: WebSocket, scenario_id: str) -> None:
         # Try to connect to Redis for pub/sub
         try:
             import redis.asyncio as aioredis
+
             from app.config import get_settings
 
             settings = get_settings()
@@ -49,7 +51,8 @@ async def streaming_websocket(websocket: WebSocket, scenario_id: str) -> None:
 
             while True:
                 message = await pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1.0,
+                    ignore_subscribe_messages=True,
+                    timeout=1.0,
                 )
                 if message and message["type"] == "message":
                     await websocket.send_text(message["data"])
@@ -70,30 +73,42 @@ async def streaming_websocket(websocket: WebSocket, scenario_id: str) -> None:
             while True:
                 status = engine.get_scenario_status(scenario_id)
                 if not status:
-                    await websocket.send_text(json.dumps({
-                        "event_type": "error",
-                        "payload": {"message": "Scenario not found"},
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event_type": "error",
+                                "payload": {"message": "Scenario not found"},
+                            }
+                        )
+                    )
                     break
 
                 current_count = status.get("delivered_events", 0)
 
                 if current_count > last_count:
-                    await websocket.send_text(json.dumps({
-                        "event_type": "progress",
-                        "payload": {
-                            "delivered": current_count,
-                            "total": status["total_events"],
-                            "status": status["status"],
-                        },
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event_type": "progress",
+                                "payload": {
+                                    "delivered": current_count,
+                                    "total": status["total_events"],
+                                    "status": status["status"],
+                                },
+                            }
+                        )
+                    )
                     last_count = current_count
 
                 if status.get("status") in ("completed", "stopped"):
-                    await websocket.send_text(json.dumps({
-                        "event_type": "scenario_complete",
-                        "payload": {"status": status["status"]},
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event_type": "scenario_complete",
+                                "payload": {"status": status["status"]},
+                            }
+                        )
+                    )
                     break
 
                 await asyncio.sleep(0.5)
@@ -103,7 +118,5 @@ async def streaming_websocket(websocket: WebSocket, scenario_id: str) -> None:
     except Exception:
         logger.exception("Streaming WebSocket error")
     finally:
-        try:
+        with contextlib.suppress(Exception):
             await websocket.close()
-        except Exception:
-            pass

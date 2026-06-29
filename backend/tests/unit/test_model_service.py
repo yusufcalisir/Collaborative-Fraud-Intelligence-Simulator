@@ -28,6 +28,7 @@ class TestFraudDetectionModel:
 
     def test_forward_pass_shape(self) -> None:
         import torch
+
         model = FraudDetectionModel(input_dim=10)
         X = torch.randn(16, 10)
         output = model(X)
@@ -36,6 +37,7 @@ class TestFraudDetectionModel:
     def test_output_range(self) -> None:
         """Output should be in [0, 1] due to sigmoid."""
         import torch
+
         model = FraudDetectionModel(input_dim=10)
         model.eval()
         X = torch.randn(100, 10)
@@ -51,17 +53,21 @@ class TestModelService:
         assert isinstance(model, FraudDetectionModel)
 
     def test_train_returns_loss_history(
-        self, model_service: ModelService, sample_data: tuple,
+        self,
+        model_service: ModelService,
+        sample_data: tuple,
     ) -> None:
         X, y = sample_data
         model = model_service.create_model()
         model, loss_history = model_service.train_local(model, X, y, epochs=2)
 
         assert len(loss_history) == 2
-        assert all(isinstance(l, float) for l in loss_history)
+        assert all(isinstance(loss_val, float) for loss_val in loss_history)
 
     def test_loss_decreases(
-        self, model_service: ModelService, sample_data: tuple,
+        self,
+        model_service: ModelService,
+        sample_data: tuple,
     ) -> None:
         X, y = sample_data
         model = model_service.create_model()
@@ -71,7 +77,9 @@ class TestModelService:
         assert loss_history[-1] <= loss_history[0] * 1.5  # Allow some tolerance
 
     def test_evaluate_returns_metrics(
-        self, model_service: ModelService, sample_data: tuple,
+        self,
+        model_service: ModelService,
+        sample_data: tuple,
     ) -> None:
         X, y = sample_data
         model = model_service.create_model()

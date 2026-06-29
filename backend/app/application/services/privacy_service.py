@@ -122,11 +122,14 @@ class PrivacyService:
         sigma = sensitivity * np.sqrt(2 * np.log(1.25 / delta)) / epsilon
 
         noise = rng.normal(0, sigma, len(weights.flat_weights))
-        noised_weights = [w + n for w, n in zip(weights.flat_weights, noise)]
+        noised_weights = [w + n for w, n in zip(weights.flat_weights, noise, strict=False)]
 
         logger.info(
             "Applied DP noise: ε=%.2f, δ=%.1e, σ=%.4f, params=%d",
-            epsilon, delta, sigma, len(weights.flat_weights),
+            epsilon,
+            delta,
+            sigma,
+            len(weights.flat_weights),
         )
 
         return ModelWeights(

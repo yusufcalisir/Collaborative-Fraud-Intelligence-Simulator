@@ -31,24 +31,40 @@ def _progress_callback(simulation_id: str, event_type: str, data: dict[str, Any]
 
     # Cache latest progress
     progress_key = f"simulation:{simulation_id}:progress"
-    r.set(progress_key, json.dumps({
-        "event_type": event_type,
-        "data": data,
-    }), ex=3600)
+    r.set(
+        progress_key,
+        json.dumps(
+            {
+                "event_type": event_type,
+                "data": data,
+            }
+        ),
+        ex=3600,
+    )
 
     # Publish to pub/sub for WebSocket consumers
     channel = f"training:{simulation_id}"
-    r.publish(channel, json.dumps({
-        "event_type": event_type,
-        "data": data,
-    }))
+    r.publish(
+        channel,
+        json.dumps(
+            {
+                "event_type": event_type,
+                "data": data,
+            }
+        ),
+    )
 
     # Store event in a list for clients that connect after events happened
     events_key = f"simulation:{simulation_id}:events"
-    r.rpush(events_key, json.dumps({
-        "event_type": event_type,
-        "data": data,
-    }))
+    r.rpush(
+        events_key,
+        json.dumps(
+            {
+                "event_type": event_type,
+                "data": data,
+            }
+        ),
+    )
     r.expire(events_key, 3600)
 
 

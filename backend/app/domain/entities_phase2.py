@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.enums import (
     AlertSeverity,
@@ -42,7 +42,7 @@ class Alert:
     reason_codes: list[str] = field(default_factory=list)
     confidence: float = 0.0
     involved_entity_ids: list[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime | None = None
 
     # Explainability
@@ -74,7 +74,7 @@ class Case:
     alert_ids: list[str] = field(default_factory=list)
     notes: list[CaseNote] = field(default_factory=list)
     timeline: list[CaseEvent] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime | None = None
     closed_at: datetime | None = None
     total_risk_score: float = 0.0
@@ -88,7 +88,7 @@ class Case:
 
     @property
     def duration_hours(self) -> float | None:
-        end = self.closed_at or datetime.now(timezone.utc)
+        end = self.closed_at or datetime.now(UTC)
         return (end - self.created_at).total_seconds() / 3600
 
 
@@ -100,7 +100,7 @@ class CaseNote:
     case_id: str = ""
     author: str = "analyst"
     content: str = ""
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -110,7 +110,7 @@ class CaseEvent:
     event_type: str = ""  # "created", "status_changed", "note_added", "alert_linked"
     description: str = ""
     actor: str = "system"
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict = field(default_factory=dict)
 
 
@@ -131,8 +131,8 @@ class Entity:
     attributes: dict = field(default_factory=dict)  # Non-sensitive metadata
     risk_level: RiskLevel = RiskLevel.MINIMAL
     alert_count: int = 0
-    first_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    first_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -149,7 +149,7 @@ class Relationship:
     relationship_type: RelationshipType = RelationshipType.OWNS
     confidence: float = 1.0
     evidence: list[str] = field(default_factory=list)  # Alert IDs, transaction hashes
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -170,7 +170,7 @@ class SharedIntelligence:
     description: str = ""
     entity_type: EntityType | None = None
     related_alert_count: int = 0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime | None = None
 
 
@@ -184,7 +184,7 @@ class StreamingEvent:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = ""  # "transaction", "alert", "intelligence", "entity_resolved"
     bank_id: str = ""
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     payload: dict = field(default_factory=dict)
     delay_ms: int = 0  # Delay before this event fires (for scenario pacing)
 
@@ -205,4 +205,4 @@ class Scenario:
     banks_involved: list[str] = field(default_factory=list)
     events: list[StreamingEvent] = field(default_factory=list)
     duration_seconds: float = 0.0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))

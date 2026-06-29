@@ -42,23 +42,33 @@ class TestPrivacyBudget:
 
 class TestDifferentialPrivacy:
     def test_noise_changes_weights(
-        self, privacy_service: PrivacyService, sample_weights: ModelWeights,
+        self,
+        privacy_service: PrivacyService,
+        sample_weights: ModelWeights,
     ) -> None:
         noised = privacy_service.add_noise_to_weights(
-            sample_weights, epsilon=1.0, rng=np.random.default_rng(42),
+            sample_weights,
+            epsilon=1.0,
+            rng=np.random.default_rng(42),
         )
         assert noised.flat_weights != sample_weights.flat_weights
 
     def test_lower_epsilon_adds_more_noise(
-        self, privacy_service: PrivacyService, sample_weights: ModelWeights,
+        self,
+        privacy_service: PrivacyService,
+        sample_weights: ModelWeights,
     ) -> None:
         rng = np.random.default_rng(42)
         noised_high_eps = privacy_service.add_noise_to_weights(
-            sample_weights, epsilon=10.0, rng=rng,
+            sample_weights,
+            epsilon=10.0,
+            rng=rng,
         )
         rng = np.random.default_rng(42)
         noised_low_eps = privacy_service.add_noise_to_weights(
-            sample_weights, epsilon=0.1, rng=rng,
+            sample_weights,
+            epsilon=0.1,
+            rng=rng,
         )
 
         # Lower epsilon should produce larger deviations
@@ -71,7 +81,9 @@ class TestDifferentialPrivacy:
         assert dev_low > dev_high
 
     def test_preserves_shape(
-        self, privacy_service: PrivacyService, sample_weights: ModelWeights,
+        self,
+        privacy_service: PrivacyService,
+        sample_weights: ModelWeights,
     ) -> None:
         noised = privacy_service.add_noise_to_weights(sample_weights, epsilon=1.0)
         assert noised.layer_shapes == sample_weights.layer_shapes
@@ -96,7 +108,9 @@ class TestGradientClipping:
         clipped = privacy_service.clip_model_update(original, updated, max_norm=10.0)
 
         np.testing.assert_allclose(
-            clipped.flat_weights, updated.flat_weights, atol=1e-10,
+            clipped.flat_weights,
+            updated.flat_weights,
+            atol=1e-10,
         )
 
 

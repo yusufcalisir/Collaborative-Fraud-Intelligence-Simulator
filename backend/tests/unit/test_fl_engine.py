@@ -32,7 +32,9 @@ def sample_weights() -> list[ModelWeights]:
 
 class TestAggregation:
     def test_fed_avg_unweighted(
-        self, fl_engine: FederatedLearningEngine, sample_weights: list[ModelWeights],
+        self,
+        fl_engine: FederatedLearningEngine,
+        sample_weights: list[ModelWeights],
     ) -> None:
         result = fl_engine.aggregate_parameters(
             sample_weights,
@@ -43,7 +45,9 @@ class TestAggregation:
         assert all(abs(w - 2.0) < 1e-6 for w in result.flat_weights)
 
     def test_fed_avg_weighted(
-        self, fl_engine: FederatedLearningEngine, sample_weights: list[ModelWeights],
+        self,
+        fl_engine: FederatedLearningEngine,
+        sample_weights: list[ModelWeights],
     ) -> None:
         result = fl_engine.aggregate_parameters(
             sample_weights,
@@ -54,7 +58,8 @@ class TestAggregation:
         assert all(w < 2.0 for w in result.flat_weights)
 
     def test_single_client_returns_unchanged(
-        self, fl_engine: FederatedLearningEngine,
+        self,
+        fl_engine: FederatedLearningEngine,
     ) -> None:
         weights = ModelWeights(
             layer_shapes=[(2, 2)],
@@ -68,10 +73,13 @@ class TestAggregation:
             fl_engine.aggregate_parameters([], [])
 
     def test_preserves_layer_shapes(
-        self, fl_engine: FederatedLearningEngine, sample_weights: list[ModelWeights],
+        self,
+        fl_engine: FederatedLearningEngine,
+        sample_weights: list[ModelWeights],
     ) -> None:
         result = fl_engine.aggregate_parameters(
-            sample_weights, [100, 100, 100],
+            sample_weights,
+            [100, 100, 100],
         )
         assert result.layer_shapes == sample_weights[0].layer_shapes
 
@@ -86,7 +94,8 @@ class TestClientAvailability:
         assert all(s == ClientStatus.ACTIVE for s in statuses.values())
 
     def test_all_dropped_with_high_probability(
-        self, fl_engine: FederatedLearningEngine,
+        self,
+        fl_engine: FederatedLearningEngine,
     ) -> None:
         statuses = fl_engine.simulate_client_availability(
             bank_ids=["a", "b", "c"],
@@ -119,7 +128,8 @@ class TestClientAvailability:
 
 class TestSecureAggregation:
     def test_masks_preserve_aggregate(
-        self, fl_engine: FederatedLearningEngine,
+        self,
+        fl_engine: FederatedLearningEngine,
     ) -> None:
         """Masked aggregation should produce the same result as plaintext."""
         shapes = [(3,)]

@@ -43,7 +43,10 @@ async def list_alerts(
     stat = AlertStatus(status) if status else None
 
     alerts = _alert_service.get_alerts(
-        bank_id=bank_id, severity=sev, status=stat, limit=limit,
+        bank_id=bank_id,
+        severity=sev,
+        status=stat,
+        limit=limit,
     )
 
     return [

@@ -8,8 +8,8 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, status
-
 from sqlalchemy import text
+
 from app.infrastructure.cache import check_redis_health
 from app.infrastructure.database import engine
 
@@ -53,4 +53,3 @@ async def readiness() -> dict:
         "status": "ready" if all_healthy else "degraded",
         "checks": checks,
     }
-

@@ -21,9 +21,10 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class DomainEvent:
     """Base class for all domain events."""
 
     event_type: str = ""
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     metadata: dict = field(default_factory=dict)
 
 
@@ -131,7 +132,8 @@ class EventBus:
                 handler(event)
             except Exception:
                 logger.exception(
-                    "Handler failed for event %s", event.event_type,
+                    "Handler failed for event %s",
+                    event.event_type,
                 )
 
         # Forward to Redis if available
@@ -139,6 +141,7 @@ class EventBus:
             try:
                 channel = f"domain_events:{event.event_type}"
                 import redis as sync_redis
+
                 if isinstance(self._redis_client, sync_redis.Redis):
                     self._redis_client.publish(channel, json.dumps(asdict(event)))
             except Exception:

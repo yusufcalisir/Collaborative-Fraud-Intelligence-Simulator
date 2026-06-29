@@ -23,6 +23,7 @@ async def get_training_rounds(simulation_id: str) -> list[dict]:
     dropouts, and timing data.
     """
     import redis as sync_redis
+
     from app.config import get_settings
 
     settings = get_settings()
@@ -37,15 +38,17 @@ async def get_training_rounds(simulation_id: str) -> list[dict]:
         event = json.loads(raw)
         if event.get("event_type") == "round_complete":
             data = event["data"]
-            rounds.append({
-                "round_number": data.get("round"),
-                "total_rounds": data.get("total"),
-                "global_loss": data.get("loss", 0),
-                "participating_banks": data.get("participants", []),
-                "dropped_banks": data.get("dropped", []),
-                "duration_ms": data.get("duration_ms", 0),
-                "privacy_budget": data.get("privacy_budget", 0),
-            })
+            rounds.append(
+                {
+                    "round_number": data.get("round"),
+                    "total_rounds": data.get("total"),
+                    "global_loss": data.get("loss", 0),
+                    "participating_banks": data.get("participants", []),
+                    "dropped_banks": data.get("dropped", []),
+                    "duration_ms": data.get("duration_ms", 0),
+                    "privacy_budget": data.get("privacy_budget", 0),
+                }
+            )
 
     return rounds
 
@@ -69,6 +72,7 @@ async def get_training_round(simulation_id: str, round_number: int) -> dict:
 async def get_training_progress(simulation_id: str) -> dict:
     """Get the latest progress update for a running simulation."""
     import redis as sync_redis
+
     from app.config import get_settings
 
     settings = get_settings()

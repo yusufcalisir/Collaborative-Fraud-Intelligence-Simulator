@@ -100,7 +100,7 @@ class ModelService:
 
         # Swap to raw logits for BCEWithLogitsLoss
         # Remove sigmoid from forward for training, add back for inference
-        raw_model = deepcopy(model)
+        deepcopy(model)
         # Use the model without the final sigmoid for training with BCEWithLogitsLoss
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -158,10 +158,11 @@ class ModelService:
         model.eval()
         with torch.no_grad():
             X_tensor = torch.FloatTensor(X_test).to(self.device)
-            y_tensor = torch.FloatTensor(y_test).to(self.device)
+            torch.FloatTensor(y_test).to(self.device)
             probs = model(X_tensor).cpu().numpy()
             loss = nn.BCELoss()(
-                torch.FloatTensor(probs), torch.FloatTensor(y_test),
+                torch.FloatTensor(probs),
+                torch.FloatTensor(y_test),
             ).item()
 
         preds = (probs >= 0.5).astype(int)
@@ -203,11 +204,13 @@ class ModelService:
         return ModelWeights(layer_shapes=shapes, flat_weights=flat)
 
     def set_parameters(
-        self, model: FraudDetectionModel, weights: ModelWeights,
+        self,
+        model: FraudDetectionModel,
+        weights: ModelWeights,
     ) -> FraudDetectionModel:
         """Load parameters from a ModelWeights object into the model."""
         offset = 0
-        for param, shape in zip(model.parameters(), weights.layer_shapes):
+        for param, shape in zip(model.parameters(), weights.layer_shapes, strict=False):
             numel = 1
             for s in shape:
                 numel *= s
@@ -234,6 +237,4 @@ class ModelService:
         if max_imp > 0:
             importance = importance / max_imp
 
-        return {
-            name: float(imp) for name, imp in zip(FEATURE_NAMES, importance)
-        }
+        return {name: float(imp) for name, imp in zip(FEATURE_NAMES, importance, strict=False)}

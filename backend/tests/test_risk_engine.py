@@ -50,9 +50,15 @@ class TestSignalEvaluation:
         score = engine.score_transaction({}, ml_prediction=0.5)
         signal_names = {s.signal_name for s in score.signals}
         expected = {
-            "ml_prediction", "velocity_rules", "merchant_reputation",
-            "country_risk", "device_anomaly", "customer_history",
-            "previous_alerts", "chargeback_history", "behavior_anomaly",
+            "ml_prediction",
+            "velocity_rules",
+            "merchant_reputation",
+            "country_risk",
+            "device_anomaly",
+            "customer_history",
+            "previous_alerts",
+            "chargeback_history",
+            "behavior_anomaly",
         }
         assert signal_names == expected
 
@@ -112,11 +118,13 @@ class TestHistoricalTracking:
 
         # Normal transaction
         normal_score = engine.score_transaction(
-            {"transaction_amount": 110}, entity_hash=entity,
+            {"transaction_amount": 110},
+            entity_hash=entity,
         )
         # Anomalous transaction (10x the mean)
         anomalous_score = engine.score_transaction(
-            {"transaction_amount": 1000}, entity_hash=entity,
+            {"transaction_amount": 1000},
+            entity_hash=entity,
         )
         assert anomalous_score.score > normal_score.score
 

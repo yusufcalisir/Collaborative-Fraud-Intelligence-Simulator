@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useCases, useCreateCase } from '../api/queries';
-import { CASE_STATUS_LABELS, PRIORITY_LABELS, SEVERITY_COLORS } from '../api/types';
+import { CASE_STATUS_LABELS, PRIORITY_LABELS } from '../api/types';
 
 const PRIORITY_COLORS: Record<string, string> = {
   p1_critical: '#ef4444',

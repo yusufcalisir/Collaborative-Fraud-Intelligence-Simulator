@@ -4,7 +4,7 @@ import pytest
 
 from app.application.services.graph_engine import GraphEngine
 from app.domain.entities_phase2 import Entity, Relationship
-from app.domain.enums import EntityType, RelationshipType, RiskLevel
+from app.domain.enums import EntityType, RelationshipType
 
 
 def _make_entity(eid: str, etype: EntityType = EntityType.CUSTOMER, bank: str = "bank_a") -> Entity:
@@ -18,7 +18,9 @@ def _make_entity(eid: str, etype: EntityType = EntityType.CUSTOMER, bank: str = 
 
 
 def _make_relationship(
-    rid: str, src: str, tgt: str,
+    rid: str,
+    src: str,
+    tgt: str,
     rtype: RelationshipType = RelationshipType.TRANSACTS_WITH,
 ) -> Relationship:
     return Relationship(
@@ -66,7 +68,8 @@ class TestNeighborTraversal:
 
     def test_type_filter(self, graph: GraphEngine) -> None:
         neighbors = graph.find_neighbors(
-            "B", depth=2,
+            "B",
+            depth=2,
             relationship_types={RelationshipType.TRANSACTS_WITH},
         )
         # All relationships in fixture are TRANSACTS_WITH, so should find all

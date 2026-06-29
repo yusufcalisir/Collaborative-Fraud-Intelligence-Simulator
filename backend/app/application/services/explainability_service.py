@@ -15,9 +15,12 @@ and investigator trust.
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-from app.domain.entities_phase2 import Alert
 from app.domain.value_objects_phase2 import ExplainabilityReport, RiskSignal
+
+if TYPE_CHECKING:
+    from app.domain.entities_phase2 import Alert
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +33,9 @@ class ExplainabilityService:
     explainability report.
     """
 
-    def explain_alert(self, alert: Alert, risk_signals: list[RiskSignal] | None = None) -> ExplainabilityReport:
+    def explain_alert(
+        self, alert: Alert, risk_signals: list[RiskSignal] | None = None
+    ) -> ExplainabilityReport:
         """Generate a full explainability report for an alert.
 
         Args:

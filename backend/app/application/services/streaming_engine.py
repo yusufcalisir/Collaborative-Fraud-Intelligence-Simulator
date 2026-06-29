@@ -13,10 +13,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from app.domain.entities_phase2 import Scenario, StreamingEvent
+if TYPE_CHECKING:
+    from app.domain.entities_phase2 import Scenario
 
 logger = logging.getLogger(__name__)
 
@@ -58,18 +59,19 @@ class StreamingEngine:
             "total_events": len(scenario.events),
             "delivered_events": 0,
             "speed_multiplier": speed_multiplier,
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
         }
 
         logger.info(
             "Starting scenario %s (%s) at %.1fx speed — %d events",
-            scenario.id[:8], scenario.name, speed_multiplier, len(scenario.events),
+            scenario.id[:8],
+            scenario.name,
+            speed_multiplier,
+            len(scenario.events),
         )
 
         # Launch event delivery in background
-        asyncio.create_task(
-            self._deliver_events(scenario, speed_multiplier, redis_client)
-        )
+        asyncio.create_task(self._deliver_events(scenario, speed_multiplier, redis_client))
 
         return scenario.id
 
@@ -138,12 +140,15 @@ class StreamingEngine:
 
             logger.debug(
                 "Delivered event %d/%d: %s from %s",
-                i + 1, len(scenario.events), event.event_type, event.bank_id,
+                i + 1,
+                len(scenario.events),
+                event.event_type,
+                event.bank_id,
             )
 
         # Mark as completed
         if scenario.id in self._active_scenarios:
             self._active_scenarios[scenario.id]["status"] = "completed"
-            self._active_scenarios[scenario.id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+            self._active_scenarios[scenario.id]["completed_at"] = datetime.now(UTC).isoformat()
 
         logger.info("Scenario %s completed", scenario.id[:8])

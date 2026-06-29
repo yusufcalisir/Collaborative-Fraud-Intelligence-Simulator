@@ -1,9 +1,8 @@
 """Unit tests for the synthetic data generator."""
 
 import numpy as np
-import pytest
 
-from app.application.services.data_generator import DataGenerator, FEATURE_NAMES
+from app.application.services.data_generator import FEATURE_NAMES, DataGenerator
 
 
 class TestDataGenerator:
@@ -14,15 +13,19 @@ class TestDataGenerator:
 
     def test_generates_three_banks(self) -> None:
         datasets = self.generator.generate_bank_datasets(
-            bank_a_size=500, bank_b_size=300, bank_c_size=200,
+            bank_a_size=500,
+            bank_b_size=300,
+            bank_c_size=200,
         )
         assert set(datasets.keys()) == {"bank_a", "bank_b", "bank_c"}
 
     def test_correct_dataset_sizes(self) -> None:
         datasets = self.generator.generate_bank_datasets(
-            bank_a_size=500, bank_b_size=300, bank_c_size=200,
+            bank_a_size=500,
+            bank_b_size=300,
+            bank_c_size=200,
         )
-        for bank_id, (features, labels) in datasets.items():
+        for _bank_id, (features, labels) in datasets.items():
             assert len(features) == len(labels)
 
     def test_bank_a_has_expected_size(self) -> None:
@@ -43,7 +46,9 @@ class TestDataGenerator:
     def test_fraud_ratios_differ_across_banks(self) -> None:
         """Banks should have intentionally different fraud rates (Non-IID)."""
         datasets = self.generator.generate_bank_datasets(
-            bank_a_size=10000, bank_b_size=10000, bank_c_size=10000,
+            bank_a_size=10000,
+            bank_b_size=10000,
+            bank_c_size=10000,
         )
         ratios = {}
         for bank_id, (_, labels) in datasets.items():
@@ -73,7 +78,9 @@ class TestDataGenerator:
 
     def test_bank_profiles_created(self) -> None:
         datasets = self.generator.generate_bank_datasets(
-            bank_a_size=500, bank_b_size=300, bank_c_size=200,
+            bank_a_size=500,
+            bank_b_size=300,
+            bank_c_size=200,
         )
         profiles = self.generator.create_bank_profiles(datasets)
 
@@ -84,7 +91,9 @@ class TestDataGenerator:
 
     def test_bank_entities_created(self) -> None:
         datasets = self.generator.generate_bank_datasets(
-            bank_a_size=500, bank_b_size=300, bank_c_size=200,
+            bank_a_size=500,
+            bank_b_size=300,
+            bank_c_size=200,
         )
         profiles = self.generator.create_bank_profiles(datasets)
         banks = self.generator.create_bank_entities(datasets, profiles)

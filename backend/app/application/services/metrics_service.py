@@ -58,7 +58,7 @@ class MetricsService:
             "auc_roc": 0.0,
         }
 
-        for local, federated in zip(local_metrics, federated_metrics):
+        for local, federated in zip(local_metrics, federated_metrics, strict=False):
             improvements["accuracy"] += federated.accuracy - local.accuracy
             improvements["precision"] += federated.precision - local.precision
             improvements["recall"] += federated.recall - local.recall

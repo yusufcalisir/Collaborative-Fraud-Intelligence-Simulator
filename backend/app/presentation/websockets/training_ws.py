@@ -9,12 +9,12 @@ Uses Redis pub/sub to receive events from the Celery worker.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-
 import redis.asyncio as aioredis
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.config import get_settings
 
@@ -64,7 +64,8 @@ async def training_websocket(websocket: WebSocket, simulation_id: str) -> None:
                     event = json.loads(message["data"])
                     if event.get("event_type") in ("completed", "error"):
                         logger.info(
-                            "Simulation %s ended, closing WebSocket", simulation_id,
+                            "Simulation %s ended, closing WebSocket",
+                            simulation_id,
                         )
                         break
                 except json.JSONDecodeError:
@@ -79,7 +80,5 @@ async def training_websocket(websocket: WebSocket, simulation_id: str) -> None:
         logger.exception("WebSocket error for simulation %s", simulation_id)
     finally:
         await redis_client.aclose()
-        try:
+        with contextlib.suppress(Exception):
             await websocket.close()
-        except Exception:
-            pass

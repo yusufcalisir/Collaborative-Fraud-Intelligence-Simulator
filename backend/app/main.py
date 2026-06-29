@@ -7,15 +7,28 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.presentation.routers import health, simulation, banks, training
-from app.presentation.routers import alerts, cases, entities, graph, scenarios, dashboard
-from app.presentation.websockets import training_ws, streaming_ws
+from app.presentation.routers import (
+    alerts,
+    banks,
+    cases,
+    dashboard,
+    entities,
+    graph,
+    health,
+    scenarios,
+    simulation,
+    training,
+)
+from app.presentation.websockets import streaming_ws, training_ws
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 # ── Logging ───────────────────────────────────
 settings = get_settings()

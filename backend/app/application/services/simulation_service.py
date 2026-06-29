@@ -21,32 +21,32 @@ from __future__ import annotations
 
 import logging
 import time
-from copy import deepcopy
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sklearn.model_selection import train_test_split
 
 from app.application.services.data_generator import DataGenerator
-from app.application.services.fl_engine import FederatedLearningEngine
-from app.application.services.metrics_service import MetricsService
-from app.application.services.model_service import ModelService
 from app.application.services.privacy_service import PrivacyService
-from app.config import Settings
-from app.domain.entities import Bank, SimulationRun, TrainingRound
+from app.domain.entities import SimulationRun, TrainingRound
 from app.domain.enums import (
     AggregationMethod,
     ClientStatus,
-    ModelType,
     PrivacyMechanism,
     SimulationStatus,
 )
-from app.domain.value_objects import (
-    EvaluationMetrics,
-    ModelWeights,
-    RoundMetrics,
-    SimulationConfig,
-)
+
+if TYPE_CHECKING:
+    from app.application.services.fl_engine import FederatedLearningEngine
+    from app.application.services.metrics_service import MetricsService
+    from app.application.services.model_service import ModelService
+    from app.config import Settings
+    from app.domain.value_objects import (
+        ModelWeights,
+        SimulationConfig,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +95,15 @@ class SimulationService:
         try:
             # Phase 1: Generate data
             simulation.status = SimulationStatus.GENERATING_DATA
-            self._notify(progress_callback, simulation.id, "status", {
-                "status": simulation.status, "message": "Generating synthetic transaction data",
-            })
+            self._notify(
+                progress_callback,
+                simulation.id,
+                "status",
+                {
+                    "status": simulation.status,
+                    "message": "Generating synthetic transaction data",
+                },
+            )
 
             datasets = self.data_generator.generate_bank_datasets(
                 bank_a_size=config.bank_a_transactions,
@@ -115,7 +121,11 @@ class SimulationService:
                 y = labels.values
 
                 X_train, X_test, y_train, y_test = train_test_split(
-                    X, y, test_size=0.2, random_state=42, stratify=y,
+                    X,
+                    y,
+                    test_size=0.2,
+                    random_state=42,
+                    stratify=y,
                 )
 
                 bank_data[bank_id] = {
@@ -127,16 +137,24 @@ class SimulationService:
 
             # Phase 2: Train local models (baseline)
             simulation.status = SimulationStatus.TRAINING_LOCAL
-            self._notify(progress_callback, simulation.id, "status", {
-                "status": simulation.status, "message": "Training local baseline models",
-            })
+            self._notify(
+                progress_callback,
+                simulation.id,
+                "status",
+                {
+                    "status": simulation.status,
+                    "message": "Training local baseline models",
+                },
+            )
 
             local_models = {}
             for bank in banks:
                 data = bank_data[bank.id]
                 model = self.model_service.create_model()
                 model, loss_history = self.model_service.train_local(
-                    model, data["X_train"], data["y_train"],
+                    model,
+                    data["X_train"],
+                    data["y_train"],
                     epochs=config.local_epochs,
                     learning_rate=config.learning_rate,
                     batch_size=config.batch_size,
@@ -149,14 +167,21 @@ class SimulationService:
 
                 logger.info(
                     "Local model for %s — F1: %.4f, AUC: %.4f",
-                    bank.name, bank.local_metrics.f1_score, bank.local_metrics.auc_roc,
+                    bank.name,
+                    bank.local_metrics.f1_score,
+                    bank.local_metrics.auc_roc,
                 )
 
-                self._notify(progress_callback, simulation.id, "local_training", {
-                    "bank_id": bank.id,
-                    "bank_name": bank.name,
-                    "metrics": self.metrics_service.metrics_to_dict(bank.local_metrics),
-                })
+                self._notify(
+                    progress_callback,
+                    simulation.id,
+                    "local_training",
+                    {
+                        "bank_id": bank.id,
+                        "bank_name": bank.name,
+                        "metrics": self.metrics_service.metrics_to_dict(bank.local_metrics),
+                    },
+                )
 
             # Phase 3: Federated training
             simulation.status = SimulationStatus.TRAINING_FEDERATED
@@ -166,15 +191,19 @@ class SimulationService:
             privacy_service = PrivacyService()
 
             enable_dp = config.enable_differential_privacy or config.privacy_mechanism in (
-                PrivacyMechanism.DIFFERENTIAL_PRIVACY, PrivacyMechanism.BOTH,
+                PrivacyMechanism.DIFFERENTIAL_PRIVACY,
+                PrivacyMechanism.BOTH,
             )
             enable_sa = config.enable_secure_aggregation or config.privacy_mechanism in (
-                PrivacyMechanism.SECURE_AGGREGATION, PrivacyMechanism.BOTH,
+                PrivacyMechanism.SECURE_AGGREGATION,
+                PrivacyMechanism.BOTH,
             )
 
             if enable_dp:
                 budget = privacy_service.get_or_create_budget(
-                    simulation.id, config.dp_epsilon, config.dp_delta,
+                    simulation.id,
+                    config.dp_epsilon,
+                    config.dp_delta,
                 )
 
             rounds: list[TrainingRound] = []
@@ -183,10 +212,15 @@ class SimulationService:
                 round_start = time.perf_counter()
                 simulation.current_round = round_num
 
-                self._notify(progress_callback, simulation.id, "round_start", {
-                    "round": round_num,
-                    "total": config.num_rounds,
-                })
+                self._notify(
+                    progress_callback,
+                    simulation.id,
+                    "round_start",
+                    {
+                        "round": round_num,
+                        "total": config.num_rounds,
+                    },
+                )
 
                 # Determine client availability
                 if config.enable_dropout_simulation:
@@ -205,11 +239,13 @@ class SimulationService:
                     bank.status = client_statuses.get(bank.id, ClientStatus.ACTIVE)
 
                 participating = [
-                    b for b in banks
+                    b
+                    for b in banks
                     if client_statuses[b.id] in (ClientStatus.ACTIVE, ClientStatus.RECONNECTED)
                 ]
                 dropped_this_round = [
-                    b.id for b in banks
+                    b.id
+                    for b in banks
                     if client_statuses[b.id] in (ClientStatus.DROPPED, ClientStatus.OFFLINE)
                 ]
                 dropped_banks = set(dropped_this_round)
@@ -218,7 +254,9 @@ class SimulationService:
                 if len(participating) < config.min_clients_per_round:
                     logger.warning(
                         "Round %d: only %d participants (min: %d), skipping",
-                        round_num, len(participating), config.min_clients_per_round,
+                        round_num,
+                        len(participating),
+                        config.min_clients_per_round,
                     )
                     training_round = TrainingRound(
                         round_number=round_num,
@@ -244,7 +282,9 @@ class SimulationService:
 
                     # Train locally
                     local_model, loss_hist = self.model_service.train_local(
-                        local_model, data["X_train"], data["y_train"],
+                        local_model,
+                        data["X_train"],
+                        data["y_train"],
                         epochs=config.local_epochs,
                         learning_rate=config.learning_rate,
                         batch_size=config.batch_size,
@@ -255,11 +295,16 @@ class SimulationService:
                     # Apply DP if enabled
                     if enable_dp:
                         local_w = privacy_service.clip_model_update(
-                            global_weights, local_w, config.dp_max_grad_norm,
+                            global_weights,
+                            local_w,
+                            config.dp_max_grad_norm,
                         )
                         local_w = privacy_service.add_noise_to_weights(
-                            local_w, config.dp_epsilon, config.dp_delta,
-                            config.dp_max_grad_norm, rng=rng,
+                            local_w,
+                            config.dp_epsilon,
+                            config.dp_delta,
+                            config.dp_max_grad_norm,
+                            rng=rng,
                         )
                         budget.spend(config.dp_epsilon)
 
@@ -270,13 +315,15 @@ class SimulationService:
                 # Apply secure aggregation masks
                 if enable_sa and len(client_weights) > 1:
                     client_weights = self.fl_engine.apply_secure_aggregation_masks(
-                        client_weights, rng=rng,
+                        client_weights,
+                        rng=rng,
                     )
 
                 # Aggregate
                 agg_start = time.perf_counter()
                 global_weights = self.fl_engine.aggregate_parameters(
-                    client_weights, client_samples,
+                    client_weights,
+                    client_samples,
                     method=AggregationMethod.FED_AVG_WEIGHTED,
                 )
                 agg_time = (time.perf_counter() - agg_start) * 1000
@@ -288,7 +335,9 @@ class SimulationService:
                 # Use the first participating bank's test set as a proxy
                 first_bank_data = bank_data[participating[0].id]
                 round_eval = self.model_service.evaluate(
-                    global_model, first_bank_data["X_test"], first_bank_data["y_test"],
+                    global_model,
+                    first_bank_data["X_test"],
+                    first_bank_data["y_test"],
                 )
                 round_loss = round_eval["loss"]
 
@@ -309,34 +358,52 @@ class SimulationService:
 
                 logger.info(
                     "Round %d/%d — loss: %.4f, participants: %d, dropped: %d, duration: %.0fms",
-                    round_num, config.num_rounds, round_loss,
-                    len(participating), len(dropped_this_round), round_duration,
+                    round_num,
+                    config.num_rounds,
+                    round_loss,
+                    len(participating),
+                    len(dropped_this_round),
+                    round_duration,
                 )
 
-                self._notify(progress_callback, simulation.id, "round_complete", {
-                    "round": round_num,
-                    "total": config.num_rounds,
-                    "loss": round_loss,
-                    "participants": [b.id for b in participating],
-                    "dropped": dropped_this_round,
-                    "duration_ms": round_duration,
-                    "privacy_budget": budget.total_epsilon if enable_dp else 0.0,
-                })
+                self._notify(
+                    progress_callback,
+                    simulation.id,
+                    "round_complete",
+                    {
+                        "round": round_num,
+                        "total": config.num_rounds,
+                        "loss": round_loss,
+                        "participants": [b.id for b in participating],
+                        "dropped": dropped_this_round,
+                        "duration_ms": round_duration,
+                        "privacy_budget": budget.total_epsilon if enable_dp else 0.0,
+                    },
+                )
 
             # Phase 4: Evaluate federated model at each bank
             simulation.status = SimulationStatus.EVALUATING
-            self._notify(progress_callback, simulation.id, "status", {
-                "status": simulation.status, "message": "Evaluating federated model",
-            })
+            self._notify(
+                progress_callback,
+                simulation.id,
+                "status",
+                {
+                    "status": simulation.status,
+                    "message": "Evaluating federated model",
+                },
+            )
 
             for bank in banks:
                 data = bank_data[bank.id]
                 fed_eval = self.model_service.evaluate(
-                    global_model, data["X_test"], data["y_test"],
+                    global_model,
+                    data["X_test"],
+                    data["y_test"],
                 )
                 fed_feat_imp = self.model_service.get_feature_importance(global_model)
                 bank.federated_metrics = self.metrics_service.from_eval_dict(
-                    fed_eval, fed_feat_imp,
+                    fed_eval,
+                    fed_feat_imp,
                 )
 
                 logger.info(
@@ -352,17 +419,22 @@ class SimulationService:
             simulation.status = SimulationStatus.COMPLETED
             simulation.completed_at = _now()
 
-            self._notify(progress_callback, simulation.id, "completed", {
-                "duration_seconds": simulation.duration_seconds,
-                "banks": [
-                    {
-                        "id": b.id,
-                        "name": b.name,
-                        "improvement": b.improvement,
-                    }
-                    for b in banks
-                ],
-            })
+            self._notify(
+                progress_callback,
+                simulation.id,
+                "completed",
+                {
+                    "duration_seconds": simulation.duration_seconds,
+                    "banks": [
+                        {
+                            "id": b.id,
+                            "name": b.name,
+                            "improvement": b.improvement,
+                        }
+                        for b in banks
+                    ],
+                },
+            )
 
             return simulation
 
@@ -372,9 +444,14 @@ class SimulationService:
             simulation.completed_at = _now()
             logger.exception("Simulation %s failed: %s", simulation.id, e)
 
-            self._notify(progress_callback, simulation.id, "error", {
-                "error": str(e),
-            })
+            self._notify(
+                progress_callback,
+                simulation.id,
+                "error",
+                {
+                    "error": str(e),
+                },
+            )
 
             return simulation
 
@@ -395,5 +472,6 @@ class SimulationService:
 
 def _now():
     """Get current UTC time."""
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc)
+    from datetime import datetime
+
+    return datetime.now(UTC)

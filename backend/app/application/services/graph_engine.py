@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict, deque
+from typing import TYPE_CHECKING
 
-from app.domain.entities_phase2 import Entity, Relationship
 from app.domain.enums import EntityType, RelationshipType, RiskLevel
 from app.domain.value_objects_phase2 import GraphSubgraph
+
+if TYPE_CHECKING:
+    from app.domain.entities_phase2 import Entity, Relationship
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +191,7 @@ class GraphEngine:
 
             # Radial layout
             import math
+
             if nid == center_entity_id:
                 x, y = 400, 300
             else:
@@ -204,28 +208,30 @@ class GraphEngine:
             color = _NODE_COLORS.get(entity.entity_type, "#6366f1")
             is_high_risk = entity.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL)
 
-            nodes.append({
-                "id": nid,
-                "type": "default",
-                "position": {"x": round(x), "y": round(y)},
-                "data": {
-                    "label": entity.display_label,
-                    "entityType": entity.entity_type.value,
-                    "bankId": entity.bank_id,
-                    "riskLevel": entity.risk_level.value,
-                    "alertCount": entity.alert_count,
-                    "isCenter": nid == center_entity_id,
-                },
-                "style": {
-                    "background": color if not is_high_risk else "#ef4444",
-                    "color": "#ffffff",
-                    "border": f"2px solid {'#ef4444' if is_high_risk else color}",
-                    "borderRadius": "8px",
-                    "padding": "8px 12px",
-                    "fontSize": "11px",
-                    "fontWeight": "600",
-                },
-            })
+            nodes.append(
+                {
+                    "id": nid,
+                    "type": "default",
+                    "position": {"x": round(x), "y": round(y)},
+                    "data": {
+                        "label": entity.display_label,
+                        "entityType": entity.entity_type.value,
+                        "bankId": entity.bank_id,
+                        "riskLevel": entity.risk_level.value,
+                        "alertCount": entity.alert_count,
+                        "isCenter": nid == center_entity_id,
+                    },
+                    "style": {
+                        "background": color if not is_high_risk else "#ef4444",
+                        "color": "#ffffff",
+                        "border": f"2px solid {'#ef4444' if is_high_risk else color}",
+                        "borderRadius": "8px",
+                        "padding": "8px 12px",
+                        "fontSize": "11px",
+                        "fontWeight": "600",
+                    },
+                }
+            )
 
         # Build React Flow edges
         edges = []
@@ -233,19 +239,21 @@ class GraphEngine:
         for rel in self._relationships.values():
             if rel.source_entity_id in node_id_set and rel.target_entity_id in node_id_set:
                 style = _EDGE_STYLES.get(rel.relationship_type, {})
-                edges.append({
-                    "id": rel.id,
-                    "source": rel.source_entity_id,
-                    "target": rel.target_entity_id,
-                    "label": rel.relationship_type.value.replace("_", " "),
-                    "type": "smoothstep",
-                    "animated": rel.relationship_type == RelationshipType.LINKED_ALERT,
-                    "style": style,
-                    "data": {
-                        "confidence": rel.confidence,
-                        "relationshipType": rel.relationship_type.value,
-                    },
-                })
+                edges.append(
+                    {
+                        "id": rel.id,
+                        "source": rel.source_entity_id,
+                        "target": rel.target_entity_id,
+                        "label": rel.relationship_type.value.replace("_", " "),
+                        "type": "smoothstep",
+                        "animated": rel.relationship_type == RelationshipType.LINKED_ALERT,
+                        "style": style,
+                        "data": {
+                            "confidence": rel.confidence,
+                            "relationshipType": rel.relationship_type.value,
+                        },
+                    }
+                )
 
         # Detect clusters within subgraph
         clusters = self._detect_subgraph_clusters(node_id_set)

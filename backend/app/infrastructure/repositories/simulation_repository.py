@@ -7,17 +7,19 @@ in a larger system you'd use Unit of Work).
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import SimulationRun
 from app.domain.enums import SimulationStatus
 from app.domain.value_objects import SimulationConfig
 from app.infrastructure.models import SimulationRunModel
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

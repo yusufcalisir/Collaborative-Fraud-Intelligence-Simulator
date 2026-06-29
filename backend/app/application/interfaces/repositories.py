@@ -7,45 +7,39 @@ the persistence layer. Concrete implementations live in infrastructure/.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from app.domain.entities import SimulationRun, TrainingRound
+if TYPE_CHECKING:
+    from app.domain.entities import SimulationRun, TrainingRound
 
 
 class SimulationRepositoryInterface(ABC):
     """Persistence contract for simulation runs."""
 
     @abstractmethod
-    async def create(self, simulation: SimulationRun) -> SimulationRun:
-        ...
+    async def create(self, simulation: SimulationRun) -> SimulationRun: ...
 
     @abstractmethod
-    async def get_by_id(self, simulation_id: str) -> SimulationRun | None:
-        ...
+    async def get_by_id(self, simulation_id: str) -> SimulationRun | None: ...
 
     @abstractmethod
-    async def list_all(self, limit: int = 20, offset: int = 0) -> list[SimulationRun]:
-        ...
+    async def list_all(self, limit: int = 20, offset: int = 0) -> list[SimulationRun]: ...
 
     @abstractmethod
-    async def update(self, simulation: SimulationRun) -> SimulationRun:
-        ...
+    async def update(self, simulation: SimulationRun) -> SimulationRun: ...
 
     @abstractmethod
-    async def delete(self, simulation_id: str) -> bool:
-        ...
+    async def delete(self, simulation_id: str) -> bool: ...
 
 
 class TrainingRoundRepositoryInterface(ABC):
     """Persistence contract for training rounds."""
 
     @abstractmethod
-    async def create(self, training_round: TrainingRound) -> TrainingRound:
-        ...
+    async def create(self, training_round: TrainingRound) -> TrainingRound: ...
 
     @abstractmethod
-    async def get_by_simulation(self, simulation_id: str) -> list[TrainingRound]:
-        ...
+    async def get_by_simulation(self, simulation_id: str) -> list[TrainingRound]: ...
 
     @abstractmethod
-    async def get_round(self, simulation_id: str, round_number: int) -> TrainingRound | None:
-        ...
+    async def get_round(self, simulation_id: str, round_number: int) -> TrainingRound | None: ...

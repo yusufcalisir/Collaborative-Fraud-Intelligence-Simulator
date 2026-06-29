@@ -10,7 +10,7 @@ complexity.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.entities_phase2 import Case, CaseEvent, CaseNote
 from app.domain.enums import CasePriority, CaseStatus
@@ -19,10 +19,24 @@ logger = logging.getLogger(__name__)
 
 # Valid status transitions
 _VALID_TRANSITIONS: dict[CaseStatus, set[CaseStatus]] = {
-    CaseStatus.OPEN: {CaseStatus.ASSIGNED, CaseStatus.INVESTIGATING, CaseStatus.CLOSED_FALSE_POSITIVE},
+    CaseStatus.OPEN: {
+        CaseStatus.ASSIGNED,
+        CaseStatus.INVESTIGATING,
+        CaseStatus.CLOSED_FALSE_POSITIVE,
+    },
     CaseStatus.ASSIGNED: {CaseStatus.INVESTIGATING, CaseStatus.OPEN},
-    CaseStatus.INVESTIGATING: {CaseStatus.PENDING_REVIEW, CaseStatus.ESCALATED, CaseStatus.CLOSED_CONFIRMED, CaseStatus.CLOSED_FALSE_POSITIVE},
-    CaseStatus.PENDING_REVIEW: {CaseStatus.INVESTIGATING, CaseStatus.ESCALATED, CaseStatus.CLOSED_CONFIRMED, CaseStatus.CLOSED_FALSE_POSITIVE},
+    CaseStatus.INVESTIGATING: {
+        CaseStatus.PENDING_REVIEW,
+        CaseStatus.ESCALATED,
+        CaseStatus.CLOSED_CONFIRMED,
+        CaseStatus.CLOSED_FALSE_POSITIVE,
+    },
+    CaseStatus.PENDING_REVIEW: {
+        CaseStatus.INVESTIGATING,
+        CaseStatus.ESCALATED,
+        CaseStatus.CLOSED_CONFIRMED,
+        CaseStatus.CLOSED_FALSE_POSITIVE,
+    },
     CaseStatus.ESCALATED: {CaseStatus.INVESTIGATING, CaseStatus.CLOSED_CONFIRMED},
     CaseStatus.CLOSED_CONFIRMED: set(),
     CaseStatus.CLOSED_FALSE_POSITIVE: set(),
@@ -53,11 +67,13 @@ class CaseManagementService:
             alert_ids=alert_ids or [],
         )
 
-        case.timeline.append(CaseEvent(
-            event_type="created",
-            description=f"Case created: {title}",
-            actor="system",
-        ))
+        case.timeline.append(
+            CaseEvent(
+                event_type="created",
+                description=f"Case created: {title}",
+                actor="system",
+            )
+        )
 
         self._cases[case.id] = case
         logger.info("Created case %s: %s (priority=%s)", case.id[:8], title, priority.value)
@@ -69,13 +85,16 @@ class CaseManagementService:
         old_assignee = case.assigned_to
         case.assigned_to = investigator
         case.status = CaseStatus.ASSIGNED
-        case.updated_at = datetime.now(timezone.utc)
+        case.updated_at = datetime.now(UTC)
 
-        case.timeline.append(CaseEvent(
-            event_type="assigned",
-            description=f"Assigned to {investigator}" + (f" (from {old_assignee})" if old_assignee else ""),
-            actor="system",
-        ))
+        case.timeline.append(
+            CaseEvent(
+                event_type="assigned",
+                description=f"Assigned to {investigator}"
+                + (f" (from {old_assignee})" if old_assignee else ""),
+                actor="system",
+            )
+        )
 
         logger.info("Assigned case %s to %s", case_id[:8], investigator)
         return case
@@ -86,13 +105,15 @@ class CaseManagementService:
 
         note = CaseNote(case_id=case_id, author=author, content=content)
         case.notes.append(note)
-        case.updated_at = datetime.now(timezone.utc)
+        case.updated_at = datetime.now(UTC)
 
-        case.timeline.append(CaseEvent(
-            event_type="note_added",
-            description=f"Note by {author}: {content[:80]}{'...' if len(content) > 80 else ''}",
-            actor=author,
-        ))
+        case.timeline.append(
+            CaseEvent(
+                event_type="note_added",
+                description=f"Note by {author}: {content[:80]}{'...' if len(content) > 80 else ''}",
+                actor=author,
+            )
+        )
 
         return note
 
@@ -113,17 +134,19 @@ class CaseManagementService:
             )
 
         case.status = new_status
-        case.updated_at = datetime.now(timezone.utc)
+        case.updated_at = datetime.now(UTC)
 
         if new_status in (CaseStatus.CLOSED_CONFIRMED, CaseStatus.CLOSED_FALSE_POSITIVE):
-            case.closed_at = datetime.now(timezone.utc)
+            case.closed_at = datetime.now(UTC)
 
-        case.timeline.append(CaseEvent(
-            event_type="status_changed",
-            description=f"Status: {old_status.value} → {new_status.value}",
-            actor=actor,
-            metadata={"from": old_status.value, "to": new_status.value},
-        ))
+        case.timeline.append(
+            CaseEvent(
+                event_type="status_changed",
+                description=f"Status: {old_status.value} → {new_status.value}",
+                actor=actor,
+                metadata={"from": old_status.value, "to": new_status.value},
+            )
+        )
 
         logger.info("Case %s status: %s → %s", case_id[:8], old_status.value, new_status.value)
         return case
@@ -134,13 +157,15 @@ class CaseManagementService:
 
         if alert_id not in case.alert_ids:
             case.alert_ids.append(alert_id)
-            case.updated_at = datetime.now(timezone.utc)
+            case.updated_at = datetime.now(UTC)
 
-            case.timeline.append(CaseEvent(
-                event_type="alert_linked",
-                description=f"Alert {alert_id[:8]} linked to case",
-                actor="system",
-            ))
+            case.timeline.append(
+                CaseEvent(
+                    event_type="alert_linked",
+                    description=f"Alert {alert_id[:8]} linked to case",
+                    actor="system",
+                )
+            )
 
         return case
 
@@ -171,11 +196,13 @@ class CaseManagementService:
             if case.duration_hours is not None:
                 lines.append(f"**Duration:** {case.duration_hours:.1f} hours")
 
-        lines.extend([
-            "",
-            f"## Linked Alerts ({len(case.alert_ids)})",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                f"## Linked Alerts ({len(case.alert_ids)})",
+                "",
+            ]
+        )
         for alert_id in case.alert_ids:
             lines.append(f"- `{alert_id}`")
 

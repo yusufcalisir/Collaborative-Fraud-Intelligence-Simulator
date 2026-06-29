@@ -6,24 +6,20 @@ Simulation execution is dispatched to Celery workers.
 
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import asdict
-from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
 from app.application.schemas.simulation import (
-    ComparisonResponse,
     BankComparisonResponse,
+    BankResponse,
+    ComparisonResponse,
+    DataProfileResponse,
     MetricsResponse,
     SimulationConfigRequest,
     SimulationCreateResponse,
     SimulationDetailResponse,
     SimulationSummaryResponse,
-    BankResponse,
-    DataProfileResponse,
-    RoundResponse,
 )
 from app.domain.enums import PrivacyMechanism, SimulationStatus
 from app.tasks.simulation_tasks import run_simulation_task
@@ -69,14 +65,18 @@ async def create_simulation(
         "enable_dropout_simulation": config.enable_dropout_simulation,
         "dropout_probability": config.dropout_probability,
         "enable_reconnect_simulation": config.enable_reconnect_simulation,
-        "enable_differential_privacy": config.privacy_mechanism in (
-            PrivacyMechanism.DIFFERENTIAL_PRIVACY, PrivacyMechanism.BOTH,
+        "enable_differential_privacy": config.privacy_mechanism
+        in (
+            PrivacyMechanism.DIFFERENTIAL_PRIVACY,
+            PrivacyMechanism.BOTH,
         ),
         "dp_epsilon": config.dp_epsilon,
         "dp_delta": config.dp_delta,
         "dp_max_grad_norm": config.dp_max_grad_norm,
-        "enable_secure_aggregation": config.privacy_mechanism in (
-            PrivacyMechanism.SECURE_AGGREGATION, PrivacyMechanism.BOTH,
+        "enable_secure_aggregation": config.privacy_mechanism
+        in (
+            PrivacyMechanism.SECURE_AGGREGATION,
+            PrivacyMechanism.BOTH,
         ),
         "bank_a_transactions": config.bank_a_transactions,
         "bank_b_transactions": config.bank_b_transactions,
@@ -116,16 +116,18 @@ async def list_simulations() -> list[SimulationSummaryResponse]:
 
     summaries = []
     for sim in _simulation_results.values():
-        summaries.append(SimulationSummaryResponse(
-            id=sim["id"],
-            status=SimulationStatus(sim["status"]),
-            current_round=sim.get("current_round", 0),
-            total_rounds=sim.get("total_rounds", 10),
-            progress_pct=_calc_progress(sim),
-            created_at=sim.get("created_at", "2026-01-01T00:00:00Z"),
-            completed_at=sim.get("completed_at"),
-            duration_seconds=sim.get("duration_seconds"),
-        ))
+        summaries.append(
+            SimulationSummaryResponse(
+                id=sim["id"],
+                status=SimulationStatus(sim["status"]),
+                current_round=sim.get("current_round", 0),
+                total_rounds=sim.get("total_rounds", 10),
+                progress_pct=_calc_progress(sim),
+                created_at=sim.get("created_at", "2026-01-01T00:00:00Z"),
+                completed_at=sim.get("completed_at"),
+                duration_seconds=sim.get("duration_seconds"),
+            )
+        )
 
     return summaries
 
@@ -202,13 +204,15 @@ async def get_comparison(simulation_id: str) -> ComparisonResponse:
             continue
 
         improvement = bank_data.get("improvement", {})
-        bank_comparisons.append(BankComparisonResponse(
-            bank_id=bank_data["id"],
-            bank_name=bank_data["name"],
-            local_metrics=_build_metrics_response(local),
-            federated_metrics=_build_metrics_response(federated),
-            improvement=improvement,
-        ))
+        bank_comparisons.append(
+            BankComparisonResponse(
+                bank_id=bank_data["id"],
+                bank_name=bank_data["name"],
+                local_metrics=_build_metrics_response(local),
+                federated_metrics=_build_metrics_response(federated),
+                improvement=improvement,
+            )
+        )
 
         for k, v in improvement.items():
             total_improvement[k] = total_improvement.get(k, 0) + v
@@ -224,6 +228,7 @@ async def get_comparison(simulation_id: str) -> ComparisonResponse:
 
 
 # ── Helpers ─────────────────────────────────────
+
 
 def _sync_task_results() -> None:
     """Check for completed Celery tasks and merge results."""

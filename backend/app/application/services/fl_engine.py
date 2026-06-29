@@ -19,13 +19,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from app.domain.enums import AggregationMethod, ClientStatus
-from app.domain.value_objects import ModelWeights, RoundMetrics
+from app.domain.value_objects import ModelWeights
 
 if TYPE_CHECKING:
     from app.application.services.model_service import ModelService
@@ -95,7 +94,7 @@ class FederatedLearningEngine:
             proportions = [s / total_samples for s in client_samples]
 
             avg_weights = np.zeros(len(client_weights[0].flat_weights))
-            for w, proportion in zip(client_weights, proportions):
+            for w, proportion in zip(client_weights, proportions, strict=False):
                 avg_weights += np.array(w.flat_weights) * proportion
             avg_weights = avg_weights.tolist()
 
@@ -105,7 +104,9 @@ class FederatedLearningEngine:
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         logger.info(
             "Aggregated %d client models in %.1fms (method=%s)",
-            len(client_weights), elapsed_ms, method,
+            len(client_weights),
+            elapsed_ms,
+            method,
         )
 
         return ModelWeights(
@@ -213,12 +214,14 @@ class FederatedLearningEngine:
         masks[-1] = -masks[:-1].sum(axis=0)  # Last mask ensures sum = 0
 
         masked_weights = []
-        for w, mask in zip(client_weights, masks):
-            masked = [fw + m for fw, m in zip(w.flat_weights, mask)]
-            masked_weights.append(ModelWeights(
-                layer_shapes=w.layer_shapes,
-                flat_weights=masked,
-            ))
+        for w, mask in zip(client_weights, masks, strict=False):
+            masked = [fw + m for fw, m in zip(w.flat_weights, mask, strict=False)]
+            masked_weights.append(
+                ModelWeights(
+                    layer_shapes=w.layer_shapes,
+                    flat_weights=masked,
+                )
+            )
 
         logger.info("Applied secure aggregation masks to %d clients", n_clients)
         return masked_weights

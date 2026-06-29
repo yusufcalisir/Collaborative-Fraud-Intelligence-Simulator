@@ -10,18 +10,17 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import Settings, get_settings
-from app.infrastructure.database import get_async_session
-from app.infrastructure.repositories.simulation_repository import SimulationRepository
-from app.infrastructure.repositories.bank_repository import BankRepository
-from app.infrastructure.repositories.metrics_repository import MetricsRepository
-from app.application.services.simulation_service import SimulationService
-from app.application.services.fl_engine import FederatedLearningEngine
 from app.application.services.data_generator import DataGenerator
+from app.application.services.fl_engine import FederatedLearningEngine
 from app.application.services.metrics_service import MetricsService
 from app.application.services.model_service import ModelService
 from app.application.services.privacy_service import PrivacyService
-
+from app.application.services.simulation_service import SimulationService
+from app.config import Settings, get_settings
+from app.infrastructure.database import get_async_session
+from app.infrastructure.repositories.bank_repository import BankRepository
+from app.infrastructure.repositories.metrics_repository import MetricsRepository
+from app.infrastructure.repositories.simulation_repository import SimulationRepository
 
 # ── Settings ──────────────────────────────────
 SettingsDep = Annotated[Settings, Depends(get_settings)]

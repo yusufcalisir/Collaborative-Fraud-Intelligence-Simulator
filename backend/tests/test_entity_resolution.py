@@ -3,7 +3,7 @@
 import pytest
 
 from app.application.services.entity_resolution import EntityResolutionService
-from app.domain.enums import EntityType, RelationshipType, RiskLevel
+from app.domain.enums import EntityType, RelationshipType
 from app.domain.value_objects_phase2 import PrivacyPreservingIdentifier
 
 
@@ -85,7 +85,9 @@ class TestRelationships:
         e1 = entity_service.create_entity(EntityType.CUSTOMER, "c1", "bank_a")
         e2 = entity_service.create_entity(EntityType.MERCHANT, "m1", "bank_a")
         rel = entity_service.add_relationship(
-            e1.id, e2.id, RelationshipType.TRANSACTS_WITH,
+            e1.id,
+            e2.id,
+            RelationshipType.TRANSACTS_WITH,
         )
         assert rel.source_entity_id == e1.id
         assert rel.target_entity_id == e2.id

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.entities_phase2 import Entity, Relationship
 from app.domain.enums import EntityType, RelationshipType, RiskLevel
@@ -55,7 +55,7 @@ class EntityResolutionService:
         # Check if we already have this entity for this bank
         existing = self._find_entity(privacy_id, bank_id)
         if existing:
-            existing.last_seen = datetime.now(timezone.utc)
+            existing.last_seen = datetime.now(UTC)
             return existing
 
         # Generate a short display label
@@ -98,7 +98,9 @@ class EntityResolutionService:
             banks = set(e.bank_id for e in entities)
             logger.info(
                 "Cross-institution match: hash=%s found at %d banks: %s",
-                privacy_hash[:8], len(banks), banks,
+                privacy_hash[:8],
+                len(banks),
+                banks,
             )
 
         return entities
@@ -113,32 +115,28 @@ class EntityResolutionService:
         Returns a list of matches with the shared privacy hash and
         entity details from each bank.
         """
-        bank_a_hashes = {
-            e.privacy_id: e
-            for e in self._entities.values()
-            if e.bank_id == bank_a_id
-        }
-        bank_b_hashes = {
-            e.privacy_id: e
-            for e in self._entities.values()
-            if e.bank_id == bank_b_id
-        }
+        bank_a_hashes = {e.privacy_id: e for e in self._entities.values() if e.bank_id == bank_a_id}
+        bank_b_hashes = {e.privacy_id: e for e in self._entities.values() if e.bank_id == bank_b_id}
 
         shared_hashes = set(bank_a_hashes.keys()) & set(bank_b_hashes.keys())
         matches = []
         for h in shared_hashes:
-            matches.append({
-                "privacy_hash": h,
-                "entity_type": bank_a_hashes[h].entity_type.value,
-                "bank_a_entity_id": bank_a_hashes[h].id,
-                "bank_b_entity_id": bank_b_hashes[h].id,
-                "bank_a_risk": bank_a_hashes[h].risk_level.value,
-                "bank_b_risk": bank_b_hashes[h].risk_level.value,
-            })
+            matches.append(
+                {
+                    "privacy_hash": h,
+                    "entity_type": bank_a_hashes[h].entity_type.value,
+                    "bank_a_entity_id": bank_a_hashes[h].id,
+                    "bank_b_entity_id": bank_b_hashes[h].id,
+                    "bank_a_risk": bank_a_hashes[h].risk_level.value,
+                    "bank_b_risk": bank_b_hashes[h].risk_level.value,
+                }
+            )
 
         logger.info(
             "Found %d shared entities between %s and %s",
-            len(matches), bank_a_id, bank_b_id,
+            len(matches),
+            bank_a_id,
+            bank_b_id,
         )
         return matches
 
@@ -154,7 +152,8 @@ class EntityResolutionService:
 
         # Find all related entities via relationships
         relationships = [
-            r for r in self._relationships.values()
+            r
+            for r in self._relationships.values()
             if r.source_entity_id == entity_id or r.target_entity_id == entity_id
         ]
 

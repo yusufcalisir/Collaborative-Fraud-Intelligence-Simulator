@@ -46,10 +46,15 @@ class TestMetricsService:
 
     def test_from_eval_dict_with_feature_importance(self) -> None:
         eval_dict = {
-            "accuracy": 0.9, "precision": 0.8, "recall": 0.7,
-            "f1_score": 0.75, "auc_roc": 0.85, "loss": 0.2,
+            "accuracy": 0.9,
+            "precision": 0.8,
+            "recall": 0.7,
+            "f1_score": 0.75,
+            "auc_roc": 0.85,
+            "loss": 0.2,
             "confusion_matrix": [[80, 10], [5, 5]],
-            "roc_fpr": [0.0, 1.0], "roc_tpr": [0.0, 1.0],
+            "roc_fpr": [0.0, 1.0],
+            "roc_tpr": [0.0, 1.0],
             "roc_thresholds": [1.0, 0.0],
         }
         feat_imp = {"amount": 0.9, "velocity": 0.7}

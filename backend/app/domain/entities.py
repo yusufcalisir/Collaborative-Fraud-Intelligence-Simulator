@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.enums import BankTier, ClientStatus, SimulationStatus
 from app.domain.value_objects import BankDataProfile, EvaluationMetrics, SimulationConfig
@@ -57,7 +57,7 @@ class SimulationRun:
     status: SimulationStatus = SimulationStatus.PENDING
     config: SimulationConfig = field(default_factory=SimulationConfig)
     banks: list[Bank] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
     current_round: int = 0
@@ -96,5 +96,5 @@ class TrainingRound:
     per_bank_samples: dict[str, int] = field(default_factory=dict)
     aggregation_time_ms: float = 0.0
     round_duration_ms: float = 0.0
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None

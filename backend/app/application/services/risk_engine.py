@@ -13,7 +13,6 @@ are independent, and the combination logic is configurable.
 from __future__ import annotations
 
 import logging
-import math
 
 from app.domain.value_objects_phase2 import RiskScore, RiskSignal, RiskWeightConfig
 
@@ -21,23 +20,50 @@ logger = logging.getLogger(__name__)
 
 # Country risk scores — simplified lookup table
 COUNTRY_RISK: dict[str, float] = {
-    "NG": 0.85, "RU": 0.80, "PH": 0.75, "BR": 0.70,
-    "TR": 0.55, "MX": 0.50, "CN": 0.45, "IN": 0.40,
-    "ZA": 0.45, "AE": 0.30, "KR": 0.15, "JP": 0.10,
-    "SG": 0.10, "AU": 0.08, "NL": 0.05, "DE": 0.05,
-    "FR": 0.05, "CA": 0.04, "UK": 0.03, "US": 0.02,
+    "NG": 0.85,
+    "RU": 0.80,
+    "PH": 0.75,
+    "BR": 0.70,
+    "TR": 0.55,
+    "MX": 0.50,
+    "CN": 0.45,
+    "IN": 0.40,
+    "ZA": 0.45,
+    "AE": 0.30,
+    "KR": 0.15,
+    "JP": 0.10,
+    "SG": 0.10,
+    "AU": 0.08,
+    "NL": 0.05,
+    "DE": 0.05,
+    "FR": 0.05,
+    "CA": 0.04,
+    "UK": 0.03,
+    "US": 0.02,
 }
 
 # Merchant category risk
 MERCHANT_RISK: dict[str, float] = {
-    "gambling": 0.90, "crypto": 0.85, "wire_transfer": 0.75,
-    "jewelry": 0.60, "online_marketplace": 0.45,
-    "electronics": 0.35, "travel": 0.25,
-    "atm_withdrawal": 0.30, "entertainment": 0.15,
-    "dining": 0.05, "grocery": 0.03, "fuel": 0.03,
-    "clothing": 0.05, "healthcare": 0.02, "education": 0.02,
-    "home": 0.05, "automotive": 0.08, "subscription": 0.05,
-    "insurance": 0.03, "charity": 0.10,
+    "gambling": 0.90,
+    "crypto": 0.85,
+    "wire_transfer": 0.75,
+    "jewelry": 0.60,
+    "online_marketplace": 0.45,
+    "electronics": 0.35,
+    "travel": 0.25,
+    "atm_withdrawal": 0.30,
+    "entertainment": 0.15,
+    "dining": 0.05,
+    "grocery": 0.03,
+    "fuel": 0.03,
+    "clothing": 0.05,
+    "healthcare": 0.02,
+    "education": 0.02,
+    "home": 0.05,
+    "automotive": 0.08,
+    "subscription": 0.05,
+    "insurance": 0.03,
+    "charity": 0.10,
 }
 
 
@@ -163,8 +189,11 @@ class RiskScoringEngine:
         device = txn.get("device_type", "web_browser")
         # Simple heuristic: ATM and phone banking are higher risk channels
         device_scores = {
-            "mobile_app": 0.10, "web_browser": 0.15, "pos_terminal": 0.05,
-            "atm": 0.35, "phone_banking": 0.40,
+            "mobile_app": 0.10,
+            "web_browser": 0.15,
+            "pos_terminal": 0.05,
+            "atm": 0.35,
+            "phone_banking": 0.40,
         }
         score = device_scores.get(device, 0.20)
         return RiskSignal(
@@ -187,8 +216,7 @@ class RiskScoringEngine:
             weight=self.weights.customer_history,
             raw_value=history_score,
             normalized_score=risk,
-            explanation=f"Customer history: {history_score:.2f}, "
-            f"account age: {account_age} days",
+            explanation=f"Customer history: {history_score:.2f}, account age: {account_age} days",
         )
 
     def _eval_previous_alerts(self, entity_hash: str) -> RiskSignal:
@@ -229,10 +257,7 @@ class RiskScoringEngine:
         amount = txn.get("transaction_amount", 0)
         mean_amt = baseline.get("mean_amount", 100)
         std_amt = baseline.get("std_amount", 50)
-        if std_amt > 0:
-            z_score = abs(amount - mean_amt) / std_amt
-        else:
-            z_score = 0.0
+        z_score = abs(amount - mean_amt) / std_amt if std_amt > 0 else 0.0
 
         # Normalize z-score: 0-1 = normal, >3 = extreme
         normalized = min(1.0, max(0.0, (z_score - 1) / 3))
