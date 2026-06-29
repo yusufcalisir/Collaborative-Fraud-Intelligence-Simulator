@@ -279,8 +279,11 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
         )
 
         # Progress callback: updates in-memory state and event log
-        def progress_cb(sim_id: str, event_type: str, data: dict[str, Any]) -> None:
-            sim = _simulation_results.get(sim_id)
+        # NOTE: simulation_service creates SimulationRun with its own uuid, so sim_id
+        # passed by the service may differ from our simulation_id.  We always look up
+        # by our own simulation_id (the key stored in _simulation_results).
+        def progress_cb(_sim_id: str, event_type: str, data: dict[str, Any]) -> None:
+            sim = _simulation_results.get(simulation_id)
             if sim:
                 if event_type == "status":
                     status_val = data.get("status")
