@@ -250,6 +250,11 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
     settings = get_settings()
     logger.info("Background simulation %s starting", simulation_id)
 
+    # Prevent PyTorch thread throttling on single-core / shared CPU hosting
+    import torch
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+
     try:
         # Mark as running
         _simulation_results[simulation_id]["status"] = SimulationStatus.GENERATING_DATA.value

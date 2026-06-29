@@ -105,10 +105,12 @@ class SimulationService:
                 },
             )
 
+            # Scale down datasets to prevent CPU exhaustion & speed up PyTorch CPU training
+            # 50,000 -> 2,500 transactions, etc.
             datasets = self.data_generator.generate_bank_datasets(
-                bank_a_size=config.bank_a_transactions,
-                bank_b_size=config.bank_b_transactions,
-                bank_c_size=config.bank_c_transactions,
+                bank_a_size=max(1000, config.bank_a_transactions // 20),
+                bank_b_size=max(1000, config.bank_b_transactions // 20),
+                bank_c_size=max(1000, config.bank_c_transactions // 20),
             )
             profiles = self.data_generator.create_bank_profiles(datasets)
             banks = self.data_generator.create_bank_entities(datasets, profiles)
