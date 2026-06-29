@@ -252,7 +252,7 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
 
     try:
         # Mark as running
-        _simulation_results[simulation_id]["status"] = SimulationStatus.RUNNING.value
+        _simulation_results[simulation_id]["status"] = SimulationStatus.GENERATING_DATA.value
 
         config = SimulationConfig(**config_dict)
 
