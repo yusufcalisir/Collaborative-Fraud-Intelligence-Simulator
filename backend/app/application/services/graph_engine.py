@@ -193,7 +193,8 @@ class GraphEngine:
             import math
 
             if nid == center_entity_id:
-                x, y = 400, 300
+                x: float = 400.0
+                y: float = 300.0
             else:
                 angle = 2 * math.pi * (i - 1) / max(1, len(node_ids) - 1)
                 layer = 1

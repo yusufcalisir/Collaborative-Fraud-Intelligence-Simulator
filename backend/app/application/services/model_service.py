@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -96,7 +96,7 @@ class ModelService:
         n_pos = y_train.sum()
         n_neg = len(y_train) - n_pos
         pos_weight = torch.tensor([n_neg / max(n_pos, 1)], device=self.device)
-        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        criterion: Any = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
         # Swap to raw logits for BCEWithLogitsLoss
         # Remove sigmoid from forward for training, add back for inference

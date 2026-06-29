@@ -102,7 +102,7 @@ class ExplainabilityReport:
     """
 
     alert_id: str
-    top_features: list[dict[str, float]]  # [{"feature": name, "contribution": value}]
+    top_features: list[dict[str, float | str]]  # [{"feature": name, "contribution": value}]
     risk_factors: list[str]  # Human-readable risk descriptions
     historical_evidence: list[str]  # Prior alerts, cases, patterns
     model_confidence: float  # 0.0-1.0

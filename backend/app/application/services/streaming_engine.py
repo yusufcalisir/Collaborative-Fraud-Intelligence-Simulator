@@ -14,7 +14,7 @@ import asyncio
 import json
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.domain.entities_phase2 import Scenario
@@ -41,7 +41,7 @@ class StreamingEngine:
         self,
         scenario: Scenario,
         speed_multiplier: float = 1.0,
-        redis_client=None,
+        redis_client: Any = None,
     ) -> str:
         """Start replaying a scenario's events.
 
@@ -95,7 +95,7 @@ class StreamingEngine:
         self,
         scenario: Scenario,
         speed_multiplier: float,
-        redis_client=None,
+        redis_client: Any = None,
     ) -> None:
         """Deliver scenario events with timing."""
         prev_delay = 0

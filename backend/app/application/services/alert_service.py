@@ -272,7 +272,7 @@ class AlertIntelligenceService:
     @staticmethod
     def _get_top_features(txn: dict, score: float) -> list[dict[str, float | str]]:
         """Estimate feature contributions for explainability."""
-        features = []
+        features: list[dict[str, float | str]] = []
         feature_weights = {
             "transaction_amount": 0.20,
             "velocity": 0.18,
@@ -291,7 +291,7 @@ class AlertIntelligenceService:
                 val = hash(val) % 100 / 100  # Normalize categorical
             contribution = base_weight * score * (0.5 + 0.5 * min(1.0, float(val) / 100))
             features.append({"feature": feat, "contribution": round(contribution, 4)})
-        return sorted(features, key=lambda f: f["contribution"], reverse=True)
+        return sorted(features, key=lambda f: float(f["contribution"]), reverse=True)
 
     @staticmethod
     def _get_risk_factors(txn: dict, score: float) -> list[str]:

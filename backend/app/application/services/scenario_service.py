@@ -143,7 +143,7 @@ class ScenarioSimulator:
         # Phase 1: Normal-looking transactions at each bank (2-3 per bank)
         for bank_id in BANK_IDS:
             for member in ring_members[:2]:
-                delay += self._rng.integers(1500, 3000)
+                delay += int(self._rng.integers(1500, 3000))
                 events.append(
                     self._make_transaction_event(
                         bank_id=bank_id,
@@ -160,14 +160,14 @@ class ScenarioSimulator:
         # Phase 2: Suspicious transactions start
         for bank_id in BANK_IDS:
             for member in ring_members:
-                delay += self._rng.integers(1000, 2500)
+                delay += int(self._rng.integers(1000, 2500))
                 events.append(
                     self._make_transaction_event(
                         bank_id=bank_id,
                         customer_id=member,
                         amount=float(self._rng.uniform(2000, 8000)),
-                        merchant=self._rng.choice(["crypto", "wire_transfer", "jewelry"]),
-                        country=self._rng.choice(["NG", "RU", "PH"]),
+                        merchant=str(self._rng.choice(["crypto", "wire_transfer", "jewelry"])),
+                        country=str(self._rng.choice(["NG", "RU", "PH"])),
                         device=shared_device,
                         risk_score=float(self._rng.uniform(0.55, 0.75)),
                         delay_ms=delay,
@@ -176,7 +176,7 @@ class ScenarioSimulator:
 
         # Phase 3: Alerts generated at each bank
         for bank_id in BANK_IDS:
-            delay += self._rng.integers(500, 1500)
+            delay += int(self._rng.integers(500, 1500))
             events.append(
                 StreamingEvent(
                     event_type="alert",
@@ -249,7 +249,7 @@ class ScenarioSimulator:
 
         # Phase 1: Normal transactions (baseline)
         for _ in range(3):
-            delay += self._rng.integers(2000, 4000)
+            delay += int(self._rng.integers(2000, 4000))
             events.append(
                 self._make_transaction_event(
                     bank_id="bank_a",
@@ -294,13 +294,13 @@ class ScenarioSimulator:
 
         # Phase 3: Rapid withdrawals at bank_a
         for i in range(4):
-            delay += self._rng.integers(500, 1500)
+            delay += int(self._rng.integers(500, 1500))
             events.append(
                 self._make_transaction_event(
                     bank_id="bank_a",
                     customer_id=victim_id,
                     amount=float(self._rng.uniform(3000, 9000)),
-                    merchant=self._rng.choice(["wire_transfer", "crypto"]),
+                    merchant=str(self._rng.choice(["wire_transfer", "crypto"])),
                     country="RU",
                     device="web_browser",
                     risk_score=float(0.5 + i * 0.1),
@@ -311,7 +311,7 @@ class ScenarioSimulator:
         # Phase 4: Same attacker at bank_b
         delay += 3000
         for i in range(3):
-            delay += self._rng.integers(500, 1500)
+            delay += int(self._rng.integers(500, 1500))
             events.append(
                 self._make_transaction_event(
                     bank_id="bank_b",
@@ -398,14 +398,14 @@ class ScenarioSimulator:
         # Phase 2: Split into smaller transfers (layering)
         for i in range(6):
             target_bank = BANK_IDS[i % 3]
-            delay += self._rng.integers(2000, 4000)
+            delay += int(self._rng.integers(2000, 4000))
             events.append(
                 self._make_transaction_event(
                     bank_id=target_bank,
                     customer_id=f"ml_recipient_{i}",
                     amount=float(self._rng.uniform(5000, 12000)),
-                    merchant=self._rng.choice(["wire_transfer", "online_marketplace"]),
-                    country=self._rng.choice(["US", "UK", "DE", "NL"]),
+                    merchant=str(self._rng.choice(["wire_transfer", "online_marketplace"])),
+                    country=str(self._rng.choice(["US", "UK", "DE", "NL"])),
                     device="web_browser",
                     risk_score=float(self._rng.uniform(0.15, 0.35)),
                     delay_ms=delay,
@@ -414,7 +414,7 @@ class ScenarioSimulator:
 
         # Phase 3: Reconsolidation
         for i in range(3):
-            delay += self._rng.integers(2000, 3500)
+            delay += int(self._rng.integers(2000, 3500))
             events.append(
                 self._make_transaction_event(
                     bank_id="bank_c",
@@ -479,13 +479,13 @@ class ScenarioSimulator:
         # Phase 1: Small test charges across banks
         for card in stolen_cards:
             for bank_id in ["bank_a", "bank_c"]:
-                delay += self._rng.integers(800, 2000)
+                delay += int(self._rng.integers(800, 2000))
                 events.append(
                     self._make_transaction_event(
                         bank_id=bank_id,
                         customer_id=card,
                         amount=float(self._rng.uniform(0.50, 4.99)),
-                        merchant=self._rng.choice(["grocery", "fuel", "subscription"]),
+                        merchant=str(self._rng.choice(["grocery", "fuel", "subscription"])),
                         country="US",
                         device="web_browser",
                         risk_score=float(self._rng.uniform(0.05, 0.15)),
@@ -495,13 +495,13 @@ class ScenarioSimulator:
 
         # Phase 2: Large purchases with validated cards
         for card in stolen_cards[:3]:
-            delay += self._rng.integers(1500, 3000)
+            delay += int(self._rng.integers(1500, 3000))
             events.append(
                 self._make_transaction_event(
-                    bank_id=self._rng.choice(["bank_a", "bank_c"]),
+                    bank_id=str(self._rng.choice(["bank_a", "bank_c"])),
                     customer_id=card,
                     amount=float(self._rng.uniform(2000, 6000)),
-                    merchant=self._rng.choice(["electronics", "jewelry"]),
+                    merchant=str(self._rng.choice(["electronics", "jewelry"])),
                     country="US",
                     device="web_browser",
                     risk_score=float(self._rng.uniform(0.50, 0.70)),

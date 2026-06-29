@@ -22,8 +22,8 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable
-from datetime import UTC
-from typing import TYPE_CHECKING, Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -125,7 +125,7 @@ class SimulationService:
                     y,
                     test_size=0.2,
                     random_state=42,
-                    stratify=y,
+                    stratify=y.tolist(),
                 )
 
                 bank_data[bank_id] = {
@@ -190,11 +190,15 @@ class SimulationService:
             dropped_banks: set[str] = set()
             privacy_service = PrivacyService()
 
-            enable_dp = config.enable_differential_privacy or config.privacy_mechanism in (
+            enable_dp = config.enable_differential_privacy or getattr(
+                config, "privacy_mechanism", None
+            ) in (
                 PrivacyMechanism.DIFFERENTIAL_PRIVACY,
                 PrivacyMechanism.BOTH,
             )
-            enable_sa = config.enable_secure_aggregation or config.privacy_mechanism in (
+            enable_sa = config.enable_secure_aggregation or getattr(
+                config, "privacy_mechanism", None
+            ) in (
                 PrivacyMechanism.SECURE_AGGREGATION,
                 PrivacyMechanism.BOTH,
             )
@@ -348,7 +352,7 @@ class SimulationService:
                     simulation_id=simulation.id,
                     participating_bank_ids=[b.id for b in participating],
                     dropped_bank_ids=dropped_this_round,
-                    global_loss=round_loss,
+                    global_loss=cast("float", round_loss),
                     per_bank_loss=per_bank_loss,
                     per_bank_samples={b.id: len(bank_data[b.id]["X_train"]) for b in participating},
                     aggregation_time_ms=agg_time,
@@ -470,8 +474,6 @@ class SimulationService:
                 logger.warning("Progress callback failed", exc_info=True)
 
 
-def _now():
+def _now() -> datetime:
     """Get current UTC time."""
-    from datetime import datetime
-
     return datetime.now(UTC)

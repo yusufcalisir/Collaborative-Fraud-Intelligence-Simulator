@@ -125,7 +125,7 @@ def run_simulation_task(self: Any, config_dict: dict) -> dict:
     )
 
     # Serialize results
-    result = {
+    result: dict[str, Any] = {
         "id": simulation.id,
         "status": simulation.status.value,
         "current_round": simulation.current_round,

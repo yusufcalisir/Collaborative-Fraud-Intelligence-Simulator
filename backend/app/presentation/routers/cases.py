@@ -7,6 +7,7 @@ notes, alert linking, and timeline.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -146,7 +147,7 @@ async def export_case(case_id: str) -> dict:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-def _serialize_case(case) -> CaseResponse:
+def _serialize_case(case: Any) -> CaseResponse:
     return CaseResponse(
         id=case.id,
         title=case.title,
