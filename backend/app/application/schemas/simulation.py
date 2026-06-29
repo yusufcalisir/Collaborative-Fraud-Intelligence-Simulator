@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime  # noqa: TC003
 
 from pydantic import BaseModel, Field
 
 from app.domain.enums import PrivacyMechanism, SimulationStatus
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class SimulationConfigRequest(BaseModel):
