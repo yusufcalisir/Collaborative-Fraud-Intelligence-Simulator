@@ -303,7 +303,7 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
                     sim["error_message"] = data.get("error", "Simulation failed.")
 
             # Store every event so the training router can serve them
-            _simulation_events.setdefault(sim_id, []).append(
+            _simulation_events.setdefault(simulation_id, []).append(
                 {"event_type": event_type, "data": data}
             )
 
