@@ -3,6 +3,8 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
+  const docsUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '') + '/docs';
+
   return (
     <header className="h-14 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-md flex items-center px-4 md:px-6 sticky top-0 z-40">
       {/* Menu toggle button on mobile */}
@@ -23,7 +25,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       </div>
       <div className="flex items-center gap-3 md:gap-4 shrink-0">
         <a
-          href="/docs"
+          href={docsUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
