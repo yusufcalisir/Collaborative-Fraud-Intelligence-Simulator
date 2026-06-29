@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useSimulation, useTrainingRounds } from '../api/queries';
 import MetricsComparison from '../components/dashboard/MetricsComparison';
 import TrainingTimeline from '../components/dashboard/TrainingTimeline';
+import FederatedTrainingAnimation from '../components/dashboard/FederatedTrainingAnimation';
 import LossChart from '../components/charts/LossChart';
 import ROCCurve from '../components/charts/ROCCurve';
 import ConfusionMatrix from '../components/charts/ConfusionMatrix';
@@ -12,8 +13,41 @@ import { formatDuration, formatPercent } from '../utils/formatters';
 
 export default function SimulationView() {
   const { id } = useParams<{ id: string }>();
-  const { data: simulation, isLoading } = useSimulation(id);
+  const { data: simulation, isLoading, isError, error } = useSimulation(id);
   const { data: rounds } = useTrainingRounds(id);
+
+  // 404 — simulation expired (e.g. after backend redeploy)
+  if (isError) {
+    const is404 = (error as any)?.response?.status === 404;
+    return (
+      <div className="flex items-center justify-center h-96">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center glass-card p-8 max-w-md"
+        >
+          <div className="text-4xl mb-4">{is404 ? '🔄' : '⚠️'}</div>
+          <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">
+            {is404 ? 'Simulation Expired' : 'Error Loading Simulation'}
+          </h2>
+          <p className="text-sm text-[var(--color-text-muted)] mb-4">
+            {is404
+              ? 'This simulation is no longer available. The server was restarted and in-memory data was cleared. Please start a new simulation.'
+              : 'An unexpected error occurred while loading the simulation.'}
+          </p>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all duration-300"
+            style={{
+              background: 'linear-gradient(135deg, var(--color-accent-indigo), var(--color-accent-teal))',
+            }}
+          >
+            ← Start New Simulation
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (isLoading || !simulation) {
     return (
@@ -71,21 +105,13 @@ export default function SimulationView() {
         </div>
       )}
 
-      {/* Running indicator */}
-      {isRunning && (
-        <div className="glass-card p-4 animate-pulse-glow">
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-[var(--color-accent-indigo)] border-t-transparent rounded-full animate-spin" />
-            <div>
-              <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                Training in progress...
-              </p>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                Round {simulation.current_round}/{simulation.total_rounds} — {simulation.progress_pct.toFixed(0)}%
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* FL Training Animation — shown during active training */}
+      {(isRunning || isComplete) && (
+        <FederatedTrainingAnimation
+          status={simulation.status}
+          currentRound={simulation.current_round}
+          totalRounds={simulation.total_rounds}
+        />
       )}
 
       {/* Summary stats */}

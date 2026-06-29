@@ -44,7 +44,14 @@ export function useSimulation(id: string | undefined) {
       return data;
     },
     enabled: !!id,
+    retry: (failureCount, error) => {
+      // Don't retry on 404 (simulation expired after redeploy)
+      if ((error as any)?.response?.status === 404) return false;
+      return failureCount < 3;
+    },
     refetchInterval: (query) => {
+      // Stop polling if we got a 404 error
+      if (query.state.error) return false;
       const status = query.state.data?.status;
       if (status === 'completed' || status === 'failed') return false;
       return 2000;
@@ -81,7 +88,14 @@ export function useTrainingRounds(simulationId: string | undefined) {
       return data;
     },
     enabled: !!simulationId,
-    refetchInterval: 3000,
+    retry: (failureCount, error) => {
+      if ((error as any)?.response?.status === 404) return false;
+      return failureCount < 3;
+    },
+    refetchInterval: (query) => {
+      if (query.state.error) return false;
+      return 3000;
+    },
   });
 }
 
