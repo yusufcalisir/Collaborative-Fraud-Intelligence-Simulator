@@ -105,12 +105,13 @@ class SimulationService:
                 },
             )
 
-            # Scale down datasets to prevent CPU exhaustion & speed up PyTorch CPU training
-            # 50,000 -> 1,000 transactions, etc.
+            # Scale down datasets aggressively for fast CPU training on
+            # constrained environments (Render free tier: 0.1 CPU, 512 MB RAM).
+            # 50,000 → 250, 30,000 → 150, 20,000 → 100 transactions
             datasets = self.data_generator.generate_bank_datasets(
-                bank_a_size=max(500, config.bank_a_transactions // 50),
-                bank_b_size=max(500, config.bank_b_transactions // 50),
-                bank_c_size=max(500, config.bank_c_transactions // 50),
+                bank_a_size=max(100, config.bank_a_transactions // 200),
+                bank_b_size=max(100, config.bank_b_transactions // 200),
+                bank_c_size=max(100, config.bank_c_transactions // 200),
             )
             profiles = self.data_generator.create_bank_profiles(datasets)
             banks = self.data_generator.create_bank_entities(datasets, profiles)
@@ -156,7 +157,7 @@ class SimulationService:
                     model,
                     data["X_train"],
                     data["y_train"],
-                    epochs=config.local_epochs,
+                    epochs=1,  # Fixed to 1 for fast completion on constrained hosts
                     learning_rate=config.learning_rate,
                     batch_size=config.batch_size,
                 )
@@ -295,7 +296,7 @@ class SimulationService:
                         local_model,
                         data["X_train"],
                         data["y_train"],
-                        epochs=config.local_epochs,
+                        epochs=1,  # Fixed to 1 for fast completion on constrained hosts
                         learning_rate=config.learning_rate,
                         batch_size=config.batch_size,
                     )

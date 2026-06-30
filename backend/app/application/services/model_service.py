@@ -8,7 +8,6 @@ is the federated learning architecture, not model complexity.
 from __future__ import annotations
 
 import logging
-from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -96,12 +95,8 @@ class ModelService:
         n_pos = y_train.sum()
         n_neg = len(y_train) - n_pos
         pos_weight = torch.tensor([n_neg / max(n_pos, 1)], device=self.device)
-        criterion: Any = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-
-        # Swap to raw logits for BCEWithLogitsLoss
-        # Remove sigmoid from forward for training, add back for inference
-        deepcopy(model)
-        # Use the model without the final sigmoid for training with BCEWithLogitsLoss
+        # Use standard BCE since model has sigmoid
+        criterion: Any = nn.BCELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
         dataset = TensorDataset(
@@ -110,8 +105,6 @@ class ModelService:
         )
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
 
-        # Use standard BCE since model has sigmoid
-        criterion = nn.BCELoss()
         import time
 
         loss_history: list[float] = []
@@ -131,14 +124,14 @@ class ModelService:
                 n_batches += 1
 
                 # Yield control to event loop/other threads to prevent GIL starvation
-                time.sleep(0.02)
+                time.sleep(0.005)
 
             avg_loss = epoch_loss / max(n_batches, 1)
             loss_history.append(avg_loss)
             logger.debug("Epoch %d/%d — loss: %.4f", epoch + 1, epochs, avg_loss)
 
             # Additional yield between epochs
-            time.sleep(0.1)
+            time.sleep(0.02)
 
         import gc
 

@@ -38,7 +38,6 @@ export default function FederatedTrainingAnimation({
   totalRounds,
 }: FederatedTrainingAnimationProps) {
   const phase = PHASE_INFO[status] ?? PHASE_INFO.pending!;
-  const progressPct = totalRounds > 0 ? (currentRound / totalRounds) * 100 : 0;
 
   const isFederated = status === 'training_federated';
   const isLocal = status === 'training_local';
@@ -46,7 +45,7 @@ export default function FederatedTrainingAnimation({
   const isEvaluating = status === 'evaluating';
   const isCompleted = status === 'completed';
   const isFailed = status === 'failed';
-  const isActive = !isCompleted && !isFailed && status !== 'pending';
+  const isActive = !isCompleted && !isFailed;
 
   return (
     <motion.div
@@ -113,19 +112,43 @@ export default function FederatedTrainingAnimation({
       {isActive && (
         <div className="mb-6">
           <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mb-1.5">
-            <span>Round {currentRound} / {totalRounds}</span>
-            <span className="font-mono">{progressPct.toFixed(0)}%</span>
+            <span>
+              {status === 'pending' && 'Initializing...'}
+              {status === 'generating_data' && 'Generating data...'}
+              {status === 'training_local' && 'Training local models...'}
+              {status === 'training_federated' && `Round ${currentRound} / ${totalRounds}`}
+              {status === 'evaluating' && 'Evaluating models...'}
+            </span>
+            <span className="font-mono">
+              {status === 'pending' && '0%'}
+              {status === 'generating_data' && '5%'}
+              {status === 'training_local' && '15%'}
+              {status === 'training_federated' && `${(15 + (currentRound / Math.max(totalRounds, 1)) * 75).toFixed(0)}%`}
+              {status === 'evaluating' && '95%'}
+            </span>
           </div>
           <div className="w-full h-2 bg-[var(--color-bg-elevated)] rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{
-                background: 'linear-gradient(90deg, var(--color-accent-indigo), var(--color-accent-teal))',
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPct}%` }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
-            />
+            {(status === 'pending' || status === 'generating_data' || status === 'training_local') ? (
+              /* Indeterminate shimmer bar for phases without round-level progress */
+              <div
+                className="h-full rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, var(--color-accent-indigo), var(--color-accent-teal))',
+                  width: status === 'pending' ? '5%' : status === 'generating_data' ? '12%' : '22%',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}
+              />
+            ) : (
+              <motion.div
+                className="h-full rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, var(--color-accent-indigo), var(--color-accent-teal))',
+                }}
+                initial={{ width: '15%' }}
+                animate={{ width: status === 'evaluating' ? '95%' : `${15 + (currentRound / Math.max(totalRounds, 1)) * 75}%` }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              />
+            )}
           </div>
         </div>
       )}
@@ -147,7 +170,26 @@ export default function FederatedTrainingAnimation({
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            {/* Pulse animation for pending state */}
+            <radialGradient id="pending-pulse" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="var(--color-accent-indigo)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="var(--color-accent-indigo)" stopOpacity="0" />
+            </radialGradient>
           </defs>
+
+          {/* Pending state: pulsing rings around server */}
+          {status === 'pending' && (
+            <g>
+              <circle cx={SERVER_POS.x} cy={SERVER_POS.y} r="30" fill="none" stroke="var(--color-accent-indigo)" strokeWidth="1.5" opacity="0.4">
+                <animate attributeName="r" values="30;55;30" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite" />
+              </circle>
+              <circle cx={SERVER_POS.x} cy={SERVER_POS.y} r="30" fill="none" stroke="var(--color-accent-teal)" strokeWidth="1" opacity="0.3">
+                <animate attributeName="r" values="30;50;30" dur="2s" repeatCount="indefinite" begin="0.5s" />
+                <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" begin="0.5s" />
+              </circle>
+            </g>
+          )}
 
           {/* Connection lines between banks and server */}
           {BANK_POSITIONS.map((pos, i) => {
