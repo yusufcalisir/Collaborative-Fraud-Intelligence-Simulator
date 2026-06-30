@@ -106,11 +106,11 @@ class SimulationService:
             )
 
             # Scale down datasets to prevent CPU exhaustion & speed up PyTorch CPU training
-            # 50,000 -> 2,500 transactions, etc.
+            # 50,000 -> 1,000 transactions, etc.
             datasets = self.data_generator.generate_bank_datasets(
-                bank_a_size=max(1000, config.bank_a_transactions // 20),
-                bank_b_size=max(1000, config.bank_b_transactions // 20),
-                bank_c_size=max(1000, config.bank_c_transactions // 20),
+                bank_a_size=max(500, config.bank_a_transactions // 50),
+                bank_b_size=max(500, config.bank_b_transactions // 50),
+                bank_c_size=max(500, config.bank_c_transactions // 50),
             )
             profiles = self.data_generator.create_bank_profiles(datasets)
             banks = self.data_generator.create_bank_entities(datasets, profiles)
@@ -149,7 +149,6 @@ class SimulationService:
                 },
             )
 
-            local_models = {}
             for bank in banks:
                 data = bank_data[bank.id]
                 model = self.model_service.create_model()
@@ -165,7 +164,6 @@ class SimulationService:
                 eval_dict = self.model_service.evaluate(model, data["X_test"], data["y_test"])
                 feat_imp = self.model_service.get_feature_importance(model)
                 bank.local_metrics = self.metrics_service.from_eval_dict(eval_dict, feat_imp)
-                local_models[bank.id] = model
 
                 logger.info(
                     "Local model for %s — F1: %.4f, AUC: %.4f",
@@ -184,6 +182,12 @@ class SimulationService:
                         "metrics": self.metrics_service.metrics_to_dict(bank.local_metrics),
                     },
                 )
+
+                # Free memory immediately
+                del model
+                import gc
+
+                gc.collect()
 
             # Phase 3: Federated training
             simulation.status = SimulationStatus.TRAINING_FEDERATED
@@ -317,6 +321,12 @@ class SimulationService:
                     client_weights.append(local_w)
                     client_samples.append(len(data["X_train"]))
                     per_bank_loss[bank.id] = loss_hist[-1] if loss_hist else 0.0
+
+                    # Free memory immediately
+                    del local_model
+                    import gc
+
+                    gc.collect()
 
                 # Apply secure aggregation masks
                 if enable_sa and len(client_weights) > 1:

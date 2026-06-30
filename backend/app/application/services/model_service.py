@@ -131,14 +131,18 @@ class ModelService:
                 n_batches += 1
 
                 # Yield control to event loop/other threads to prevent GIL starvation
-                time.sleep(0.005)
+                time.sleep(0.02)
 
             avg_loss = epoch_loss / max(n_batches, 1)
             loss_history.append(avg_loss)
             logger.debug("Epoch %d/%d — loss: %.4f", epoch + 1, epochs, avg_loss)
 
             # Additional yield between epochs
-            time.sleep(0.02)
+            time.sleep(0.1)
+
+        import gc
+
+        gc.collect()
 
         return model, loss_history
 
@@ -166,12 +170,17 @@ class ModelService:
         model.eval()
         with torch.no_grad():
             X_tensor = torch.FloatTensor(X_test).to(self.device)
-            torch.FloatTensor(y_test).to(self.device)
+            y_tensor = torch.FloatTensor(y_test).to(self.device)
             probs = model(X_tensor).cpu().numpy()
-            loss = nn.BCELoss()(
-                torch.FloatTensor(probs),
-                torch.FloatTensor(y_test),
-            ).item()
+            loss_tensor = nn.BCELoss()(
+                torch.FloatTensor(probs).to(self.device),
+                y_tensor,
+            )
+            loss = loss_tensor.item()
+            del X_tensor, y_tensor, loss_tensor
+            import gc
+
+            gc.collect()
 
         preds = (probs >= 0.5).astype(int)
 
