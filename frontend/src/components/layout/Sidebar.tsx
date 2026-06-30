@@ -51,9 +51,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Logo & Close Button */}
         <div className="p-5 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--color-accent-indigo)] to-[var(--color-accent-teal)] flex items-center justify-center text-white font-bold text-sm">
-              FI
-            </div>
+            <img 
+              src="/favicon.svg" 
+              className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)]" 
+              alt="CFI Logo" 
+            />
             <div>
               <h1 className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">
                 Fraud Intelligence
