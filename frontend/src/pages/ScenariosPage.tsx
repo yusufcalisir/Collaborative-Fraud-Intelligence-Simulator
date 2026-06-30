@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useScenarios, useStartScenario, useScenarioStatus } from '../api/queries';
 import { BANK_NAMES } from '../api/types';
@@ -8,6 +8,7 @@ export default function ScenariosPage() {
   const startScenario = useStartScenario();
   const [activeScenarioId, setActiveScenarioId] = useState<string | undefined>();
   const [speed, setSpeed] = useState(1.0);
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const { data: status } = useScenarioStatus(activeScenarioId);
 
@@ -17,6 +18,11 @@ export default function ScenariosPage() {
       speed_multiplier: speed,
     });
     setActiveScenarioId(result.scenario_id);
+    
+    // Scroll to top of the scenarios page container to see the active scenario panel running
+    setTimeout(() => {
+      pageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   }, [startScenario, speed]);
 
   const SCENARIO_ICONS: Record<string, string> = {
@@ -34,7 +40,7 @@ export default function ScenariosPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div ref={pageRef} className="space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

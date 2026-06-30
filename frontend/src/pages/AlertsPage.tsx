@@ -261,24 +261,31 @@ function ExplainabilityPanel({ alert }: { alert: Alert }) {
               Top Features
             </h4>
             <div className="space-y-2">
-              {report.top_features.slice(0, 5).map((f, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-xs w-28 truncate text-[var(--color-text-muted)]">
-                    {f.feature.replace(/_/g, ' ')}
-                  </span>
-                  <div className="flex-1 h-1.5 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, f.contribution * 500)}%` }}
-                      transition={{ delay: i * 0.1 }}
-                      className="h-full rounded-full bg-[var(--color-primary)]"
-                    />
+              {report.top_features.slice(0, 5).map((f, i) => {
+                const anyF = f as any;
+                const rawVal = typeof anyF.contribution === 'number' ? anyF.contribution : (typeof anyF.value === 'number' ? anyF.value : 0);
+                const pct = rawVal * 100;
+                const barWidth = rawVal > 0.25 ? pct : pct * 5;
+
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs w-28 truncate text-[var(--color-text-muted)]">
+                      {f.feature.replace(/_/g, ' ')}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, barWidth)}%` }}
+                        transition={{ delay: i * 0.1 }}
+                        className="h-full rounded-full bg-[var(--color-primary)]"
+                      />
+                    </div>
+                    <span className="text-xs font-mono w-10 text-right">
+                      {pct.toFixed(0)}%
+                    </span>
                   </div>
-                  <span className="text-xs font-mono w-10 text-right">
-                    {(f.contribution * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
