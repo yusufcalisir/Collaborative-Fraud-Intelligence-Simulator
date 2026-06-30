@@ -224,7 +224,9 @@ class DataGenerator:
         # Fraudulent transactions — velocity spikes at night
         fraud = self._generate_base_transactions(n_fraud, rng, profile="retail_domestic")
         fraud["velocity"] = pd.Series(rng.uniform(8, 25, n_fraud), index=fraud.index)
-        fraud["hour_of_day"] = pd.Series(rng.choice([0, 1, 2, 3, 4, 22, 23], n_fraud), index=fraud.index)
+        fraud["hour_of_day"] = pd.Series(
+            rng.choice([0, 1, 2, 3, 4, 22, 23], n_fraud), index=fraud.index
+        )
         fraud["merchant_category"] = pd.Series(
             rng.choice(
                 ["electronics", "jewelry", "gambling", "crypto"],
@@ -262,7 +264,9 @@ class DataGenerator:
 
         fraud = self._generate_base_transactions(n_fraud, rng, profile="digital_international")
         fraud["account_age_days"] = pd.Series(rng.integers(0, 30, n_fraud), index=fraud.index)
-        fraud["country_code"] = pd.Series(rng.choice(list(HIGH_RISK_COUNTRIES), n_fraud), index=fraud.index)
+        fraud["country_code"] = pd.Series(
+            rng.choice(list(HIGH_RISK_COUNTRIES), n_fraud), index=fraud.index
+        )
         fraud["merchant_category"] = pd.Series(
             rng.choice(
                 ["crypto", "wire_transfer", "gambling", "online_marketplace"],
@@ -271,7 +275,9 @@ class DataGenerator:
             index=fraud.index,
         )
         fraud["transaction_amount"] = pd.Series(rng.lognormal(7.0, 1.5, n_fraud), index=fraud.index)
-        fraud["device_type"] = pd.Series(rng.choice(["mobile_app", "web_browser"], n_fraud), index=fraud.index)
+        fraud["device_type"] = pd.Series(
+            rng.choice(["mobile_app", "web_browser"], n_fraud), index=fraud.index
+        )
         fraud["chargeback_count"] = pd.Series(rng.integers(1, 8, n_fraud), index=fraud.index)
 
         features = pd.concat([legit, fraud], ignore_index=True)
@@ -307,7 +313,9 @@ class DataGenerator:
             index=fraud.index,
         )
         fraud["velocity"] = pd.Series(rng.uniform(5, 20, n_fraud), index=fraud.index)
-        fraud["customer_history_score"] = pd.Series(rng.uniform(0.0, 0.3, n_fraud), index=fraud.index)
+        fraud["customer_history_score"] = pd.Series(
+            rng.uniform(0.0, 0.3, n_fraud), index=fraud.index
+        )
         fraud["merchant_risk_score"] = pd.Series(rng.uniform(0.4, 0.9, n_fraud), index=fraud.index)
 
         features = pd.concat([legit, fraud], ignore_index=True)
