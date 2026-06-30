@@ -54,21 +54,21 @@ logger = logging.getLogger(__name__)
 # ── Lifecycle ─────────────────────────────────
 def seed_mock_data() -> None:
     """Seed initial mock data for Phase 2 AML platform."""
-    from app.presentation.routers.alerts import get_alert_service
-    from app.presentation.routers.cases import get_case_service
-    from app.presentation.routers.entities import get_entity_service
-    from app.presentation.routers.graph import get_graph_engine
+    from app.domain.entities_phase2 import Alert, SharedIntelligence
     from app.domain.enums import (
-        EntityType,
-        RelationshipType,
-        RiskLevel,
         AlertSeverity,
         AlertStatus,
         CasePriority,
         CaseStatus,
+        EntityType,
         IntelligenceType,
+        RelationshipType,
+        RiskLevel,
     )
-    from app.domain.entities_phase2 import Alert, SharedIntelligence
+    from app.presentation.routers.alerts import get_alert_service
+    from app.presentation.routers.cases import get_case_service
+    from app.presentation.routers.entities import get_entity_service
+    from app.presentation.routers.graph import get_graph_engine
 
     alert_svc = get_alert_service()
     case_svc = get_case_service()
@@ -87,15 +87,38 @@ def seed_mock_data() -> None:
     graph_engine._adjacency.clear()
 
     # 1. Create seed entities
-    c1 = entity_svc.create_entity(EntityType.CUSTOMER, "user_john_doe", "bank_a", {"risk_score": 0.12, "bank_name": "Meridian National"})
-    c2 = entity_svc.create_entity(EntityType.CUSTOMER, "user_jane_smith", "bank_b", {"risk_score": 0.85, "bank_name": "Nexus Digital"})
-    c3 = entity_svc.create_entity(EntityType.CUSTOMER, "user_bob_jones", "bank_c", {"risk_score": 0.45, "bank_name": "Heritage Regional"})
+    c1 = entity_svc.create_entity(
+        EntityType.CUSTOMER,
+        "user_john_doe",
+        "bank_a",
+        {"risk_score": 0.12, "bank_name": "Meridian National"},
+    )
+    c2 = entity_svc.create_entity(
+        EntityType.CUSTOMER,
+        "user_jane_smith",
+        "bank_b",
+        {"risk_score": 0.85, "bank_name": "Nexus Digital"},
+    )
+    c3 = entity_svc.create_entity(
+        EntityType.CUSTOMER,
+        "user_bob_jones",
+        "bank_c",
+        {"risk_score": 0.45, "bank_name": "Heritage Regional"},
+    )
 
-    dev1 = entity_svc.create_entity(EntityType.DEVICE, "device_secure_token_99", "bank_a", {"device_type": "mobile_app"})
-    dev2 = entity_svc.create_entity(EntityType.DEVICE, "device_secure_token_99", "bank_b", {"device_type": "mobile_app"})
+    dev1 = entity_svc.create_entity(
+        EntityType.DEVICE, "device_secure_token_99", "bank_a", {"device_type": "mobile_app"}
+    )
+    dev2 = entity_svc.create_entity(
+        EntityType.DEVICE, "device_secure_token_99", "bank_b", {"device_type": "mobile_app"}
+    )
 
-    m1 = entity_svc.create_entity(EntityType.MERCHANT, "merchant_crypto_exchange", "bank_b", {"category": "crypto"})
-    m2 = entity_svc.create_entity(EntityType.MERCHANT, "merchant_luxury_store", "bank_c", {"category": "luxury"})
+    m1 = entity_svc.create_entity(
+        EntityType.MERCHANT, "merchant_crypto_exchange", "bank_b", {"category": "crypto"}
+    )
+    m2 = entity_svc.create_entity(
+        EntityType.MERCHANT, "merchant_luxury_store", "bank_c", {"category": "luxury"}
+    )
 
     for e in [c1, c2, c3, dev1, dev2, m1, m2]:
         graph_engine.register_entity(e)
@@ -105,7 +128,9 @@ def seed_mock_data() -> None:
     r2 = entity_svc.add_relationship(c2.id, dev2.id, RelationshipType.USES, confidence=1.0)
     r3 = entity_svc.add_relationship(c2.id, m1.id, RelationshipType.TRANSACTS_WITH, confidence=0.95)
     r4 = entity_svc.add_relationship(c3.id, m2.id, RelationshipType.TRANSACTS_WITH, confidence=0.80)
-    r5 = entity_svc.add_relationship(dev1.id, dev2.id, RelationshipType.SHARES_DEVICE, confidence=1.0)
+    r5 = entity_svc.add_relationship(
+        dev1.id, dev2.id, RelationshipType.SHARES_DEVICE, confidence=1.0
+    )
 
     for r in [r1, r2, r3, r4, r5]:
         graph_engine.add_relationship(r)
@@ -121,8 +146,14 @@ def seed_mock_data() -> None:
         confidence=0.85,
         involved_entity_ids=[c2.id],
         model_confidence=0.85,
-        top_features=[{"feature": "velocity", "value": 0.92}, {"feature": "new_device", "value": 1.0}],
-        risk_factors=["Rapid transfer immediately after device change", "Unusual high-risk merchant destination"]
+        top_features=[
+            {"feature": "velocity", "value": 0.92},
+            {"feature": "new_device", "value": 1.0},
+        ],
+        risk_factors=[
+            "Rapid transfer immediately after device change",
+            "Unusual high-risk merchant destination",
+        ],
     )
     alert_svc._alert_store[a1.id] = a1
     entity_svc.increment_alert_count(c2.id)
@@ -139,7 +170,7 @@ def seed_mock_data() -> None:
         involved_entity_ids=[c3.id],
         model_confidence=0.45,
         top_features=[{"feature": "amount", "value": 0.78}],
-        risk_factors=["Transaction amount significantly exceeds customer historical average"]
+        risk_factors=["Transaction amount significantly exceeds customer historical average"],
     )
     alert_svc._alert_store[a2.id] = a2
     entity_svc.increment_alert_count(c3.id)
@@ -149,7 +180,7 @@ def seed_mock_data() -> None:
     case = case_svc.create_case(
         title="High-Risk Activity: Device Sharing & Crypto Outflow",
         priority=CasePriority.P2_HIGH,
-        alert_ids=[a1.id]
+        alert_ids=[a1.id],
     )
     case.assigned_to = "senior_analyst_1"
     case.status = CaseStatus.INVESTIGATING
@@ -162,7 +193,7 @@ def seed_mock_data() -> None:
         risk_indicator=0.85,
         description="High-risk device hash associated with rapid account takeovers",
         entity_type=EntityType.DEVICE,
-        related_alert_count=1
+        related_alert_count=1,
     )
     alert_svc._intelligence_store.append(intel)
     logger.info("Successfully seeded mock data for Phase 2")

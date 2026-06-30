@@ -91,10 +91,6 @@ class ModelService:
 
         model.train()
 
-        # Handle class imbalance with weighted loss
-        n_pos = y_train.sum()
-        n_neg = len(y_train) - n_pos
-        pos_weight = torch.tensor([n_neg / max(n_pos, 1)], device=self.device)
         # Use standard BCE since model has sigmoid
         criterion: Any = nn.BCELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)

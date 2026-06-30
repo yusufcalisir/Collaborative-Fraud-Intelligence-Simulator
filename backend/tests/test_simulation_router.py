@@ -1,9 +1,10 @@
-import pytest
 from fastapi.testclient import TestClient
-from app.main import app
+
 from app.domain.enums import SimulationStatus
+from app.main import app
 
 client = TestClient(app)
+
 
 def test_create_and_get_simulation():
     # 1. Create a simulation
@@ -25,7 +26,7 @@ def test_create_and_get_simulation():
             "bank_a_transactions": 1000,
             "bank_b_transactions": 1000,
             "bank_c_transactions": 1000,
-        }
+        },
     )
     assert response.status_code == 202
     data = response.json()
@@ -37,4 +38,7 @@ def test_create_and_get_simulation():
     assert get_response.status_code == 200, f"Failed with {get_response.text}"
     get_data = get_response.json()
     assert get_data["id"] == simulation_id
-    assert get_data["status"] in (SimulationStatus.PENDING.value, SimulationStatus.GENERATING_DATA.value)
+    assert get_data["status"] in (
+        SimulationStatus.PENDING.value,
+        SimulationStatus.GENERATING_DATA.value,
+    )

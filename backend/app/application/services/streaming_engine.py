@@ -138,7 +138,9 @@ class StreamingEngine:
             try:
                 await self._process_streaming_event(event)
             except Exception as exc:
-                logger.error("Error processing streaming event %s: %s", event.id, exc, exc_info=True)
+                logger.error(
+                    "Error processing streaming event %s: %s", event.id, exc, exc_info=True
+                )
 
             # Update progress
             if scenario.id in self._active_scenarios:
@@ -161,22 +163,22 @@ class StreamingEngine:
 
     async def _process_streaming_event(self, event: Any) -> None:
         """Process a scenario streaming event and update the local in-memory stores."""
+        import uuid
+
+        from app.domain.entities_phase2 import Alert, CaseEvent, SharedIntelligence
+        from app.domain.enums import (
+            AlertSeverity,
+            AlertStatus,
+            CasePriority,
+            EntityType,
+            IntelligenceType,
+            RelationshipType,
+            RiskLevel,
+        )
         from app.presentation.routers.alerts import get_alert_service
         from app.presentation.routers.cases import get_case_service
         from app.presentation.routers.entities import get_entity_service
         from app.presentation.routers.graph import get_graph_engine
-        from app.domain.enums import (
-            EntityType,
-            RelationshipType,
-            RiskLevel,
-            AlertSeverity,
-            AlertStatus,
-            CasePriority,
-            CaseStatus,
-            IntelligenceType,
-        )
-        from app.domain.entities_phase2 import Alert, SharedIntelligence, CaseEvent
-        import uuid
 
         alert_svc = get_alert_service()
         case_svc = get_case_service()
@@ -197,7 +199,7 @@ class StreamingEngine:
                         "total_spent": payload.get("amount", 0),
                         "risk_score": payload.get("risk_score", 0),
                         "bank_name": payload.get("bank_name", event.bank_id),
-                    }
+                    },
                 )
                 graph_engine.register_entity(cust_entity)
 
@@ -205,19 +207,16 @@ class StreamingEngine:
                 merchant = payload.get("merchant_category")
                 if merchant:
                     merch_entity = entity_svc.create_entity(
-                        EntityType.MERCHANT,
-                        merchant,
-                        event.bank_id,
-                        {"category": merchant}
+                        EntityType.MERCHANT, merchant, event.bank_id, {"category": merchant}
                     )
                     graph_engine.register_entity(merch_entity)
-                    
+
                     # Add relationship: Customer TRANSACTS_WITH Merchant
                     rel = entity_svc.add_relationship(
                         cust_entity.id,
                         merch_entity.id,
                         RelationshipType.TRANSACTS_WITH,
-                        confidence=1.0
+                        confidence=1.0,
                     )
                     graph_engine.add_relationship(rel)
 
@@ -225,19 +224,13 @@ class StreamingEngine:
                 device = payload.get("device_type")
                 if device:
                     dev_entity = entity_svc.create_entity(
-                        EntityType.DEVICE,
-                        device,
-                        event.bank_id,
-                        {"device_type": device}
+                        EntityType.DEVICE, device, event.bank_id, {"device_type": device}
                     )
                     graph_engine.register_entity(dev_entity)
-                    
+
                     # Add relationship: Customer USES Device
                     rel = entity_svc.add_relationship(
-                        cust_entity.id,
-                        dev_entity.id,
-                        RelationshipType.USES,
-                        confidence=1.0
+                        cust_entity.id, dev_entity.id, RelationshipType.USES, confidence=1.0
                     )
                     graph_engine.add_relationship(rel)
 
@@ -245,10 +238,12 @@ class StreamingEngine:
             # Generate and store a new alert
             severity_str = payload.get("severity", "medium").upper()
             severity = getattr(AlertSeverity, severity_str, AlertSeverity.MEDIUM)
-            
+
             # Find a customer entity from the same bank to associate with
             cust_id = None
-            entities = entity_svc.get_entities(entity_type=EntityType.CUSTOMER, bank_id=event.bank_id)
+            entities = entity_svc.get_entities(
+                entity_type=EntityType.CUSTOMER, bank_id=event.bank_id
+            )
             if entities:
                 cust_entity = entities[0]
                 cust_id = cust_entity.id
@@ -272,23 +267,27 @@ class StreamingEngine:
                 involved_entity_ids=[cust_id] if cust_id else [],
                 model_confidence=payload.get("confidence", 0.5),
                 top_features=[{"feature": "velocity", "value": 0.85}],
-                risk_factors=[payload.get("description", "Suspicious pattern")]
+                risk_factors=[payload.get("description", "Suspicious pattern")],
             )
             alert_svc._alert_store[alert.id] = alert
 
             # Automatically create a Case for High/Critical alerts
             if alert.is_actionable:
-                priority = CasePriority.P1_HIGH if severity == AlertSeverity.CRITICAL else CasePriority.P2_HIGH
+                priority = (
+                    CasePriority.P1_HIGH
+                    if severity == AlertSeverity.CRITICAL
+                    else CasePriority.P2_HIGH
+                )
                 case_svc.create_case(
                     title=f"Potential Fraud Ring: {payload.get('description', 'Suspicious activity')}",
                     priority=priority,
-                    alert_ids=[alert.id]
+                    alert_ids=[alert.id],
                 )
 
         elif event.event_type == "intelligence":
             # Share intelligence across banks
             privacy_hash = payload.get("shared_device_hash", str(uuid.uuid4())[:8])
-            
+
             intel = SharedIntelligence(
                 source_bank_id=event.bank_id,
                 intelligence_type=IntelligenceType.FRAUD_ALERT,
@@ -307,9 +306,9 @@ class StreamingEngine:
                 for i in range(len(customers) - 1):
                     rel = entity_svc.add_relationship(
                         customers[i].id,
-                        customers[i+1].id,
+                        customers[i + 1].id,
                         RelationshipType.SHARES_DEVICE,
-                        confidence=payload.get("combined_confidence", 0.9)
+                        confidence=payload.get("combined_confidence", 0.9),
                     )
                     graph_engine.add_relationship(rel)
 
@@ -322,6 +321,6 @@ class StreamingEngine:
                         CaseEvent(
                             event_type="status_changed",
                             description=f"Escalated to High: {payload.get('reason', 'Cross-institution intelligence')}",
-                            actor="system"
+                            actor="system",
                         )
                     )

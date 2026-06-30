@@ -293,10 +293,7 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
                         sim["status"],
                         data.get("message", ""),
                     )
-                elif event_type == "round_start":
-                    sim["current_round"] = data.get("round", sim.get("current_round", 0))
-                    sim["status"] = SimulationStatus.TRAINING_FEDERATED.value
-                elif event_type == "round_complete":
+                elif event_type in ("round_start", "round_complete"):
                     sim["current_round"] = data.get("round", sim.get("current_round", 0))
                     sim["status"] = SimulationStatus.TRAINING_FEDERATED.value
                 elif event_type == "completed":
