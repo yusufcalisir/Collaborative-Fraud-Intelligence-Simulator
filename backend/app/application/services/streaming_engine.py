@@ -256,18 +256,82 @@ class StreamingEngine:
                 else:
                     entity_svc.update_risk_level(cust_entity.id, RiskLevel.MEDIUM)
 
+            # Calculate dynamic top features based on reason codes and confidence
+            reason_codes = payload.get("reason_codes", ["SUSP-PATTERN"])
+            confidence = payload.get("confidence", 0.5)
+
+            top_features = []
+            risk_factors = []
+
+            # Map of reason codes to features, base values, and descriptions
+            code_feature_map = {
+                "VEL-001": ("velocity", 0.85, "Rapid transaction frequency (velocity anomaly)"),
+                "DEV-ANOM": ("device_type", 0.80, "New device registration (device type mismatch)"),
+                "AMT-ANOM": ("transaction_amount", 0.90, "Transaction amount significantly exceeds normal average"),
+                "HIGH-AMT": ("transaction_amount", 0.92, "High transaction amount threshold exceeded"),
+                "GEO-RISK": ("country_code", 0.75, "Out-of-pattern geographic destination"),
+                "MERCH-RISK": ("merchant_risk_score", 0.78, "High-risk merchant category"),
+                "NEW-ACCT": ("account_age_days", 0.70, "Transaction initiated from a recently opened account"),
+                "CB-HIST": ("chargeback_count", 0.82, "Associated entity has prior history of dispute or chargebacks"),
+            }
+
+            for code in reason_codes:
+                if code in code_feature_map:
+                    feat, val, desc = code_feature_map[code]
+                    top_features.append({"feature": feat, "value": val * confidence})
+                    risk_factors.append(desc)
+
+            # If no features matched, add some standard ones based on description
+            if not top_features:
+                desc_lower = payload.get("description", "").lower()
+                if "velocity" in desc_lower or "rapid" in desc_lower:
+                    top_features.append({"feature": "velocity", "value": 0.88 * confidence})
+                    risk_factors.append("Rapid sequence of transactions detected")
+                elif "device" in desc_lower or "phone" in desc_lower:
+                    top_features.append({"feature": "device_type", "value": 0.85 * confidence})
+                    risk_factors.append("Device profile change mismatch")
+                elif "wire" in desc_lower or "amount" in desc_lower:
+                    top_features.append({"feature": "transaction_amount", "value": 0.90 * confidence})
+                    risk_factors.append("High amount transaction anomaly")
+                else:
+                    top_features.append({"feature": "transaction_amount", "value": 0.75 * confidence})
+                    risk_factors.append("Statistical deviation from historical behavior")
+
+            # Always ensure we have at least 3 distinct features for realism
+            all_features = [
+                ("transaction_amount", 0.45),
+                ("velocity", 0.40),
+                ("merchant_risk_score", 0.35),
+                ("customer_history_score", 0.30),
+                ("hour_of_day", 0.25)
+            ]
+            for feat, base_val in all_features:
+                if len(top_features) >= 4:
+                    break
+                if not any(tf["feature"] == feat for tf in top_features):
+                    top_features.append({"feature": feat, "value": base_val * confidence})
+
+            # Sort top features by value descending
+            top_features = sorted(top_features, key=lambda tf: tf["value"], reverse=True)
+
+            # Combine risk factors with description
+            combined_risk_factors = []
+            if payload.get("description"):
+                combined_risk_factors.append(payload["description"])
+            combined_risk_factors.extend(risk_factors)
+
             alert = Alert(
                 bank_id=event.bank_id,
                 transaction_id=str(uuid.uuid4())[:8],
                 risk_score=payload.get("confidence", 0.5) * 1000,
                 severity=severity,
                 status=AlertStatus.NEW,
-                reason_codes=payload.get("reason_codes", ["SUSP-PATTERN"]),
+                reason_codes=reason_codes,
                 confidence=payload.get("confidence", 0.5),
                 involved_entity_ids=[cust_id] if cust_id else [],
                 model_confidence=payload.get("confidence", 0.5),
-                top_features=[{"feature": "velocity", "value": 0.85}],
-                risk_factors=[payload.get("description", "Suspicious pattern")],
+                top_features=top_features,
+                risk_factors=combined_risk_factors,
             )
             alert_svc._alert_store[alert.id] = alert
 

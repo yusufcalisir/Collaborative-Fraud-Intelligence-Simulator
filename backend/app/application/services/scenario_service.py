@@ -148,7 +148,7 @@ class ScenarioSimulator:
                     self._make_transaction_event(
                         bank_id=bank_id,
                         customer_id=member,
-                        amount=float(self._rng.uniform(50, 300)),
+                        amount=self._rng.uniform(50, 300),
                         merchant="grocery",
                         country="US",
                         device=shared_device,
@@ -165,11 +165,11 @@ class ScenarioSimulator:
                     self._make_transaction_event(
                         bank_id=bank_id,
                         customer_id=member,
-                        amount=float(self._rng.uniform(2000, 8000)),
+                        amount=self._rng.uniform(2000, 8000),
                         merchant=str(self._rng.choice(["crypto", "wire_transfer", "jewelry"])),
                         country=str(self._rng.choice(["NG", "RU", "PH"])),
                         device=shared_device,
-                        risk_score=float(self._rng.uniform(0.55, 0.75)),
+                        risk_score=self._rng.uniform(0.55, 0.75),
                         delay_ms=delay,
                     )
                 )
@@ -254,7 +254,7 @@ class ScenarioSimulator:
                 self._make_transaction_event(
                     bank_id="bank_a",
                     customer_id=victim_id,
-                    amount=float(self._rng.uniform(20, 150)),
+                    amount=self._rng.uniform(20, 150),
                     merchant="grocery",
                     country="US",
                     device="mobile_app",
@@ -299,11 +299,11 @@ class ScenarioSimulator:
                 self._make_transaction_event(
                     bank_id="bank_a",
                     customer_id=victim_id,
-                    amount=float(self._rng.uniform(3000, 9000)),
+                    amount=self._rng.uniform(3000, 9000),
                     merchant=str(self._rng.choice(["wire_transfer", "crypto"])),
                     country="RU",
                     device="web_browser",
-                    risk_score=float(0.5 + i * 0.1),
+                    risk_score=0.5 + i * 0.1,
                     delay_ms=delay,
                 )
             )
@@ -316,11 +316,11 @@ class ScenarioSimulator:
                 self._make_transaction_event(
                     bank_id="bank_b",
                     customer_id=victim_id,
-                    amount=float(self._rng.uniform(2000, 7000)),
+                    amount=self._rng.uniform(2000, 7000),
                     merchant="wire_transfer",
                     country="RU",
                     device="web_browser",
-                    risk_score=float(self._rng.uniform(0.45, 0.65)),
+                    risk_score=self._rng.uniform(0.45, 0.65),
                     delay_ms=delay,
                 )
             )
@@ -335,6 +335,7 @@ class ScenarioSimulator:
                 payload={
                     "severity": "high",
                     "confidence": 0.72,
+                    "reason_codes": ["VEL-001", "DEV-ANOM", "AMT-ANOM"],
                     "description": "Rapid withdrawals after device change",
                 },
             )
@@ -348,6 +349,7 @@ class ScenarioSimulator:
                 payload={
                     "severity": "medium",
                     "confidence": 0.55,
+                    "reason_codes": ["DEV-ANOM", "AMT-ANOM"],
                     "description": "Unusual wire transfers from new device",
                 },
             )
@@ -403,11 +405,11 @@ class ScenarioSimulator:
                 self._make_transaction_event(
                     bank_id=target_bank,
                     customer_id=f"ml_recipient_{i}",
-                    amount=float(self._rng.uniform(5000, 12000)),
+                    amount=self._rng.uniform(5000, 12000),
                     merchant=str(self._rng.choice(["wire_transfer", "online_marketplace"])),
                     country=str(self._rng.choice(["US", "UK", "DE", "NL"])),
                     device="web_browser",
-                    risk_score=float(self._rng.uniform(0.15, 0.35)),
+                    risk_score=self._rng.uniform(0.15, 0.35),
                     delay_ms=delay,
                 )
             )
@@ -419,11 +421,11 @@ class ScenarioSimulator:
                 self._make_transaction_event(
                     bank_id="bank_c",
                     customer_id=f"ml_consolidator_{i}",
-                    amount=float(self._rng.uniform(14000, 18000)),
+                    amount=self._rng.uniform(14000, 18000),
                     merchant="wire_transfer",
                     country="SG",
                     device="web_browser",
-                    risk_score=float(self._rng.uniform(0.25, 0.45)),
+                    risk_score=self._rng.uniform(0.25, 0.45),
                     delay_ms=delay,
                 )
             )
@@ -439,6 +441,7 @@ class ScenarioSimulator:
                     payload={
                         "severity": "low",
                         "confidence": 0.35,
+                        "reason_codes": ["AMT-ANOM", "GEO-RISK"],
                         "description": f"{BANK_NAMES[bank_id]}: Wire transfers within normal range",
                         "individual_assessment": "Low confidence — amounts below reporting threshold individually",
                     },
@@ -484,11 +487,11 @@ class ScenarioSimulator:
                     self._make_transaction_event(
                         bank_id=bank_id,
                         customer_id=card,
-                        amount=float(self._rng.uniform(0.50, 4.99)),
+                        amount=self._rng.uniform(0.50, 4.99),
                         merchant=str(self._rng.choice(["grocery", "fuel", "subscription"])),
                         country="US",
                         device="web_browser",
-                        risk_score=float(self._rng.uniform(0.05, 0.15)),
+                        risk_score=self._rng.uniform(0.05, 0.15),
                         delay_ms=delay,
                     )
                 )
@@ -500,11 +503,11 @@ class ScenarioSimulator:
                 self._make_transaction_event(
                     bank_id=str(self._rng.choice(["bank_a", "bank_c"])),
                     customer_id=card,
-                    amount=float(self._rng.uniform(2000, 6000)),
+                    amount=self._rng.uniform(2000, 6000),
                     merchant=str(self._rng.choice(["electronics", "jewelry"])),
                     country="US",
                     device="web_browser",
-                    risk_score=float(self._rng.uniform(0.50, 0.70)),
+                    risk_score=self._rng.uniform(0.50, 0.70),
                     delay_ms=delay,
                 )
             )
@@ -519,6 +522,7 @@ class ScenarioSimulator:
                 payload={
                     "severity": "medium",
                     "confidence": 0.55,
+                    "reason_codes": ["AMT-ANOM", "MERCH-RISK"],
                     "description": "Unusual purchase pattern",
                 },
             )
@@ -532,6 +536,7 @@ class ScenarioSimulator:
                 payload={
                     "severity": "low",
                     "confidence": 0.40,
+                    "reason_codes": ["VEL-001", "AMT-ANOM"],
                     "description": "Multiple small charges from web",
                 },
             )
