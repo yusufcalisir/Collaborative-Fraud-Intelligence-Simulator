@@ -11,7 +11,7 @@ interface TrainingTimelineProps {
 
 export default function TrainingTimeline({ rounds, currentRound, totalRounds }: TrainingTimelineProps) {
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-5 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Training Timeline

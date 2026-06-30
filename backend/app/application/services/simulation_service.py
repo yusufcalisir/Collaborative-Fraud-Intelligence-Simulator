@@ -109,9 +109,9 @@ class SimulationService:
             # constrained environments (Render free tier: 0.1 CPU, 512 MB RAM).
             # 50,000 → 250, 30,000 → 150, 20,000 → 100 transactions
             datasets = self.data_generator.generate_bank_datasets(
-                bank_a_size=max(100, config.bank_a_transactions // 200),
-                bank_b_size=max(100, config.bank_b_transactions // 200),
-                bank_c_size=max(100, config.bank_c_transactions // 200),
+                bank_a_size=max(200, config.bank_a_transactions // 200),
+                bank_b_size=max(200, config.bank_b_transactions // 200),
+                bank_c_size=max(200, config.bank_c_transactions // 200),
             )
             profiles = self.data_generator.create_bank_profiles(datasets)
             banks = self.data_generator.create_bank_entities(datasets, profiles)
@@ -123,13 +123,23 @@ class SimulationService:
                 X = DataGenerator.encode_features(df)
                 y = labels.values
 
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X,
-                    y,
-                    test_size=0.2,
-                    random_state=42,
-                    stratify=cast("Any", y),
-                )
+                # Stratified split preferred, but fall back to random split
+                # when a class has < 2 members (tiny datasets).
+                try:
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        X,
+                        y,
+                        test_size=0.2,
+                        random_state=42,
+                        stratify=cast("Any", y),
+                    )
+                except ValueError:
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        X,
+                        y,
+                        test_size=0.2,
+                        random_state=42,
+                    )
 
                 bank_data[bank_id] = {
                     "X_train": X_train,

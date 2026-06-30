@@ -30,7 +30,7 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="glass-card p-6"
+      className="glass-card p-6 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -199,7 +199,7 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
       <button
         onClick={handleStart}
         disabled={createMutation.isPending}
-        className="mt-4 w-full py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-auto w-full py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         style={{
           background: 'linear-gradient(135deg, var(--color-accent-indigo), var(--color-accent-teal))',
         }}

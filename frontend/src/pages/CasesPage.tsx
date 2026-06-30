@@ -52,7 +52,7 @@ export default function CasesPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="glass-card px-3 py-2 text-sm rounded-lg bg-transparent border border-[var(--color-border)] text-[var(--color-text)]"
+          className="glass-card px-3 py-2 text-sm rounded-lg bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text)]"
         >
           <option value="">All Statuses</option>
           {Object.entries(CASE_STATUS_LABELS).map(([val, label]) => (

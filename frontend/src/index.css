@@ -147,3 +147,12 @@ body {
   background: rgba(148, 163, 184, 0.15);
   color: var(--color-text-secondary);
 }
+
+/* ── Native Dropdown Styling for Dark Mode ── */
+select {
+  color-scheme: dark;
+}
+select option {
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+}

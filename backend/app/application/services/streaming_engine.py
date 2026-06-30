@@ -134,6 +134,12 @@ class StreamingEngine:
                 await redis_client.rpush(events_key, json.dumps(event_data))
                 await redis_client.expire(events_key, 3600)
 
+            # Process the event locally to populate in-memory stores
+            try:
+                await self._process_streaming_event(event)
+            except Exception as exc:
+                logger.error("Error processing streaming event %s: %s", event.id, exc, exc_info=True)
+
             # Update progress
             if scenario.id in self._active_scenarios:
                 self._active_scenarios[scenario.id]["delivered_events"] = i + 1
@@ -152,3 +158,170 @@ class StreamingEngine:
             self._active_scenarios[scenario.id]["completed_at"] = datetime.now(UTC).isoformat()
 
         logger.info("Scenario %s completed", scenario.id[:8])
+
+    async def _process_streaming_event(self, event: Any) -> None:
+        """Process a scenario streaming event and update the local in-memory stores."""
+        from app.presentation.routers.alerts import get_alert_service
+        from app.presentation.routers.cases import get_case_service
+        from app.presentation.routers.entities import get_entity_service
+        from app.presentation.routers.graph import get_graph_engine
+        from app.domain.enums import (
+            EntityType,
+            RelationshipType,
+            RiskLevel,
+            AlertSeverity,
+            AlertStatus,
+            CasePriority,
+            CaseStatus,
+            IntelligenceType,
+        )
+        from app.domain.entities_phase2 import Alert, SharedIntelligence, CaseEvent
+        import uuid
+
+        alert_svc = get_alert_service()
+        case_svc = get_case_service()
+        entity_svc = get_entity_service()
+        graph_engine = get_graph_engine()
+
+        payload = event.payload or {}
+
+        if event.event_type == "transaction":
+            # 1. Register customer entity
+            cust_id = payload.get("customer_id")
+            if cust_id:
+                cust_entity = entity_svc.create_entity(
+                    EntityType.CUSTOMER,
+                    cust_id,
+                    event.bank_id,
+                    {
+                        "total_spent": payload.get("amount", 0),
+                        "risk_score": payload.get("risk_score", 0),
+                        "bank_name": payload.get("bank_name", event.bank_id),
+                    }
+                )
+                graph_engine.register_entity(cust_entity)
+
+                # 2. Register merchant entity if present
+                merchant = payload.get("merchant_category")
+                if merchant:
+                    merch_entity = entity_svc.create_entity(
+                        EntityType.MERCHANT,
+                        merchant,
+                        event.bank_id,
+                        {"category": merchant}
+                    )
+                    graph_engine.register_entity(merch_entity)
+                    
+                    # Add relationship: Customer TRANSACTS_WITH Merchant
+                    rel = entity_svc.add_relationship(
+                        cust_entity.id,
+                        merch_entity.id,
+                        RelationshipType.TRANSACTS_WITH,
+                        confidence=1.0
+                    )
+                    graph_engine.add_relationship(rel)
+
+                # 3. Register device entity if present
+                device = payload.get("device_type")
+                if device:
+                    dev_entity = entity_svc.create_entity(
+                        EntityType.DEVICE,
+                        device,
+                        event.bank_id,
+                        {"device_type": device}
+                    )
+                    graph_engine.register_entity(dev_entity)
+                    
+                    # Add relationship: Customer USES Device
+                    rel = entity_svc.add_relationship(
+                        cust_entity.id,
+                        dev_entity.id,
+                        RelationshipType.USES,
+                        confidence=1.0
+                    )
+                    graph_engine.add_relationship(rel)
+
+        elif event.event_type == "alert":
+            # Generate and store a new alert
+            severity_str = payload.get("severity", "medium").upper()
+            severity = getattr(AlertSeverity, severity_str, AlertSeverity.MEDIUM)
+            
+            # Find a customer entity from the same bank to associate with
+            cust_id = None
+            entities = entity_svc.get_entities(entity_type=EntityType.CUSTOMER, bank_id=event.bank_id)
+            if entities:
+                cust_entity = entities[0]
+                cust_id = cust_entity.id
+                entity_svc.increment_alert_count(cust_entity.id)
+                # Elevate risk level
+                if severity == AlertSeverity.CRITICAL:
+                    entity_svc.update_risk_level(cust_entity.id, RiskLevel.CRITICAL)
+                elif severity == AlertSeverity.HIGH:
+                    entity_svc.update_risk_level(cust_entity.id, RiskLevel.HIGH)
+                else:
+                    entity_svc.update_risk_level(cust_entity.id, RiskLevel.MEDIUM)
+
+            alert = Alert(
+                bank_id=event.bank_id,
+                transaction_id=str(uuid.uuid4())[:8],
+                risk_score=payload.get("confidence", 0.5) * 1000,
+                severity=severity,
+                status=AlertStatus.NEW,
+                reason_codes=payload.get("reason_codes", ["SUSP-PATTERN"]),
+                confidence=payload.get("confidence", 0.5),
+                involved_entity_ids=[cust_id] if cust_id else [],
+                model_confidence=payload.get("confidence", 0.5),
+                top_features=[{"feature": "velocity", "value": 0.85}],
+                risk_factors=[payload.get("description", "Suspicious pattern")]
+            )
+            alert_svc._alert_store[alert.id] = alert
+
+            # Automatically create a Case for High/Critical alerts
+            if alert.is_actionable:
+                priority = CasePriority.P1_HIGH if severity == AlertSeverity.CRITICAL else CasePriority.P2_HIGH
+                case_svc.create_case(
+                    title=f"Potential Fraud Ring: {payload.get('description', 'Suspicious activity')}",
+                    priority=priority,
+                    alert_ids=[alert.id]
+                )
+
+        elif event.event_type == "intelligence":
+            # Share intelligence across banks
+            privacy_hash = payload.get("shared_device_hash", str(uuid.uuid4())[:8])
+            
+            intel = SharedIntelligence(
+                source_bank_id=event.bank_id,
+                intelligence_type=IntelligenceType.FRAUD_ALERT,
+                privacy_hash=privacy_hash,
+                risk_indicator=payload.get("combined_confidence", 0.8),
+                description=payload.get("description", "Cross-institution match"),
+                entity_type=EntityType.CUSTOMER,
+                related_alert_count=payload.get("cards_identified", 2),
+            )
+            alert_svc._intelligence_store.append(intel)
+
+            # Link matching entities across institutions in the graph
+            all_entities = list(entity_svc._entities.values())
+            customers = [e for e in all_entities if e.entity_type == EntityType.CUSTOMER]
+            if len(customers) >= 2:
+                for i in range(len(customers) - 1):
+                    rel = entity_svc.add_relationship(
+                        customers[i].id,
+                        customers[i+1].id,
+                        RelationshipType.SHARES_DEVICE,
+                        confidence=payload.get("combined_confidence", 0.9)
+                    )
+                    graph_engine.add_relationship(rel)
+
+        elif event.event_type == "escalation":
+            # Find open cases and escalate them to critical
+            for case in list(case_svc._cases.values()):
+                if case.is_open:
+                    case.priority = CasePriority.P1_HIGH
+                    case.timeline.append(
+                        CaseEvent(
+                            event_type="status_changed",
+                            description=f"Escalated to High: {payload.get('reason', 'Cross-institution intelligence')}",
+                            actor="system"
+                        )
+                    )

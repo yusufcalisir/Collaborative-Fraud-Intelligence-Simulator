@@ -42,7 +42,7 @@ export default function AlertsPage() {
         <select
           value={selectedBank}
           onChange={(e) => setSelectedBank(e.target.value)}
-          className="glass-card px-3 py-2 text-sm rounded-lg bg-transparent border border-[var(--color-border)] text-[var(--color-text)]"
+          className="glass-card px-3 py-2 text-sm rounded-lg bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text)]"
         >
           <option value="">All Banks</option>
           {Object.entries(BANK_NAMES).map(([id, name]) => (
@@ -53,7 +53,7 @@ export default function AlertsPage() {
         <select
           value={selectedSeverity}
           onChange={(e) => setSelectedSeverity(e.target.value)}
-          className="glass-card px-3 py-2 text-sm rounded-lg bg-transparent border border-[var(--color-border)] text-[var(--color-text)]"
+          className="glass-card px-3 py-2 text-sm rounded-lg bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[var(--color-text)]"
         >
           <option value="">All Severities</option>
           {SEVERITY_ORDER.map((s) => (

@@ -57,6 +57,24 @@ To provide real-time transaction screening and investigation capabilities:
 3.  **Interactive Relationship Graphs:** A full visual graph of entities, devices, cards, and accounts built using React Flow, mapping suspicious clusters in real time.
 4.  **Scenario Replay Engine:** Scripted simulation flows representing typologies like Account Takeover (ATO), Card Testing, and Layering networks.
 
+#### 🔍 The 9-Signal Risk Evaluation Pipeline
+The platform implements a modular **9-Signal Risk Combination Engine** to calculate transaction risk levels dynamically. Each signal outputs a normalized risk weight between `0.0` (benign) and `1.0` (maximum threat):
+
+| # | Risk Signal | Evaluation Logic | Target Objective |
+| :--- | :--- | :--- | :--- |
+| **1** | `ml_prediction` | Deep Learning model inference output. | Model detection score |
+| **2** | `velocity_rules` | Rates transaction frequencies per hour. | Account takeover / velocity |
+| **3** | `merchant_reputation` | Blend of merchant category risk (e.g. gambling, crypto) & individual merchant rating. | Syndicate tracking |
+| **4** | `country_risk` | Cross-border geographic destination risk weighting. | Cross-border laundering |
+| **5** | `device_anomaly` | High-risk channel checks (ATM/Phone banking vs Mobile App). | Identity theft / compromise |
+| **6** | `customer_history` | Account age and historical customer activity level scoring. | Account aging / mule checking |
+| **7** | `previous_alerts` | Historical alert counts of HMAC-matched entities across institutions. | Persistent recidivism |
+| **8** | `chargeback_history` | Merchant-specific transaction dispute rate indicators. | Card testing & fraud capture |
+| **9** | `behavior_anomaly` | Statistical amount deviation from historical baseline ($\sigma$ standard deviation threshold). | Outlier anomaly detection |
+
+> [!TIP]
+> **Composite Scoring:** The engine combines these signals into a final score (0 - 1000) using a weighted average. The weights can be customized dynamically on the **Simulation Configuration** panel, enabling full adjustment of heuristics vs machine learning predictions.
+
 ***
 
 ## Feature Comparison Matrix

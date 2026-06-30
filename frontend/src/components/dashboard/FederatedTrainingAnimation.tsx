@@ -51,10 +51,10 @@ export default function FederatedTrainingAnimation({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-6 overflow-hidden"
+      className="glass-card p-6 overflow-hidden h-full flex flex-col"
     >
       {/* Phase Stepper */}
-      <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-2">
+      <div className="flex items-center justify-between mb-6 w-full">
         {['generating_data', 'training_local', 'training_federated', 'evaluating', 'completed'].map((step, idx, arr) => {
           const stepPhase = PHASE_INFO[step]!;
           const stepIdx = arr.indexOf(step);
@@ -63,10 +63,10 @@ export default function FederatedTrainingAnimation({
           const isCurrent = status === step;
 
           return (
-            <div key={step} className="flex items-center gap-1 shrink-0">
-              <div className="flex flex-col items-center">
+            <div key={step} className="flex items-center flex-1 last:flex-initial">
+              <div className="w-16 shrink-0 flex flex-col items-center">
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0 ${
                     isDone
                       ? 'bg-[var(--color-status-success)] text-white'
                       : isCurrent
@@ -76,7 +76,7 @@ export default function FederatedTrainingAnimation({
                 >
                   {isDone ? '✓' : idx + 1}
                 </div>
-                <span className={`text-[9px] mt-1 whitespace-nowrap ${
+                <span className={`text-[9px] mt-1 text-center whitespace-normal max-w-[64px] leading-tight ${
                   isCurrent ? 'text-[var(--color-accent-indigo-light)] font-medium' : 'text-[var(--color-text-muted)]'
                 }`}>
                   {stepPhase.label}
@@ -84,7 +84,7 @@ export default function FederatedTrainingAnimation({
               </div>
               {idx < arr.length - 1 && (
                 <div
-                  className={`w-6 h-[2px] mb-4 transition-colors duration-500 ${
+                  className={`flex-1 h-[2px] mb-4 mx-1 transition-colors duration-500 ${
                     isDone ? 'bg-[var(--color-status-success)]' : 'bg-[var(--color-border)]'
                   }`}
                 />
@@ -154,8 +154,8 @@ export default function FederatedTrainingAnimation({
       )}
 
       {/* SVG Animation */}
-      <div className="relative flex justify-center">
-        <svg viewBox="0 0 400 310" className="w-full max-w-md" style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}>
+      <div className="relative flex-1 flex flex-col justify-center items-center">
+        <svg viewBox="0 0 400 310" className="w-full max-w-md my-auto" style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}>
           <defs>
             {/* Gradient for data flow */}
             <linearGradient id="flow-grad" x1="0%" y1="0%" x2="100%" y2="0%">

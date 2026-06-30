@@ -17,7 +17,7 @@ export default function LossChart({ rounds }: LossChartProps) {
   }));
 
   return (
-    <div className="glass-card p-5 h-full flex flex-col">
+    <div className="glass-card p-5 h-full min-h-[320px] flex flex-col">
       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
         Training Loss Convergence
       </h3>
@@ -62,10 +62,11 @@ export default function LossChart({ rounds }: LossChartProps) {
               stroke="var(--color-accent-indigo)"
               strokeWidth={2}
               dot={(props: Record<string, unknown>) => {
-                const { cx, cy, payload } = props as { cx: number; cy: number; payload: { dropped: boolean } };
+                const { cx, cy, payload, index } = props as { cx: number; cy: number; payload: { dropped: boolean }; index: number };
                 const isDrop = payload?.dropped;
                 return (
                   <circle
+                    key={`dot-${index}`}
                     cx={cx}
                     cy={cy}
                     r={isDrop ? 5 : 3}

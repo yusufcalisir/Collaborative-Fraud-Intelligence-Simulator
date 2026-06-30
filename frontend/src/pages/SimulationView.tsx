@@ -65,29 +65,29 @@ export default function SimulationView() {
   const banks = simulation.banks ?? [];
 
   return (
-    <div className="h-full flex flex-col gap-4 overflow-hidden">
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 shrink-0"
+        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 shrink-0 py-2 md:py-4"
       >
         <div>
           <Link
             to="/"
-            className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors mb-1 inline-block"
+            className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors mb-2 inline-block"
           >
             ← Back to Dashboard
           </Link>
-          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-[var(--color-text-primary)] tracking-tight">
             Simulation Results
           </h1>
-          <p className="text-xs font-mono text-[var(--color-text-muted)] mt-0.5 break-all">{simulation.id}</p>
+          <p className="text-xs font-mono text-[var(--color-text-muted)] mt-1 break-all">{simulation.id}</p>
         </div>
-        <div className="text-left sm:text-right shrink-0">
+        <div className="text-left sm:text-right shrink-0 pt-2 md:pt-4">
           <SimStatusBadge status={simulation.status} />
           {simulation.duration_seconds && (
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+            <p className="text-xs text-[var(--color-text-muted)] mt-1.5">
               Duration: {formatDuration(simulation.duration_seconds)}
             </p>
           )}
@@ -105,11 +105,11 @@ export default function SimulationView() {
       )}
 
       {/* Main Simulation View Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 pb-4">
+      <div className="space-y-4 pb-4">
         {/* Main Dashboard Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Left Panel: Animation */}
-          <div className="lg:col-span-5 flex flex-col">
+          <div className="lg:col-span-4 flex flex-col">
             <FederatedTrainingAnimation
               status={simulation.status}
               currentRound={simulation.current_round}
@@ -118,7 +118,7 @@ export default function SimulationView() {
           </div>
 
           {/* Right Panel: Stats & Charts */}
-          <div className="lg:col-span-7 flex flex-col gap-4">
+          <div className="lg:col-span-8 flex flex-col gap-4">
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
               {[
@@ -160,11 +160,11 @@ export default function SimulationView() {
             </div>
 
             {/* Timeline & Loss chart */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 min-h-0">
-              <div className="sm:col-span-2 flex flex-col">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 flex flex-col">
                 <LossChart rounds={rounds ?? []} />
               </div>
-              <div className="sm:col-span-1 flex flex-col">
+              <div className="md:col-span-1 flex flex-col">
                 <TrainingTimeline
                   rounds={rounds ?? []}
                   currentRound={simulation.current_round}
