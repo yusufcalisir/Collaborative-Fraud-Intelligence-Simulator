@@ -1,14 +1,11 @@
 # Collaborative Fraud Intelligence Simulator
 
-<p align="center">
-  <img src="frontend/public/favicon.svg" alt="Collaborative Fraud Intelligence Logo" width="120" height="120" />
-</p>
-
 A production-grade, enterprise-ready simulation framework demonstrating privacy-preserving, cross-institution financial fraud detection and Collaborative Anti-Money Laundering (AML) intelligence. This platform showcases how financial institutions can train machine learning models and share risk indicators without exposing customer Personally Identifiable Information (PII) or violating global privacy regulations like GDPR, CCPA, and banking secrecy laws.
 
 [![CI](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![React 19](https://img.shields.io/badge/react-19-61dafb.svg)](https://react.dev)
+[![AI-Assisted](https://img.shields.io/badge/AI--Assisted-Gemini-blueviolet.svg)](#project-development-methodology)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 
@@ -304,17 +301,14 @@ This application functions as a high-fidelity simulator. Transitioning this mode
 
 ***
 
-## Development Process & AI Collaboration
+## Project Development Methodology
 
-A common question asked by reviewers and collaborators is:
-> *"Looking at the code, it looks like you used Coding Agents to assist you in making this project. How much of it is AI-generated?"*
+This project was developed using a hybrid engineering approach, combining custom core system design with modern developer tooling and coding assistants. The division of implementation tasks is outlined below:
 
-To clarify the division of labor and maintain full transparency:
+*   **Core Algorithms & Domain Architecture (Custom Implementation):** The clean architecture structure (Domain, Application, Infrastructure, Presentation layers), the mathematical design and weighting of the **9-Signal Risk Engine**, the non-IID synthetic data distribution logic, the custom federated averaging aggregation workflow (`FL_Engine`), the differential privacy noise bounds, the rotating daily-salted HMAC-SHA256 entity resolution pipeline, and the overall system design.
+*   **Developer Tooling & Styling Support (AI Assisted):** Coding agents were utilized as pair-programming assistants to accelerate the creation of unit and integration test boilerplate, dark-themed dashboard grid styling, responsive layouts for mobile viewports, chart component integrations (Loss chart, Radar chart, Confusion Matrix), deployment configurations, and standard SVG assets.
 
-*   **Core Systems & Architecture (Developed by Me):** The conceptual design, the clean architecture directory setup (Domain, Application, Infrastructure, Presentation layers), the mathematical formulations of the **9-Signal Risk Engine**, the non-IID data distribution strategy, the federated averaging aggregation workflow (`FL_Engine`), the differential privacy noise bounds, the daily-rotated HMAC entity resolution protocol, and the overall system design.
-*   **AI Agent Assistance (Gemini/Antigravity):** Coding agents were utilized as pair-programming assistants to accelerate development. They helped write boilerplate tests, style the dark-themed dashboard components, set up chart visualizations (Loss chart, Radar chart, Confusion Matrix), implement responsiveness for mobile viewports, resolve CORS policy edge cases during deployment, and create the custom SVG brand identity/logo.
-
-This collaboration allowed for a highly refined production-grade implementation of the underlying cryptographic and machine learning concepts in a fraction of the time.
+This development methodology enabled a production-grade implementation of the underlying cryptographic and machine learning concepts while maintaining high velocity.
 
 ***
 
