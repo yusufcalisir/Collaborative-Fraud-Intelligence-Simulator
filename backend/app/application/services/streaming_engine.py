@@ -274,7 +274,7 @@ class StreamingEngine:
             # Automatically create a Case for High/Critical alerts
             if alert.is_actionable:
                 priority = (
-                    CasePriority.P1_HIGH
+                    CasePriority.P1_CRITICAL
                     if severity == AlertSeverity.CRITICAL
                     else CasePriority.P2_HIGH
                 )
@@ -316,7 +316,7 @@ class StreamingEngine:
             # Find open cases and escalate them to critical
             for case in list(case_svc._cases.values()):
                 if case.is_open:
-                    case.priority = CasePriority.P1_HIGH
+                    case.priority = CasePriority.P1_CRITICAL
                     case.timeline.append(
                         CaseEvent(
                             event_type="status_changed",
