@@ -64,7 +64,7 @@ export default function ScenariosPage() {
           step="0.5"
           value={speed}
           onChange={(e) => setSpeed(parseFloat(e.target.value))}
-          className="w-full sm:flex-1 max-w-xs accent-[var(--color-primary)]"
+          className="w-full sm:flex-1 max-w-xs accent-[var(--color-accent-indigo)]"
         />
         <span className="text-sm font-mono font-bold w-12 text-left sm:text-right">{speed}x</span>
       </motion.div>
@@ -96,9 +96,9 @@ export default function ScenariosPage() {
               <span>Event {status.delivered_events} of {status.total_events}</span>
               <span>{((status.delivered_events / status.total_events) * 100).toFixed(0)}%</span>
             </div>
-            <div className="h-2 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
+            <div className="h-2 bg-[var(--color-bg-elevated)] rounded-full overflow-hidden">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-success)]"
+                className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-indigo)] to-[var(--color-accent-teal)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${(status.delivered_events / status.total_events) * 100}%` }}
                 transition={{ duration: 0.3 }}
@@ -162,7 +162,7 @@ export default function ScenariosPage() {
                     {scenario.banks_involved.map((bankId) => (
                       <span
                         key={bankId}
-                        className="px-2 py-0.5 text-[10px] rounded bg-[var(--color-surface-alt)] text-[var(--color-text-muted)]"
+                        className="px-2 py-0.5 text-[10px] rounded bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)]"
                       >
                         {BANK_NAMES[bankId] || bankId}
                       </span>
