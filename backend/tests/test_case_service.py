@@ -63,12 +63,15 @@ class TestNotes:
         note = case_service.add_note(case.id, "analyst", "Reviewed transaction logs")
         assert note.author == "analyst"
         assert note.content == "Reviewed transaction logs"
-        assert len(case_service.get_case(case.id).notes) == 1
+        retrieved = case_service.get_case(case.id)
+        assert retrieved is not None
+        assert len(retrieved.notes) == 1
 
     def test_add_note_appends_timeline_event(self, case_service: CaseManagementService) -> None:
         case = case_service.create_case("Test case")
         case_service.add_note(case.id, "analyst", "Some note")
         updated = case_service.get_case(case.id)
+        assert updated is not None
         note_events = [e for e in updated.timeline if e.event_type == "note_added"]
         assert len(note_events) == 1
 
@@ -78,6 +81,7 @@ class TestAlertLinking:
         case = case_service.create_case("Test case")
         case_service.link_alert(case.id, "alert_001")
         updated = case_service.get_case(case.id)
+        assert updated is not None
         assert "alert_001" in updated.alert_ids
 
     def test_duplicate_link_ignored(self, case_service: CaseManagementService) -> None:
@@ -85,6 +89,7 @@ class TestAlertLinking:
         case_service.link_alert(case.id, "alert_001")
         case_service.link_alert(case.id, "alert_001")
         updated = case_service.get_case(case.id)
+        assert updated is not None
         assert updated.alert_ids.count("alert_001") == 1
 
 

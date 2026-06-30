@@ -132,7 +132,7 @@ class TestSecureAggregation:
         fl_engine: FederatedLearningEngine,
     ) -> None:
         """Masked aggregation should produce the same result as plaintext."""
-        shapes = [(3,)]
+        shapes: list[tuple[int, ...]] = [(3,)]
         weights = [
             ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 2.0, 3.0]),
             ModelWeights(layer_shapes=shapes, flat_weights=[4.0, 5.0, 6.0]),

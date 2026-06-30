@@ -223,14 +223,17 @@ class DataGenerator:
 
         # Fraudulent transactions — velocity spikes at night
         fraud = self._generate_base_transactions(n_fraud, rng, profile="retail_domestic")
-        fraud["velocity"] = rng.uniform(8, 25, n_fraud)
-        fraud["hour_of_day"] = rng.choice([0, 1, 2, 3, 4, 22, 23], n_fraud)
-        fraud["merchant_category"] = rng.choice(
-            ["electronics", "jewelry", "gambling", "crypto"],
-            n_fraud,
+        fraud["velocity"] = pd.Series(rng.uniform(8, 25, n_fraud), index=fraud.index)
+        fraud["hour_of_day"] = pd.Series(rng.choice([0, 1, 2, 3, 4, 22, 23], n_fraud), index=fraud.index)
+        fraud["merchant_category"] = pd.Series(
+            rng.choice(
+                ["electronics", "jewelry", "gambling", "crypto"],
+                n_fraud,
+            ),
+            index=fraud.index,
         )
-        fraud["transaction_amount"] = rng.lognormal(6.5, 1.2, n_fraud)
-        fraud["merchant_risk_score"] = rng.uniform(0.6, 1.0, n_fraud)
+        fraud["transaction_amount"] = pd.Series(rng.lognormal(6.5, 1.2, n_fraud), index=fraud.index)
+        fraud["merchant_risk_score"] = pd.Series(rng.uniform(0.6, 1.0, n_fraud), index=fraud.index)
 
         features = pd.concat([legit, fraud], ignore_index=True)
         labels = pd.Series(
@@ -239,7 +242,7 @@ class DataGenerator:
         )
 
         # Shuffle
-        idx = rng.permutation(len(features))
+        idx = rng.permutation(len(features)).tolist()
         return features.iloc[idx].reset_index(drop=True), labels.iloc[idx].reset_index(drop=True)
 
     def _generate_bank_b(
@@ -258,20 +261,23 @@ class DataGenerator:
         legit = self._generate_base_transactions(n_legit, rng, profile="digital_international")
 
         fraud = self._generate_base_transactions(n_fraud, rng, profile="digital_international")
-        fraud["account_age_days"] = rng.integers(0, 30, n_fraud)
-        fraud["country_code"] = rng.choice(list(HIGH_RISK_COUNTRIES), n_fraud)
-        fraud["merchant_category"] = rng.choice(
-            ["crypto", "wire_transfer", "gambling", "online_marketplace"],
-            n_fraud,
+        fraud["account_age_days"] = pd.Series(rng.integers(0, 30, n_fraud), index=fraud.index)
+        fraud["country_code"] = pd.Series(rng.choice(list(HIGH_RISK_COUNTRIES), n_fraud), index=fraud.index)
+        fraud["merchant_category"] = pd.Series(
+            rng.choice(
+                ["crypto", "wire_transfer", "gambling", "online_marketplace"],
+                n_fraud,
+            ),
+            index=fraud.index,
         )
-        fraud["transaction_amount"] = rng.lognormal(7.0, 1.5, n_fraud)
-        fraud["device_type"] = rng.choice(["mobile_app", "web_browser"], n_fraud)
-        fraud["chargeback_count"] = rng.integers(1, 8, n_fraud)
+        fraud["transaction_amount"] = pd.Series(rng.lognormal(7.0, 1.5, n_fraud), index=fraud.index)
+        fraud["device_type"] = pd.Series(rng.choice(["mobile_app", "web_browser"], n_fraud), index=fraud.index)
+        fraud["chargeback_count"] = pd.Series(rng.integers(1, 8, n_fraud), index=fraud.index)
 
         features = pd.concat([legit, fraud], ignore_index=True)
         labels = pd.Series([0] * n_legit + [1] * n_fraud, name="is_fraud")
 
-        idx = rng.permutation(len(features))
+        idx = rng.permutation(len(features)).tolist()
         return features.iloc[idx].reset_index(drop=True), labels.iloc[idx].reset_index(drop=True)
 
     def _generate_bank_c(
@@ -292,19 +298,22 @@ class DataGenerator:
 
         fraud = self._generate_base_transactions(n_fraud, rng, profile="regional_pos")
         # Card testing pattern: small amounts
-        fraud["transaction_amount"] = np.where(
-            rng.random(n_fraud) < 0.7,
-            rng.uniform(0.50, 5.00, n_fraud),  # Small test charges
-            rng.lognormal(7.5, 0.8, n_fraud),  # Large follow-up
+        fraud["transaction_amount"] = pd.Series(
+            np.where(
+                rng.random(n_fraud) < 0.7,
+                rng.uniform(0.50, 5.00, n_fraud),  # Small test charges
+                rng.lognormal(7.5, 0.8, n_fraud),  # Large follow-up
+            ),
+            index=fraud.index,
         )
-        fraud["velocity"] = rng.uniform(5, 20, n_fraud)
-        fraud["customer_history_score"] = rng.uniform(0.0, 0.3, n_fraud)
-        fraud["merchant_risk_score"] = rng.uniform(0.4, 0.9, n_fraud)
+        fraud["velocity"] = pd.Series(rng.uniform(5, 20, n_fraud), index=fraud.index)
+        fraud["customer_history_score"] = pd.Series(rng.uniform(0.0, 0.3, n_fraud), index=fraud.index)
+        fraud["merchant_risk_score"] = pd.Series(rng.uniform(0.4, 0.9, n_fraud), index=fraud.index)
 
         features = pd.concat([legit, fraud], ignore_index=True)
         labels = pd.Series([0] * n_legit + [1] * n_fraud, name="is_fraud")
 
-        idx = rng.permutation(len(features))
+        idx = rng.permutation(len(features)).tolist()
         return features.iloc[idx].reset_index(drop=True), labels.iloc[idx].reset_index(drop=True)
 
     def _generate_base_transactions(

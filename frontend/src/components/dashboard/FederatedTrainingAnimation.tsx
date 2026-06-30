@@ -51,10 +51,10 @@ export default function FederatedTrainingAnimation({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-6 overflow-hidden h-full flex flex-col"
+      className="glass-card p-4 sm:p-6 overflow-hidden h-full flex flex-col"
     >
       {/* Phase Stepper */}
-      <div className="flex items-center justify-between mb-6 w-full">
+      <div className="flex items-start justify-between mb-6 w-full">
         {['generating_data', 'training_local', 'training_federated', 'evaluating', 'completed'].map((step, idx, arr) => {
           const stepPhase = PHASE_INFO[step]!;
           const stepIdx = arr.indexOf(step);
@@ -63,8 +63,8 @@ export default function FederatedTrainingAnimation({
           const isCurrent = status === step;
 
           return (
-            <div key={step} className="flex items-center flex-1 last:flex-initial">
-              <div className="w-16 shrink-0 flex flex-col items-center">
+            <div key={step} className="flex items-start flex-1 last:flex-initial">
+              <div className="w-12 sm:w-16 shrink-0 flex flex-col items-center">
                 <div
                   className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0 ${
                     isDone
@@ -76,7 +76,7 @@ export default function FederatedTrainingAnimation({
                 >
                   {isDone ? '✓' : idx + 1}
                 </div>
-                <span className={`text-[9px] mt-1 text-center whitespace-normal max-w-[64px] leading-tight ${
+                <span className={`text-[8px] sm:text-[9px] mt-1 text-center whitespace-normal max-w-[48px] sm:max-w-[64px] leading-tight ${
                   isCurrent ? 'text-[var(--color-accent-indigo-light)] font-medium' : 'text-[var(--color-text-muted)]'
                 }`}>
                   {stepPhase.label}
@@ -84,7 +84,7 @@ export default function FederatedTrainingAnimation({
               </div>
               {idx < arr.length - 1 && (
                 <div
-                  className={`flex-1 h-[2px] mb-4 mx-1 transition-colors duration-500 ${
+                  className={`flex-1 h-[2px] mt-[13px] mx-0.5 sm:mx-1 transition-colors duration-500 ${
                     isDone ? 'bg-[var(--color-status-success)]' : 'bg-[var(--color-border)]'
                   }`}
                 />

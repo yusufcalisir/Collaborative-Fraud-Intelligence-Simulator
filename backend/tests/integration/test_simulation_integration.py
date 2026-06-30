@@ -64,6 +64,7 @@ def test_simulation_flow_success(simulation_service: SimulationService, sample_c
     assert len(simulation.banks) == 3
     assert simulation.current_round == 2
     assert simulation.total_rounds == 2
+    assert simulation.duration_seconds is not None
     assert simulation.duration_seconds > 0
     assert simulation.error_message is None
 

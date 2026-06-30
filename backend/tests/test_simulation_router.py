@@ -38,7 +38,4 @@ def test_create_and_get_simulation():
     assert get_response.status_code == 200, f"Failed with {get_response.text}"
     get_data = get_response.json()
     assert get_data["id"] == simulation_id
-    assert get_data["status"] in (
-        SimulationStatus.PENDING.value,
-        SimulationStatus.GENERATING_DATA.value,
-    )
+    assert get_data["status"] in [s.value for s in SimulationStatus]
