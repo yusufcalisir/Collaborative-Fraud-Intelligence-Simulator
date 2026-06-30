@@ -267,12 +267,28 @@ class StreamingEngine:
             code_feature_map = {
                 "VEL-001": ("velocity", 0.85, "Rapid transaction frequency (velocity anomaly)"),
                 "DEV-ANOM": ("device_type", 0.80, "New device registration (device type mismatch)"),
-                "AMT-ANOM": ("transaction_amount", 0.90, "Transaction amount significantly exceeds normal average"),
-                "HIGH-AMT": ("transaction_amount", 0.92, "High transaction amount threshold exceeded"),
+                "AMT-ANOM": (
+                    "transaction_amount",
+                    0.90,
+                    "Transaction amount significantly exceeds normal average",
+                ),
+                "HIGH-AMT": (
+                    "transaction_amount",
+                    0.92,
+                    "High transaction amount threshold exceeded",
+                ),
                 "GEO-RISK": ("country_code", 0.75, "Out-of-pattern geographic destination"),
                 "MERCH-RISK": ("merchant_risk_score", 0.78, "High-risk merchant category"),
-                "NEW-ACCT": ("account_age_days", 0.70, "Transaction initiated from a recently opened account"),
-                "CB-HIST": ("chargeback_count", 0.82, "Associated entity has prior history of dispute or chargebacks"),
+                "NEW-ACCT": (
+                    "account_age_days",
+                    0.70,
+                    "Transaction initiated from a recently opened account",
+                ),
+                "CB-HIST": (
+                    "chargeback_count",
+                    0.82,
+                    "Associated entity has prior history of dispute or chargebacks",
+                ),
             }
 
             for code in reason_codes:
@@ -291,10 +307,14 @@ class StreamingEngine:
                     top_features.append({"feature": "device_type", "value": 0.85 * confidence})
                     risk_factors.append("Device profile change mismatch")
                 elif "wire" in desc_lower or "amount" in desc_lower:
-                    top_features.append({"feature": "transaction_amount", "value": 0.90 * confidence})
+                    top_features.append(
+                        {"feature": "transaction_amount", "value": 0.90 * confidence}
+                    )
                     risk_factors.append("High amount transaction anomaly")
                 else:
-                    top_features.append({"feature": "transaction_amount", "value": 0.75 * confidence})
+                    top_features.append(
+                        {"feature": "transaction_amount", "value": 0.75 * confidence}
+                    )
                     risk_factors.append("Statistical deviation from historical behavior")
 
             # Always ensure we have at least 3 distinct features for realism
@@ -303,7 +323,7 @@ class StreamingEngine:
                 ("velocity", 0.40),
                 ("merchant_risk_score", 0.35),
                 ("customer_history_score", 0.30),
-                ("hour_of_day", 0.25)
+                ("hour_of_day", 0.25),
             ]
             for feat, base_val in all_features:
                 if len(top_features) >= 4:
