@@ -2,7 +2,7 @@
 title: Collaborative Fraud Intelligence Simulator
 emoji: 🛡️
 colorFrom: indigo
-colorTo: teal
+colorTo: purple
 sdk: docker
 app_port: 7860
 pinned: false
