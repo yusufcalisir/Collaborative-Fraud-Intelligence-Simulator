@@ -7,13 +7,18 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 
-# Limit CPU threading for PyTorch, NumPy, OpenBLAS, MKL to 2 to utilize Hugging Face CPU basic cores
-os.environ["OMP_NUM_THREADS"] = "2"
-os.environ["MKL_NUM_THREADS"] = "2"
-os.environ["OPENBLAS_NUM_THREADS"] = "2"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "2"
-os.environ["NUMEXPR_NUM_THREADS"] = "2"
+# Set threads to 1 during test suite run to prevent C++ teardown aborts under pytest-cov,
+# but keep it at 2 in production/dev for max performance.
+is_testing = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
+num_threads_str = "1" if is_testing else "2"
+
+os.environ["OMP_NUM_THREADS"] = num_threads_str
+os.environ["MKL_NUM_THREADS"] = num_threads_str
+os.environ["OPENBLAS_NUM_THREADS"] = num_threads_str
+os.environ["VECLIB_MAXIMUM_THREADS"] = num_threads_str
+os.environ["NUMEXPR_NUM_THREADS"] = num_threads_str
 
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -205,12 +210,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting Collaborative Fraud Intelligence Simulator")
     logger.info("Environment: %s", settings.app_env)
 
-    # Ensure PyTorch threading limits are applied at runtime to utilize both cores
+    # Ensure PyTorch threading limits are applied at runtime
     import torch
 
+    is_testing_run = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
+    num_threads = 1 if is_testing_run else 2
+
     try:
-        torch.set_num_threads(2)
-        torch.set_num_interop_threads(2)
+        torch.set_num_threads(num_threads)
+        torch.set_num_interop_threads(num_threads)
     except RuntimeError as e:
         logger.warning("Could not set PyTorch threading limits: %s", e)
 
