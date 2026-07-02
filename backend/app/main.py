@@ -9,15 +9,12 @@ from __future__ import annotations
 import logging
 import os
 
-# Configure CPU threading limits for PyTorch, NumPy, OpenBLAS, MKL.
-# Defaults to "1" for stable CI testing, can be overridden to "2" in Docker/production for max performance.
-num_threads_str = os.environ.get("FL_NUM_THREADS", "1")
-
-os.environ["OMP_NUM_THREADS"] = num_threads_str
-os.environ["MKL_NUM_THREADS"] = num_threads_str
-os.environ["OPENBLAS_NUM_THREADS"] = num_threads_str
-os.environ["VECLIB_MAXIMUM_THREADS"] = num_threads_str
-os.environ["NUMEXPR_NUM_THREADS"] = num_threads_str
+# Limit CPU threading for PyTorch, NumPy, OpenBLAS, MKL to prevent CPU starvation on low-spec servers
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -212,13 +209,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure PyTorch threading limits are applied at runtime
     import torch
 
-    num_threads = int(os.environ.get("FL_NUM_THREADS", "1"))
-
-    try:
-        torch.set_num_threads(num_threads)
-        torch.set_num_interop_threads(num_threads)
-    except RuntimeError as e:
-        logger.warning("Could not set PyTorch threading limits: %s", e)
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
 
     # Seed mock data
     try:

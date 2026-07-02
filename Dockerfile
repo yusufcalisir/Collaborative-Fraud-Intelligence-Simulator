@@ -11,7 +11,6 @@ WORKDIR /app
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
-ENV FL_NUM_THREADS=2
 
 # Copy backend requirements and install dependencies
 COPY --chown=user backend/requirements.txt requirements.txt
