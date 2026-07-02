@@ -105,13 +105,13 @@ class SimulationService:
                 },
             )
 
-            # Scale down datasets aggressively for fast CPU training on
-            # constrained environments (Render free tier: 0.1 CPU, 512 MB RAM).
-            # 50,000 → 250, 30,000 → 150, 20,000 → 100 transactions
+            # Scale down datasets for optimal CPU training on
+            # Hugging Face Spaces environment (16 GB RAM, 2 vCPUs).
+            # 50,000 → 5,000, 30,000 → 3,000, 20,000 → 2,000 transactions
             datasets = self.data_generator.generate_bank_datasets(
-                bank_a_size=max(200, config.bank_a_transactions // 200),
-                bank_b_size=max(200, config.bank_b_transactions // 200),
-                bank_c_size=max(200, config.bank_c_transactions // 200),
+                bank_a_size=max(500, config.bank_a_transactions // 10),
+                bank_b_size=max(500, config.bank_b_transactions // 10),
+                bank_c_size=max(500, config.bank_c_transactions // 10),
             )
             profiles = self.data_generator.create_bank_profiles(datasets)
             banks = self.data_generator.create_bank_entities(datasets, profiles)

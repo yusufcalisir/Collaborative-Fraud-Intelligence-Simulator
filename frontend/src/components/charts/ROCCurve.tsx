@@ -58,13 +58,13 @@ export default function ROCCurve({ banks, modelType }: ROCCurveProps) {
       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 25, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
             <XAxis
               dataKey="fpr"
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
               axisLine={{ stroke: 'var(--color-border)' }}
-              label={{ value: 'False Positive Rate', position: 'insideBottom', offset: -2, fill: 'var(--color-text-muted)', fontSize: 10 }}
+              label={{ value: 'False Positive Rate', position: 'insideBottom', offset: -10, fill: 'var(--color-text-muted)', fontSize: 10 }}
               type="number"
               domain={[0, 1]}
             />

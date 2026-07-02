@@ -8,12 +8,12 @@ from __future__ import annotations
 import logging
 import os
 
-# Limit CPU threading for PyTorch, NumPy, OpenBLAS, MKL to prevent CPU starvation on low-spec servers
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
+# Limit CPU threading for PyTorch, NumPy, OpenBLAS, MKL to 2 to utilize Hugging Face CPU basic cores
+os.environ["OMP_NUM_THREADS"] = "2"
+os.environ["MKL_NUM_THREADS"] = "2"
+os.environ["OPENBLAS_NUM_THREADS"] = "2"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "2"
+os.environ["NUMEXPR_NUM_THREADS"] = "2"
 
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -205,11 +205,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting Collaborative Fraud Intelligence Simulator")
     logger.info("Environment: %s", settings.app_env)
 
-    # Ensure PyTorch threading limits are applied at runtime
+    # Ensure PyTorch threading limits are applied at runtime to utilize both cores
     import torch
 
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
+    torch.set_num_threads(2)
+    torch.set_num_interop_threads(2)
 
     # Seed mock data
     try:

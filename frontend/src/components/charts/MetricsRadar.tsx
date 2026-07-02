@@ -31,7 +31,7 @@ export default function MetricsRadar({ banks }: MetricsRadarProps) {
       </h3>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+          <BarChart data={data} margin={{ top: 5, right: 20, bottom: 20, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
             <XAxis
               dataKey="metric"
