@@ -26,11 +26,11 @@ const PHASE_INFO: Record<string, { label: string; description: string }> = {
 
 // Bank positions in SVG: triangle layout with server in center
 const BANK_POSITIONS = [
-  { x: 200, y: 35 },   // Bank A - top center
-  { x: 60, y: 215 },   // Bank B - bottom left
-  { x: 340, y: 215 },  // Bank C - bottom right
+  { x: 200, y: 30 },   // Bank A - top center
+  { x: 60, y: 190 },   // Bank B - bottom left
+  { x: 340, y: 190 },  // Bank C - bottom right
 ];
-const SERVER_POS = { x: 200, y: 135 };
+const SERVER_POS = { x: 200, y: 110 };
 
 export default function FederatedTrainingAnimation({
   status,
@@ -155,7 +155,7 @@ export default function FederatedTrainingAnimation({
 
       {/* SVG Animation */}
       <div className="relative flex-1 flex flex-col justify-center items-center">
-        <svg viewBox="0 0 400 250" className="w-full max-w-md my-auto" style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}>
+        <svg viewBox="0 0 400 240" className="w-full max-w-md my-auto" style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}>
           <defs>
             {/* Gradient for data flow */}
             <linearGradient id="flow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -299,7 +299,7 @@ export default function FederatedTrainingAnimation({
 
                 {/* Bank label */}
                 <text
-                  x={pos.x} y={pos.y + 42}
+                  x={pos.x} y={pos.y + 34}
                   textAnchor="middle"
                   fontSize="11"
                   fontWeight="600"
