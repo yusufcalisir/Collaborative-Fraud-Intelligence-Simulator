@@ -1,5 +1,5 @@
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import type { TrainingRound } from '../../api/types';
 
@@ -31,13 +31,13 @@ export default function LossChart({ rounds }: LossChartProps) {
           </div>
         )}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 45, left: 10 }}>
+          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 20, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
             <XAxis
               dataKey="round"
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
               axisLine={{ stroke: 'var(--color-border)' }}
-              label={{ value: 'Round', position: 'insideBottom', offset: -15, fill: 'var(--color-text-muted)', fontSize: 10 }}
+              label={{ value: 'Round', position: 'insideBottom', offset: -5, fill: 'var(--color-text-muted)', fontSize: 10 }}
             />
             <YAxis
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
@@ -55,7 +55,6 @@ export default function LossChart({ rounds }: LossChartProps) {
               formatter={(value: number) => [value.toFixed(4), 'Loss']}
               labelFormatter={(label) => `Round ${label}`}
             />
-            <Legend wrapperStyle={{ fontSize: '11px', color: 'var(--color-text-muted)', paddingTop: '15px' }} />
             <Line
               type="monotone"
               dataKey="loss"
@@ -66,13 +65,13 @@ export default function LossChart({ rounds }: LossChartProps) {
                 const isDrop = payload?.dropped;
                 return (
                   <circle
-                    key={`dot-${index}`}
-                    cx={cx}
-                    cy={cy}
-                    r={isDrop ? 5 : 3}
-                    fill={isDrop ? 'var(--color-accent-rose)' : 'var(--color-accent-indigo)'}
-                    stroke={isDrop ? 'var(--color-accent-rose)' : 'var(--color-accent-indigo)'}
-                    strokeWidth={isDrop ? 2 : 0}
+                     key={`dot-${index}`}
+                     cx={cx}
+                     cy={cy}
+                     r={isDrop ? 5 : 3}
+                     fill={isDrop ? 'var(--color-accent-rose)' : 'var(--color-accent-indigo)'}
+                     stroke={isDrop ? 'var(--color-accent-rose)' : 'var(--color-accent-indigo)'}
+                     strokeWidth={isDrop ? 2 : 0}
                   />
                 );
               }}
@@ -82,9 +81,16 @@ export default function LossChart({ rounds }: LossChartProps) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-[10px] text-[var(--color-text-muted)] mt-2">
-        Red dots indicate rounds with client dropout.
-      </p>
+      <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mt-4 pt-3 border-t border-[var(--color-border-subtle)] text-[11px] text-[var(--color-text-muted)]">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-0.5 bg-[var(--color-accent-indigo)]"></span>
+          <span>Global Loss</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-accent-rose)]"></span>
+          <span>Client Dropout (Anomaly Round)</span>
+        </div>
+      </div>
     </div>
   );
 }

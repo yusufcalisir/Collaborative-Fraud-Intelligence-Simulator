@@ -1,5 +1,5 @@
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import type { BankResult } from '../../api/types';
 import { BANK_COLORS } from '../../api/types';
@@ -58,13 +58,13 @@ export default function ROCCurve({ banks, modelType }: ROCCurveProps) {
       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 45, left: 10 }}>
+          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 20, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
             <XAxis
               dataKey="fpr"
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
               axisLine={{ stroke: 'var(--color-border)' }}
-              label={{ value: 'False Positive Rate', position: 'insideBottom', offset: -15, fill: 'var(--color-text-muted)', fontSize: 10 }}
+              label={{ value: 'False Positive Rate', position: 'insideBottom', offset: -5, fill: 'var(--color-text-muted)', fontSize: 10 }}
               type="number"
               domain={[0, 1]}
             />
@@ -83,7 +83,6 @@ export default function ROCCurve({ banks, modelType }: ROCCurveProps) {
                 color: 'var(--color-text-primary)',
               }}
             />
-            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '15px' }} />
             {/* Diagonal reference line */}
             <Line
               type="linear"
@@ -108,6 +107,18 @@ export default function ROCCurve({ banks, modelType }: ROCCurveProps) {
             ))}
           </LineChart>
         </ResponsiveContainer>
+      </div>
+      <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-[var(--color-border-subtle)] text-[11px] text-[var(--color-text-muted)]">
+        <div className="flex items-center gap-2">
+          <span className="w-3 border-b border-dashed border-[var(--color-text-muted)]"></span>
+          <span>Random Guess</span>
+        </div>
+        {banks.map((bank) => (
+          <div key={bank.id} className="flex items-center gap-2">
+            <span className="w-3 h-0.5" style={{ backgroundColor: BANK_COLORS[bank.id] }}></span>
+            <span>{bank.name}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
