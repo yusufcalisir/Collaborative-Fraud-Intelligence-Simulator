@@ -234,8 +234,12 @@ class DataGenerator:
             ).tolist(),
             index=fraud.index,
         )
-        fraud["transaction_amount"] = pd.Series(rng.lognormal(6.5, 1.2, n_fraud).tolist(), index=fraud.index)
-        fraud["merchant_risk_score"] = pd.Series(rng.uniform(0.6, 1.0, n_fraud).tolist(), index=fraud.index)
+        fraud["transaction_amount"] = pd.Series(
+            rng.lognormal(6.5, 1.2, n_fraud).tolist(), index=fraud.index
+        )
+        fraud["merchant_risk_score"] = pd.Series(
+            rng.uniform(0.6, 1.0, n_fraud).tolist(), index=fraud.index
+        )
 
         features = pd.concat([legit, fraud], ignore_index=True)
         labels = pd.Series(
@@ -263,7 +267,9 @@ class DataGenerator:
         legit = self._generate_base_transactions(n_legit, rng, profile="digital_international")
 
         fraud = self._generate_base_transactions(n_fraud, rng, profile="digital_international")
-        fraud["account_age_days"] = pd.Series(rng.integers(0, 30, n_fraud).tolist(), index=fraud.index)
+        fraud["account_age_days"] = pd.Series(
+            rng.integers(0, 30, n_fraud).tolist(), index=fraud.index
+        )
         fraud["country_code"] = pd.Series(
             rng.choice(list(HIGH_RISK_COUNTRIES), n_fraud).tolist(), index=fraud.index
         )
@@ -274,11 +280,15 @@ class DataGenerator:
             ).tolist(),
             index=fraud.index,
         )
-        fraud["transaction_amount"] = pd.Series(rng.lognormal(7.0, 1.5, n_fraud).tolist(), index=fraud.index)
+        fraud["transaction_amount"] = pd.Series(
+            rng.lognormal(7.0, 1.5, n_fraud).tolist(), index=fraud.index
+        )
         fraud["device_type"] = pd.Series(
             rng.choice(["mobile_app", "web_browser"], n_fraud).tolist(), index=fraud.index
         )
-        fraud["chargeback_count"] = pd.Series(rng.integers(1, 8, n_fraud).tolist(), index=fraud.index)
+        fraud["chargeback_count"] = pd.Series(
+            rng.integers(1, 8, n_fraud).tolist(), index=fraud.index
+        )
 
         features = pd.concat([legit, fraud], ignore_index=True)
         labels = pd.Series([0] * n_legit + [1] * n_fraud, name="is_fraud")
@@ -315,7 +325,9 @@ class DataGenerator:
         fraud["customer_history_score"] = pd.Series(
             rng.uniform(0.0, 0.3, n_fraud).tolist(), index=fraud.index
         )
-        fraud["merchant_risk_score"] = pd.Series(rng.uniform(0.4, 0.9, n_fraud).tolist(), index=fraud.index)
+        fraud["merchant_risk_score"] = pd.Series(
+            rng.uniform(0.4, 0.9, n_fraud).tolist(), index=fraud.index
+        )
 
         features = pd.concat([legit, fraud], ignore_index=True)
         labels = pd.Series([0] * n_legit + [1] * n_fraud, name="is_fraud")
