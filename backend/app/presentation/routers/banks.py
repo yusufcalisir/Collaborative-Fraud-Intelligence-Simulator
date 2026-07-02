@@ -49,7 +49,7 @@ BANK_CONFIGS = [
         "description": "Traditional regional bank with concentrated geography",
         "default_fraud_ratio": 0.012,
         "default_transactions": 20000,
-        "fraud_pattern": "Card testing — repeated small amounts followed by a large charge",
+        "fraud_pattern": "Card testing - repeated small amounts followed by a large charge",
         "characteristics": [
             "Concentrated geographic footprint",
             "Longer average account age",

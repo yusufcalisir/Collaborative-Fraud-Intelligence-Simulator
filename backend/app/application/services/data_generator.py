@@ -291,9 +291,9 @@ class DataGenerator:
         n: int,
         rng: np.random.Generator,
     ) -> tuple[pd.DataFrame, pd.Series]:
-        """Heritage Regional — Regional bank, 1.2% fraud.
+        """Heritage Regional - Regional bank, 1.2% fraud.
 
-        Fraud pattern: card testing — repeated small amounts
+        Fraud pattern: card testing - repeated small amounts
         followed by a large charge.
         """
         fraud_ratio = 0.012
