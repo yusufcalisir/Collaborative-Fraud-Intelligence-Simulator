@@ -11,7 +11,7 @@ interface TrainingTimelineProps {
 
 export default function TrainingTimeline({ rounds, currentRound, totalRounds }: TrainingTimelineProps) {
   return (
-    <div className="glass-card p-5 h-full flex flex-col">
+    <div className="glass-card p-5 h-[375px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Training Timeline
@@ -35,7 +35,7 @@ export default function TrainingTimeline({ rounds, currentRound, totalRounds }: 
       </div>
 
       {/* Round timeline */}
-      <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+      <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
         {rounds.length === 0 && (
           <p className="text-xs text-[var(--color-text-muted)] text-center py-4">
             Waiting for training to begin...

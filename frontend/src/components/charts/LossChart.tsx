@@ -5,31 +5,46 @@ import type { TrainingRound } from '../../api/types';
 
 interface LossChartProps {
   rounds: TrainingRound[];
+  totalRounds?: number;
 }
 
-export default function LossChart({ rounds }: LossChartProps) {
+export default function LossChart({ rounds, totalRounds }: LossChartProps) {
   const hasData = rounds && rounds.length > 0;
-  const data = (rounds ?? []).map((r) => ({
-    round: r.round_number,
-    loss: parseFloat(r.global_loss.toFixed(4)),
-    participants: r.participating_banks.length,
-    dropped: r.dropped_banks.length > 0,
+  const total = totalRounds ?? 5;
+
+  const placeholderData = Array.from({ length: total }, (_, i) => ({
+    round: i + 1,
+    loss: null as number | null,
+    participants: 0,
+    dropped: false,
   }));
 
+  const data = placeholderData.map((placeholder) => {
+    const actual = (rounds ?? []).find((r) => r.round_number === placeholder.round);
+    if (actual) {
+      return {
+        round: actual.round_number,
+        loss: parseFloat(actual.global_loss.toFixed(4)),
+        participants: actual.participating_banks.length,
+        dropped: actual.dropped_banks.length > 0,
+      };
+    }
+    return placeholder;
+  });
+
   return (
-    <div className="glass-card p-5 h-full min-h-[320px] flex flex-col">
-      <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
-        Training Loss Convergence
-      </h3>
-      <div className="h-64 relative flex-1 min-h-0">
+    <div className="glass-card p-5 h-[375px] flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          Training Loss Convergence
+        </h3>
         {!hasData && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-bg-card)]/40 rounded-lg backdrop-blur-[1px] z-10 border border-[var(--color-border-subtle)]">
-            <span className="text-2xl mb-2 animate-pulse">📈</span>
-            <span className="text-xs text-[var(--color-text-muted)] font-medium">
-              Waiting for first round to complete...
-            </span>
-          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--color-status-warning)]/15 text-[var(--color-status-warning)] font-medium animate-pulse">
+            Waiting for Round 1...
+          </span>
         )}
+      </div>
+      <div className="h-64 relative flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, bottom: 20, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
@@ -43,6 +58,7 @@ export default function LossChart({ rounds }: LossChartProps) {
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
               axisLine={{ stroke: 'var(--color-border)' }}
               label={{ value: 'Loss', angle: -90, position: 'insideLeft', fill: 'var(--color-text-muted)', fontSize: 10 }}
+              domain={hasData ? ['auto', 'auto'] : [0, 1]}
             />
             <Tooltip
               contentStyle={{
