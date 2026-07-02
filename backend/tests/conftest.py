@@ -1,22 +1,5 @@
 """Test configuration and shared fixtures."""
 
-import os
-
-# Crucial: Configure single-threading for PyTorch/MKL/OpenMP BEFORE torch is imported in any tests.
-# This prevents C++ teardown aborts (exit code 134) under pytest-cov.
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
-try:
-    import torch
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
-except Exception:
-    pass
-
 import pytest
 
 

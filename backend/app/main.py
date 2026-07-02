@@ -8,17 +8,10 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 
-# Set threads to 1 during test suite run to prevent C++ teardown aborts under pytest-cov,
-# but keep it at 2 in production/dev for max performance.
-is_testing = (
-    "pytest" in sys.modules
-    or any("pytest" in arg for arg in sys.argv)
-    or "PYTEST_CURRENT_TEST" in os.environ
-    or os.environ.get("GITHUB_ACTIONS") == "true"
-)
-num_threads_str = "1" if is_testing else "2"
+# Configure CPU threading limits for PyTorch, NumPy, OpenBLAS, MKL.
+# Defaults to "1" for stable CI testing, can be overridden to "2" in Docker/production for max performance.
+num_threads_str = os.environ.get("FL_NUM_THREADS", "1")
 
 os.environ["OMP_NUM_THREADS"] = num_threads_str
 os.environ["MKL_NUM_THREADS"] = num_threads_str
@@ -219,13 +212,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure PyTorch threading limits are applied at runtime
     import torch
 
-    is_testing_run = (
-        "pytest" in sys.modules
-        or any("pytest" in arg for arg in sys.argv)
-        or "PYTEST_CURRENT_TEST" in os.environ
-        or os.environ.get("GITHUB_ACTIONS") == "true"
-    )
-    num_threads = 1 if is_testing_run else 2
+    num_threads = int(os.environ.get("FL_NUM_THREADS", "1"))
 
     try:
         torch.set_num_threads(num_threads)
