@@ -117,6 +117,26 @@ class SimulationService:
             banks = self.data_generator.create_bank_entities(datasets, profiles)
             simulation.banks = banks
 
+            # Notify progress callback of the generated banks early
+            self._notify(
+                progress_callback,
+                simulation.id,
+                "banks_generated",
+                {
+                    "banks": [
+                        {
+                            "id": b.id,
+                            "name": b.name,
+                            "tier": b.tier.value,
+                            "fraud_ratio": b.fraud_ratio,
+                            "num_transactions": b.num_transactions,
+                            "status": b.status.value,
+                        }
+                        for b in banks
+                    ]
+                },
+            )
+
             # Split into train/test per bank
             bank_data: dict[str, dict[str, np.ndarray]] = {}
             for bank_id, (df, labels) in datasets.items():

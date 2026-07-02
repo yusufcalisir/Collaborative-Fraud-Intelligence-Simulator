@@ -51,7 +51,7 @@ export default function FederatedTrainingAnimation({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-3 sm:p-4 xl:p-6 overflow-hidden h-[375px] flex flex-col"
+      className="glass-card p-3 sm:p-4 xl:p-6 overflow-hidden h-[450px] flex flex-col"
     >
       {/* Phase Stepper */}
       <div className="flex items-start justify-between mb-6 w-full">

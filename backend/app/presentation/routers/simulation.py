@@ -296,6 +296,8 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
                 elif event_type in ("round_start", "round_complete"):
                     sim["current_round"] = data.get("round", sim.get("current_round", 0))
                     sim["status"] = SimulationStatus.TRAINING_FEDERATED.value
+                elif event_type == "banks_generated":
+                    sim["banks"] = data.get("banks", [])
                 elif event_type == "completed":
                     sim["status"] = SimulationStatus.COMPLETED.value
                 elif event_type == "error":
