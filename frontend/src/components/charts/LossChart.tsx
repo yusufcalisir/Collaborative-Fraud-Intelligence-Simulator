@@ -33,7 +33,7 @@ export default function LossChart({ rounds, totalRounds }: LossChartProps) {
   });
 
   return (
-    <div className="glass-card p-5 h-[400px] flex flex-col">
+    <div className="glass-card p-5 h-[420px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Training Loss Convergence
