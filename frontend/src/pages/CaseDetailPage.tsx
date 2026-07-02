@@ -103,7 +103,7 @@ export default function CaseDetailPage() {
             { label: 'Linked Alerts', value: caseData.alert_ids.length },
             { label: 'Notes', value: caseData.notes.length },
             { label: 'Timeline Events', value: caseData.timeline.length },
-            { label: 'Duration', value: caseData.duration_hours ? `${caseData.duration_hours.toFixed(1)}h` : '—' },
+            { label: 'Duration', value: caseData.duration_hours ? `${caseData.duration_hours.toFixed(1)}h` : '-' },
           ].map((stat) => (
             <div key={stat.label} className="text-center p-2 bg-[var(--color-bg-elevated)]/30 rounded-lg">
               <div className="text-lg font-bold">{stat.value}</div>

@@ -22,7 +22,7 @@ export default function MetricsComparison({ banks }: MetricsComparisonProps) {
       className="glass-card p-6"
     >
       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
-        Local vs Federated — Performance Comparison
+        Local vs Federated - Performance Comparison
       </h3>
 
       <div className="overflow-x-auto">

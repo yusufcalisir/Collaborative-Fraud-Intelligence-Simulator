@@ -27,7 +27,7 @@ export default function MetricsRadar({ banks }: MetricsRadarProps) {
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
-        Metrics Overview — All Banks
+        Metrics Overview - All Banks
       </h3>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">

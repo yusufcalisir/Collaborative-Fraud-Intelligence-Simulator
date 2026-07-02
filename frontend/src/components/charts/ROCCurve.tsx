@@ -51,7 +51,7 @@ export default function ROCCurve({ banks, modelType }: ROCCurveProps) {
   };
 
   const data = buildCurveData();
-  const title = modelType === 'local' ? 'ROC Curve — Local Models' : 'ROC Curve — Federated Model';
+  const title = modelType === 'local' ? 'ROC Curve - Local Models' : 'ROC Curve - Federated Model';
 
   return (
     <div className="glass-card p-5">

@@ -25,7 +25,7 @@ export default function FeatureImportance({ bank, modelType }: FeatureImportance
         Feature Importance
       </h3>
       <p className="text-[10px] text-[var(--color-text-muted)] mb-3">
-        {bank.name} — {modelType === 'local' ? 'Local' : 'Federated'} | First-layer weight magnitude
+        {bank.name} - {modelType === 'local' ? 'Local' : 'Federated'} | First-layer weight magnitude
       </p>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">

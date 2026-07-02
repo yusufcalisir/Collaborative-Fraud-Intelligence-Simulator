@@ -16,7 +16,7 @@ export default function SimulationView() {
   const { data: simulation, isLoading, isError, error } = useSimulation(id);
   const { data: rounds } = useTrainingRounds(id);
 
-  // 404 — simulation expired (e.g. after backend redeploy)
+  // 404 - simulation expired (e.g. after backend redeploy)
   if (isError) {
     const is404 = (error as any)?.response?.status === 404;
     return (
@@ -111,7 +111,7 @@ export default function SimulationView() {
           {[
             {
               label: 'Banks',
-              value: banks.length > 0 ? banks.length.toString() : '3',
+              value: banks.length > 0 ? banks.length.toString() : '...',
               sub: 'participating',
             },
             {
@@ -123,7 +123,7 @@ export default function SimulationView() {
               label: 'Avg Fraud Rate',
               value: banks.length > 0
                 ? formatPercent(banks.reduce((s, b) => s + b.fraud_ratio, 0) / banks.length)
-                : '1.50%',
+                : '...',
               sub: 'across banks',
             },
             {
@@ -178,7 +178,7 @@ export default function SimulationView() {
             <MetricsComparison banks={banks} />
             <MetricsRadar banks={banks} />
 
-            {/* ROC Curves — side by side */}
+             {/* ROC Curves - side by side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <ROCCurve banks={banks} modelType="local" />
               <ROCCurve banks={banks} modelType="federated" />
@@ -187,7 +187,7 @@ export default function SimulationView() {
             {/* Confusion Matrices */}
             <div>
               <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
-                Confusion Matrices — Local vs Federated
+                Confusion Matrices - Local vs Federated
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {banks.map((bank) => (
@@ -202,7 +202,7 @@ export default function SimulationView() {
             {/* Feature Importance */}
             <div>
               <h2 className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
-                Feature Importance — Federated Model
+                Feature Importance - Federated Model
               </h2>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {banks.map((bank) => (

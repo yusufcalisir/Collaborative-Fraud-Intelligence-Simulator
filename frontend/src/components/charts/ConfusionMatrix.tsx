@@ -32,7 +32,7 @@ export default function ConfusionMatrix({ bank, modelType }: ConfusionMatrixProp
         Confusion Matrix
       </h3>
       <p className="text-[10px] text-[var(--color-text-muted)] mb-3">
-        {bank.name} — {modelType === 'local' ? 'Local' : 'Federated'}
+        {bank.name} - {modelType === 'local' ? 'Local' : 'Federated'}
       </p>
 
       <div className="flex justify-center">

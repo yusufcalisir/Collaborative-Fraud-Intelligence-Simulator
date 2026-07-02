@@ -44,7 +44,7 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
         </button>
       </div>
 
-      {/* Core Settings — always visible */}
+      {/* Core Settings - always visible */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <label className="block text-xs text-[var(--color-text-muted)] mb-1">Rounds</label>
