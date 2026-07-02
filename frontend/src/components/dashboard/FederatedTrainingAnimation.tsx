@@ -26,11 +26,11 @@ const PHASE_INFO: Record<string, { label: string; description: string }> = {
 
 // Bank positions in SVG: triangle layout with server in center
 const BANK_POSITIONS = [
-  { x: 200, y: 50 },   // Bank A - top center
-  { x: 60, y: 250 },   // Bank B - bottom left
-  { x: 340, y: 250 },  // Bank C - bottom right
+  { x: 200, y: 35 },   // Bank A - top center
+  { x: 60, y: 215 },   // Bank B - bottom left
+  { x: 340, y: 215 },  // Bank C - bottom right
 ];
-const SERVER_POS = { x: 200, y: 165 };
+const SERVER_POS = { x: 200, y: 135 };
 
 export default function FederatedTrainingAnimation({
   status,
@@ -51,10 +51,10 @@ export default function FederatedTrainingAnimation({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-3 sm:p-4 xl:p-6 overflow-hidden h-[450px] flex flex-col"
+      className="glass-card p-3 sm:p-4 xl:p-6 overflow-hidden h-[400px] flex flex-col"
     >
       {/* Phase Stepper */}
-      <div className="flex items-start justify-between mb-6 w-full">
+      <div className="flex items-start justify-between mb-3 w-full">
         {['generating_data', 'training_local', 'training_federated', 'evaluating', 'completed'].map((step, idx, arr) => {
           const stepPhase = PHASE_INFO[step]!;
           const stepIdx = arr.indexOf(step);
@@ -101,7 +101,7 @@ export default function FederatedTrainingAnimation({
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -5 }}
-          className="text-center mb-4"
+          className="text-center mb-2"
         >
           <p className="text-sm font-semibold text-[var(--color-text-primary)]">{phase.label}</p>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{phase.description}</p>
@@ -110,7 +110,7 @@ export default function FederatedTrainingAnimation({
 
       {/* Progress bar */}
       {isActive && (
-        <div className="mb-6">
+        <div className="mb-3">
           <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mb-1.5">
             <span>
               {status === 'pending' && 'Initializing...'}
@@ -155,7 +155,7 @@ export default function FederatedTrainingAnimation({
 
       {/* SVG Animation */}
       <div className="relative flex-1 flex flex-col justify-center items-center">
-        <svg viewBox="0 0 400 310" className="w-full max-w-md my-auto" style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}>
+        <svg viewBox="0 0 400 250" className="w-full max-w-md my-auto" style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}>
           <defs>
             {/* Gradient for data flow */}
             <linearGradient id="flow-grad" x1="0%" y1="0%" x2="100%" y2="0%">

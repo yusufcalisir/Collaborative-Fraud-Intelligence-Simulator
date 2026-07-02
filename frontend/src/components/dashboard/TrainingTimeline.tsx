@@ -11,7 +11,7 @@ interface TrainingTimelineProps {
 
 export default function TrainingTimeline({ rounds, currentRound, totalRounds }: TrainingTimelineProps) {
   return (
-    <div className="glass-card p-5 h-[450px] flex flex-col">
+    <div className="glass-card p-5 h-[400px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Training Timeline
@@ -22,7 +22,7 @@ export default function TrainingTimeline({ rounds, currentRound, totalRounds }: 
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-1.5 bg-[var(--color-bg-elevated)] rounded-full mb-5 overflow-hidden">
+      <div className="w-full h-1.5 bg-[var(--color-bg-elevated)] rounded-full mb-3 overflow-hidden">
         <motion.div
           className="h-full rounded-full"
           style={{

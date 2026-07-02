@@ -33,7 +33,7 @@ export default function LossChart({ rounds, totalRounds }: LossChartProps) {
   });
 
   return (
-    <div className="glass-card p-5 h-[450px] flex flex-col">
+    <div className="glass-card p-5 h-[400px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Training Loss Convergence
@@ -100,7 +100,7 @@ export default function LossChart({ rounds, totalRounds }: LossChartProps) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mt-4 pt-3 border-t border-[var(--color-border-subtle)] text-[11px] text-[var(--color-text-muted)]">
+      <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mt-2 pt-2 border-t border-[var(--color-border-subtle)] text-[11px] text-[var(--color-text-muted)]">
         <div className="flex items-center gap-2">
           <span className="w-3 h-0.5 bg-[var(--color-accent-indigo)]"></span>
           <span>Global Loss</span>
