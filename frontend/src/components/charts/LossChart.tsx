@@ -31,13 +31,13 @@ export default function LossChart({ rounds }: LossChartProps) {
           </div>
         )}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 25, left: 10 }}>
+          <LineChart data={data} margin={{ top: 5, right: 20, bottom: 45, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
             <XAxis
               dataKey="round"
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
               axisLine={{ stroke: 'var(--color-border)' }}
-              label={{ value: 'Round', position: 'insideBottom', offset: -10, fill: 'var(--color-text-muted)', fontSize: 10 }}
+              label={{ value: 'Round', position: 'insideBottom', offset: -15, fill: 'var(--color-text-muted)', fontSize: 10 }}
             />
             <YAxis
               tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
@@ -55,7 +55,7 @@ export default function LossChart({ rounds }: LossChartProps) {
               formatter={(value: number) => [value.toFixed(4), 'Loss']}
               labelFormatter={(label) => `Round ${label}`}
             />
-            <Legend wrapperStyle={{ fontSize: '11px', color: 'var(--color-text-muted)' }} />
+            <Legend wrapperStyle={{ fontSize: '11px', color: 'var(--color-text-muted)', paddingTop: '15px' }} />
             <Line
               type="monotone"
               dataKey="loss"
