@@ -208,8 +208,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure PyTorch threading limits are applied at runtime to utilize both cores
     import torch
 
-    torch.set_num_threads(2)
-    torch.set_num_interop_threads(2)
+    try:
+        torch.set_num_threads(2)
+        torch.set_num_interop_threads(2)
+    except RuntimeError as e:
+        logger.warning("Could not set PyTorch threading limits: %s", e)
 
     # Seed mock data
     try:
