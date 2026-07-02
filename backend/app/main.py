@@ -2,20 +2,10 @@
 
 Wires together all routers, middleware, and lifecycle hooks.
 """
-# ruff: noqa: E402
 
 from __future__ import annotations
 
 import logging
-import os
-
-# Limit CPU threading for PyTorch, NumPy, OpenBLAS, MKL to prevent CPU starvation on low-spec servers
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -205,12 +195,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown hooks."""
     logger.info("Starting Collaborative Fraud Intelligence Simulator")
     logger.info("Environment: %s", settings.app_env)
-
-    # Ensure PyTorch threading limits are applied at runtime
-    import torch
-
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
 
     # Seed mock data
     try:
