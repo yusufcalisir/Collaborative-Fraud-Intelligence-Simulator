@@ -2,6 +2,7 @@
 
 Wires together all routers, middleware, and lifecycle hooks.
 """
+# ruff: noqa: E402
 
 from __future__ import annotations
 
