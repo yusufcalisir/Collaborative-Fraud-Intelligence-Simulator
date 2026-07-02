@@ -12,7 +12,12 @@ import sys
 
 # Set threads to 1 during test suite run to prevent C++ teardown aborts under pytest-cov,
 # but keep it at 2 in production/dev for max performance.
-is_testing = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
+is_testing = (
+    "pytest" in sys.modules
+    or any("pytest" in arg for arg in sys.argv)
+    or "PYTEST_CURRENT_TEST" in os.environ
+    or os.environ.get("GITHUB_ACTIONS") == "true"
+)
 num_threads_str = "1" if is_testing else "2"
 
 os.environ["OMP_NUM_THREADS"] = num_threads_str
@@ -214,7 +219,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure PyTorch threading limits are applied at runtime
     import torch
 
-    is_testing_run = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
+    is_testing_run = (
+        "pytest" in sys.modules
+        or any("pytest" in arg for arg in sys.argv)
+        or "PYTEST_CURRENT_TEST" in os.environ
+        or os.environ.get("GITHUB_ACTIONS") == "true"
+    )
     num_threads = 1 if is_testing_run else 2
 
     try:
