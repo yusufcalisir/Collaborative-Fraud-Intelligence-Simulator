@@ -106,6 +106,46 @@ export default function SimulationView() {
 
       {/* Main Simulation View Area */}
       <div className="space-y-4 pb-4">
+        {/* Stats Row (Full Width) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+          {[
+            {
+              label: 'Banks',
+              value: banks.length > 0 ? banks.length.toString() : '3',
+              sub: 'participating',
+            },
+            {
+              label: 'Rounds',
+              value: `${simulation.current_round}/${simulation.total_rounds}`,
+              sub: 'communication rounds',
+            },
+            {
+              label: 'Avg Fraud Rate',
+              value: banks.length > 0
+                ? formatPercent(banks.reduce((s, b) => s + b.fraud_ratio, 0) / banks.length)
+                : '1.50%',
+              sub: 'across banks',
+            },
+            {
+              label: 'Status',
+              value: simulation.status.replace(/_/g, ' '),
+              sub: isComplete ? 'finished' : 'in progress',
+            },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="glass-card p-3 flex flex-col justify-between"
+            >
+              <p className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</p>
+              <p className="text-sm font-bold font-mono text-[var(--color-text-primary)] mt-0.5 truncate">{stat.value}</p>
+              <p className="text-[9px] text-[var(--color-text-muted)] truncate">{stat.sub}</p>
+            </motion.div>
+          ))}
+        </div>
+
         {/* Main Dashboard Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Left Panel: Animation */}
@@ -117,61 +157,18 @@ export default function SimulationView() {
             />
           </div>
 
-          {/* Right Panel: Stats & Charts */}
-          <div className="lg:col-span-8 flex flex-col gap-4">
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
-              {[
-                {
-                  label: 'Banks',
-                  value: banks.length > 0 ? banks.length.toString() : '3',
-                  sub: 'participating',
-                },
-                {
-                  label: 'Rounds',
-                  value: `${simulation.current_round}/${simulation.total_rounds}`,
-                  sub: 'communication rounds',
-                },
-                {
-                  label: 'Avg Fraud Rate',
-                  value: banks.length > 0
-                    ? formatPercent(banks.reduce((s, b) => s + b.fraud_ratio, 0) / banks.length)
-                    : '1.50%',
-                  sub: 'across banks',
-                },
-                {
-                  label: 'Status',
-                  value: simulation.status.replace(/_/g, ' '),
-                  sub: isComplete ? 'finished' : 'in progress',
-                },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="glass-card p-3 flex flex-col justify-between"
-                >
-                  <p className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-sm font-bold font-mono text-[var(--color-text-primary)] mt-0.5 truncate">{stat.value}</p>
-                  <p className="text-[9px] text-[var(--color-text-muted)] truncate">{stat.sub}</p>
-                </motion.div>
-              ))}
-            </div>
+          {/* Middle Panel: LossChart */}
+          <div className="lg:col-span-5 flex flex-col">
+            <LossChart rounds={rounds ?? []} totalRounds={simulation.total_rounds} />
+          </div>
 
-            {/* Timeline & Loss chart */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2 flex flex-col">
-                <LossChart rounds={rounds ?? []} totalRounds={simulation.total_rounds} />
-              </div>
-              <div className="md:col-span-1 flex flex-col">
-                <TrainingTimeline
-                  rounds={rounds ?? []}
-                  currentRound={simulation.current_round}
-                  totalRounds={simulation.total_rounds}
-                />
-              </div>
-            </div>
+          {/* Right Panel: TrainingTimeline */}
+          <div className="lg:col-span-3 flex flex-col">
+            <TrainingTimeline
+              rounds={rounds ?? []}
+              currentRound={simulation.current_round}
+              totalRounds={simulation.total_rounds}
+            />
           </div>
         </div>
 

@@ -35,11 +35,44 @@ export default function TrainingTimeline({ rounds, currentRound, totalRounds }: 
       </div>
 
       {/* Round timeline */}
-      <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col">
         {rounds.length === 0 && (
-          <p className="text-xs text-[var(--color-text-muted)] text-center py-4">
-            Waiting for training to begin...
-          </p>
+          <div className="flex-1 flex flex-col justify-center items-center py-4 text-center">
+            {/* Pulsing radar locator */}
+            <div className="relative w-12 h-12 mb-3 flex items-center justify-center">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--color-accent-indigo)] opacity-20 animate-ping"></span>
+              <div className="relative rounded-full w-7 h-7 bg-gradient-to-tr from-[var(--color-accent-indigo)] to-[var(--color-accent-teal)] flex items-center justify-center shadow-lg">
+                <span className="text-xs">📡</span>
+              </div>
+            </div>
+            
+            <p className="text-xs font-semibold text-[var(--color-text-primary)] mb-0.5">
+              Establishing Connections
+            </p>
+            <p className="text-[10px] text-[var(--color-text-muted)] max-w-[180px] mb-4">
+              Awaiting initialization updates from client nodes...
+            </p>
+            
+            {/* Status list */}
+            <div className="w-full space-y-2 text-left bg-[var(--color-bg-card)]/50 p-3 rounded-lg border border-[var(--color-border-subtle)]">
+              {[
+                { id: 'bank_a', name: 'Meridian National' },
+                { id: 'bank_b', name: 'Nexus Digital' },
+                { id: 'bank_c', name: 'Heritage Regional' },
+              ].map((bank) => (
+                <div key={bank.id} className="flex items-center justify-between text-[10px]">
+                  <span className="font-medium text-[var(--color-text-secondary)]">{bank.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-status-success)] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--color-status-success)]"></span>
+                    </span>
+                    <span className="text-[9px] text-[var(--color-text-muted)]">Connected</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
         {rounds.map((round, idx) => {
           const hasDropout = round.dropped_banks.length > 0;
