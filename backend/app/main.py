@@ -1,11 +1,16 @@
-"""FastAPI application entry point.
-
-Wires together all routers, middleware, and lifecycle hooks.
-"""
-
+# ruff: noqa: E402
 from __future__ import annotations
 
 import logging
+import os
+
+# Configure CPU threading limits to 2 cores for maximum performance
+os.environ["OMP_NUM_THREADS"] = "2"
+os.environ["MKL_NUM_THREADS"] = "2"
+os.environ["OPENBLAS_NUM_THREADS"] = "2"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "2"
+os.environ["NUMEXPR_NUM_THREADS"] = "2"
+
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -193,8 +198,16 @@ def seed_mock_data() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown hooks."""
-    logger.info("Starting Collaborative Fraud Intelligence Simulator")
     logger.info("Environment: %s", settings.app_env)
+
+    # Configure PyTorch runtime threads for 2 cores
+    try:
+        import torch
+
+        torch.set_num_threads(2)
+        torch.set_num_interop_threads(2)
+    except Exception as e:
+        logger.warning("Could not set PyTorch threading limits: %s", e)
 
     # Seed mock data
     try:
