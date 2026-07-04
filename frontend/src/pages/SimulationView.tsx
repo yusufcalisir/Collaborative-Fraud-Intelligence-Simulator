@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSimulation, useTrainingRounds } from '../api/queries';
 import MetricsComparison from '../components/dashboard/MetricsComparison';
 import TrainingTimeline from '../components/dashboard/TrainingTimeline';
@@ -13,8 +15,16 @@ import { formatDuration, formatPercent } from '../utils/formatters';
 
 export default function SimulationView() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const { data: simulation, isLoading, isError, error } = useSimulation(id);
   const { data: rounds } = useTrainingRounds(id);
+
+  // Sync training rounds when simulation round or status updates
+  useEffect(() => {
+    if (simulation) {
+      queryClient.invalidateQueries({ queryKey: ['training-rounds', id] });
+    }
+  }, [simulation?.current_round, simulation?.status, id, queryClient]);
 
   // 404 - simulation expired (e.g. after backend redeploy)
   if (isError) {

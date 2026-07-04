@@ -54,7 +54,7 @@ export function useSimulation(id: string | undefined) {
       if (query.state.error) return false;
       const status = query.state.data?.status;
       if (status === 'completed' || status === 'failed') return false;
-      return 2000;
+      return 1000;
     },
   });
 }
@@ -94,7 +94,7 @@ export function useTrainingRounds(simulationId: string | undefined) {
     },
     refetchInterval: (query) => {
       if (query.state.error) return false;
-      return 3000;
+      return 1000;
     },
   });
 }
