@@ -19,12 +19,20 @@ class RedisStore:
     # Class-level flag: once Redis is confirmed unreachable, skip for all instances
     _global_redis_unavailable: bool = False
 
+    # Class-level shared in-memory stores for fallback mode, keyed by prefix
+    _shared_fallback_stores: dict[str, dict] = {}
+
     def __init__(self, prefix: str):
         self.prefix = prefix
         self.settings = get_settings()
         self._redis_client = None
-        self._fallback_store: dict = {}
         self._redis_failed = False
+
+    @property
+    def _fallback_store(self) -> dict:
+        if self.prefix not in RedisStore._shared_fallback_stores:
+            RedisStore._shared_fallback_stores[self.prefix] = {}
+        return RedisStore._shared_fallback_stores[self.prefix]
 
     @property
     def client(self):

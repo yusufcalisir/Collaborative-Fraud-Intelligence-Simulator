@@ -26,3 +26,13 @@ def sample_config() -> dict:
         "bank_b_transactions": 800,
         "bank_c_transactions": 600,
     }
+
+
+@pytest.fixture(autouse=True)
+def clear_fallback_stores():
+    """Clear shared in-memory fallback stores between tests."""
+    from app.infrastructure.redis_store import RedisStore
+
+    RedisStore._shared_fallback_stores.clear()
+    yield
+    RedisStore._shared_fallback_stores.clear()
