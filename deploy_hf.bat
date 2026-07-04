@@ -1,22 +1,24 @@
 @echo off
+chcp 65001 > nul
 echo ===================================================
 echo [1/4] Preparing Hugging Face deployment...
 echo ===================================================
 copy README.md README.md.bak > nul
 
-(
-echo ---
-echo title: Collaborative Fraud Intelligence Simulator
-echo emoji: 🛡️
-echo colorFrom: indigo
-echo colorTo: purple
-echo sdk: docker
-echo app_port: 7860
-echo pinned: false
-echo ---
-echo.
-type README.md.bak
-) > README.md
+powershell -NoProfile -Command ^
+  "$front = @'^
+
+---
+title: Collaborative Fraud Intelligence Simulator
+emoji: 🛡️
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+'@; $body = Get-Content -Raw -Encoding UTF8 'README.md.bak'; [System.IO.File]::WriteAllText('README.md', $front + $body, (New-Object System.Text.UTF8Encoding($false)))"
 
 echo ===================================================
 echo [2/4] Committing temporary metadata...
