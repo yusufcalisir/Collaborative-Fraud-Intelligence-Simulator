@@ -31,9 +31,15 @@ class RedisStore:
         if self._redis_failed or RedisStore._global_redis_unavailable:
             return None
         if self._redis_client is None:
+            url = self.settings.redis_url
+            if not url:
+                # Redis not configured — silently use in-memory storage
+                self._redis_failed = True
+                RedisStore._global_redis_unavailable = True
+                return None
             try:
                 self._redis_client = redis.Redis.from_url(
-                    self.settings.redis_url,
+                    url,
                     decode_responses=True,
                     socket_connect_timeout=0.5,
                     socket_timeout=0.5,

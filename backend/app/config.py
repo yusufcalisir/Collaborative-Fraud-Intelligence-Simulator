@@ -36,7 +36,9 @@ class Settings(BaseSettings):
     postgres_password: str = "change_me_in_production"
 
     # ── Redis ─────────────────────────────────
-    redis_host: str = "localhost"
+    # Leave redis_host empty to disable Redis and use in-memory storage silently.
+    # Set REDIS_HOST env var to enable Redis.
+    redis_host: str = ""
     redis_port: int = 6379
     redis_db: int = 0
 
@@ -73,8 +75,10 @@ class Settings(BaseSettings):
         )
 
     @property
-    def redis_url(self) -> str:
-        """Redis connection URL."""
+    def redis_url(self) -> str | None:
+        """Redis connection URL, or None if Redis is not configured."""
+        if not self.redis_host:
+            return None
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
 
