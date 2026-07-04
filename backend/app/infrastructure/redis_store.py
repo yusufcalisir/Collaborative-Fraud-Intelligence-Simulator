@@ -1,13 +1,15 @@
 import json
 import logging
+
 import redis
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 class RedisStore:
     """A synchronous Redis-backed key-value and list storage helper.
-    
+
     Falls back to a standard in-memory dictionary if Redis is not connected
     or fails. This allows the codebase to remain 100% backwards-compatible
     with environment configurations that do not run Redis (like local unit tests).
@@ -30,7 +32,7 @@ class RedisStore:
         if self._redis_client is None:
             try:
                 self._redis_client = redis.Redis.from_url(
-                    self.settings.redis_url, 
+                    self.settings.redis_url,
                     decode_responses=True,
                     socket_connect_timeout=0.5,
                     socket_timeout=0.5

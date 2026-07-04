@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-
 from typing import Any
+
 from app.domain.entities_phase2 import Alert, SharedIntelligence
 from app.domain.enums import (
     AlertSeverity,

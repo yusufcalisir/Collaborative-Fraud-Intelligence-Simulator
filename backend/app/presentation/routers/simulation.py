@@ -22,13 +22,12 @@ from app.application.schemas.simulation import (
     SimulationSummaryResponse,
 )
 from app.domain.enums import PrivacyMechanism, SimulationStatus
+from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/simulations", tags=["simulations"])
 
-
-from app.infrastructure.redis_store import RedisStore
 
 # ── Redis-backed stores ───────────────────────────
 _simulation_results = RedisStore("sim_results")

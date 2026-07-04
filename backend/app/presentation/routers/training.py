@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException
+
 from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)

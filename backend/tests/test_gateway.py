@@ -1,12 +1,14 @@
-import os
+# ruff: noqa: E402
 import importlib
-import sys
+import os
+
 from fastapi.testclient import TestClient
 
 # Force SERVICE_NAME to gateway so the app loads gateway router
 os.environ["SERVICE_NAME"] = "gateway"
 
 import app.main
+
 importlib.reload(app.main)
 
 gateway_app = app.main.app
@@ -68,6 +70,8 @@ def test_gateway_authorization():
 
 
 def test_gateway_rate_limiting():
+    from app.presentation.routers.gateway import _rate_limiter
+    _rate_limiter.clear()
     original_rate_limit = settings.gateway_rate_limit
     # Set low rate limit for test
     settings.gateway_rate_limit = 2

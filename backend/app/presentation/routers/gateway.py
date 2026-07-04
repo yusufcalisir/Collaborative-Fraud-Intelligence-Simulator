@@ -1,13 +1,13 @@
-import logging
 import asyncio
 import contextlib
-import json
+import logging
 import time
+
 import httpx
 import websockets
-from typing import Any, cast
 from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.openapi.docs import get_swagger_ui_html
+
 from app.config import get_settings
 from app.infrastructure.redis_store import RedisStore
 
@@ -86,7 +86,7 @@ def check_rate_limit(client_id: str) -> bool:
 
 def authenticate_request(request_or_websocket: Request | WebSocket) -> tuple[str, str, str | None]:
     """Authenticate request or websocket using API keys.
-    
+
     Returns:
         tuple: (identity, role, api_key_used)
     """
@@ -99,22 +99,22 @@ def authenticate_request(request_or_websocket: Request | WebSocket) -> tuple[str
                 api_key = auth_header.split(" ")[1]
     else:  # WebSocket
         api_key = request_or_websocket.query_params.get("api_key") or request_or_websocket.headers.get("x-api-key")
-        
+
     if api_key:
         keys_map = get_api_keys()
         if api_key in keys_map:
             identity, role = keys_map[api_key]
             return identity, role, api_key
-            
+
     if settings.gateway_require_auth:
         return "", "", api_key
-        
+
     return "analyst", "analyst", api_key
 
 def check_authorization(identity: str, role: str, full_path: str, query_params: dict, method: str) -> bool:
     if role == "analyst":
         return True
-        
+
     if role == "bank":
         # Banks cannot trigger/run simulations, dashboards, or edit scenarios
         if full_path.startswith("/api/v1/simulations") and method != "GET":
@@ -123,12 +123,12 @@ def check_authorization(identity: str, role: str, full_path: str, query_params: 
             return False
         if full_path.startswith("/api/v1/dashboard"):
             return False
-            
+
         # Banks can only query metrics filtering by their own bank_id
         bank_id_param = query_params.get("bank_id")
         if bank_id_param and bank_id_param != identity:
             return False
-            
+
     return True
 
 def check_ws_authorization(identity: str, role: str, ws_path: str) -> bool:
@@ -136,9 +136,7 @@ def check_ws_authorization(identity: str, role: str, ws_path: str) -> bool:
         return True
     if role == "bank":
         # Banks are not permitted to see global training outputs
-        if ws_path.startswith("/ws/training"):
-            return False
-        return True
+        return not ws_path.startswith("/ws/training")
     return False
 
 # ── Swagger Docs Aggregation ──────────────────────────────────
@@ -160,7 +158,7 @@ async def service_openapi(service_name: str):
     """Fetch and return the OpenAPI JSON schema for a specific downstream microservice."""
     if service_name not in SERVICES:
         return Response(content="Service not found", status_code=404)
-    
+
     target_host = SERVICES[service_name]["http"]
     async with httpx.AsyncClient() as client:
         try:
@@ -213,7 +211,7 @@ async def http_proxy(request: Request, path: str):
     headers = dict(request.headers)
     headers.pop("host", None)
     headers.pop("content-length", None)
-    
+
     body = await request.body()
     query_params = dict(request.query_params)
 
@@ -238,7 +236,7 @@ async def http_proxy(request: Request, path: str):
                 content=body,
                 timeout=30.0
             )
-            
+
             resp_headers = dict(downstream_resp.headers)
             resp_headers.pop("content-encoding", None)
             resp_headers.pop("content-length", None)
@@ -310,7 +308,10 @@ async def ws_proxy(websocket: WebSocket, path: str):
             async def forward_to_client():
                 try:
                     async for message in downstream_ws:
-                        await websocket.send_text(message)
+                        if isinstance(message, bytes):
+                            await websocket.send_bytes(message)
+                        else:
+                            await websocket.send_text(message)
                 except Exception:
                     pass
 

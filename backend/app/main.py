@@ -50,6 +50,8 @@ logger = logging.getLogger(__name__)
 # ── Lifecycle ─────────────────────────────────
 def seed_mock_data() -> None:
     """Seed initial mock data for Phase 2 AML platform."""
+    from app.application.services.alert_service import _alert_to_dict, _intel_to_dict
+    from app.application.services.case_service import _case_to_dict
     from app.domain.entities_phase2 import Alert, SharedIntelligence
     from app.domain.enums import (
         AlertSeverity,
@@ -65,8 +67,6 @@ def seed_mock_data() -> None:
     from app.presentation.routers.cases import get_case_service
     from app.presentation.routers.entities import get_entity_service
     from app.presentation.routers.graph import get_graph_engine
-    from app.application.services.alert_service import _alert_to_dict, _intel_to_dict
-    from app.application.services.case_service import _case_to_dict
 
     alert_svc = get_alert_service()
     case_svc = get_case_service()

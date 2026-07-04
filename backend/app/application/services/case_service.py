@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-
 from typing import Any
+
 from app.domain.entities_phase2 import Case, CaseEvent, CaseNote
 from app.domain.enums import CasePriority, CaseStatus
 from app.infrastructure.redis_store import RedisStore
@@ -63,7 +63,7 @@ def _dict_to_case(d: dict[str, Any]) -> Case:
         d_copy["updated_at"] = datetime.fromisoformat(d_copy["updated_at"])
     if d_copy.get("closed_at"):
         d_copy["closed_at"] = datetime.fromisoformat(d_copy["closed_at"])
-        
+
     notes = []
     for n in d_copy.get("notes", []):
         notes.append(CaseNote(
@@ -85,7 +85,7 @@ def _dict_to_case(d: dict[str, Any]) -> Case:
             metadata=e.get("metadata", {})
         ))
     d_copy["timeline"] = timeline
-    
+
     return Case(**d_copy)
 
 

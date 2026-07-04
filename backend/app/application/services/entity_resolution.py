@@ -13,10 +13,9 @@ a trusted third party or derived from MPC.
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from datetime import UTC, datetime
-
 from typing import Any, cast
+
 from app.domain.entities_phase2 import Entity, Relationship
 from app.domain.enums import EntityType, RelationshipType, RiskLevel
 from app.domain.value_objects_phase2 import PrivacyPreservingIdentifier
@@ -125,9 +124,9 @@ class EntityResolutionService:
         )
 
         self._entities.set(entity.id, _entity_to_dict(entity))
-        
+
         val = self._hash_index.get(privacy_id)
-        data = cast(dict, val) if val is not None else {"ids": []}
+        data = cast("dict", val) if val is not None else {"ids": []}
         entity_ids = data.setdefault("ids", [])
         entity_ids.append(entity.id)
         self._hash_index.set(privacy_id, data)
@@ -142,7 +141,7 @@ class EntityResolutionService:
         different institutions.
         """
         val = self._hash_index.get(privacy_hash)
-        data = cast(dict, val) if val is not None else {"ids": []}
+        data = cast("dict", val) if val is not None else {"ids": []}
         entity_ids = data.get("ids", [])
         entities = []
         for eid in entity_ids:
@@ -296,7 +295,7 @@ class EntityResolutionService:
 
     def _find_entity(self, privacy_id: str, bank_id: str) -> Entity | None:
         val = self._hash_index.get(privacy_id)
-        data = cast(dict, val) if val is not None else {"ids": []}
+        data = cast("dict", val) if val is not None else {"ids": []}
         entity_ids = data.get("ids", [])
         for eid in entity_ids:
             entity = self.get_entity(eid)
