@@ -102,7 +102,7 @@ class GraphEngine:
     def __init__(self) -> None:
         self._entities = RedisStore("entity")
         self._relationships = RedisStore("relationship")
-        self._adjacency = defaultdict(set)
+        self._adjacency: defaultdict[str, set[tuple[str, str]]] = defaultdict(set)
 
     def _build_adjacency_list(self) -> None:
         self._adjacency = defaultdict(set)

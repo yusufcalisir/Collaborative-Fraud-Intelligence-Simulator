@@ -353,7 +353,9 @@ class StreamingEngine:
                 top_features=top_features,
                 risk_factors=combined_risk_factors,
             )
-            alert_svc._alert_store[alert.id] = alert
+            from app.application.services.alert_service import _alert_to_dict
+
+            alert_svc._alert_store.set(alert.id, _alert_to_dict(alert))
 
             # Automatically create a Case for High/Critical alerts
             if alert.is_actionable:
@@ -381,10 +383,14 @@ class StreamingEngine:
                 entity_type=EntityType.CUSTOMER,
                 related_alert_count=payload.get("cards_identified", 2),
             )
-            alert_svc._intelligence_store.append(intel)
+            from app.application.services.alert_service import _intel_to_dict
+
+            alert_svc._intelligence_store.push_list("intelligence_list", _intel_to_dict(intel))
 
             # Link matching entities across institutions in the graph
-            all_entities = list(entity_svc._entities.values())
+            from app.application.services.entity_resolution import _dict_to_entity
+
+            all_entities = [_dict_to_entity(v) for v in entity_svc._entities.list_values()]
             customers = [e for e in all_entities if e.entity_type == EntityType.CUSTOMER]
             if len(customers) >= 2:
                 for i in range(len(customers) - 1):
@@ -398,7 +404,10 @@ class StreamingEngine:
 
         elif event.event_type == "escalation":
             # Find open cases and escalate them to critical
-            for case in list(case_svc._cases.values()):
+            from app.application.services.case_service import _case_to_dict, _dict_to_case
+
+            for case_dict in case_svc._cases.list_values():
+                case = _dict_to_case(case_dict)
                 if case.is_open:
                     case.priority = CasePriority.P1_CRITICAL
                     case.timeline.append(
@@ -408,3 +417,4 @@ class StreamingEngine:
                             actor="system",
                         )
                     )
+                    case_svc._cases.set(case.id, _case_to_dict(case))

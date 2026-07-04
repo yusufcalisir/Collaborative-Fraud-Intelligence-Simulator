@@ -130,7 +130,7 @@ async def list_intelligence(
     if bank_id:
         items = _alert_service.consume_intelligence(bank_id)
     else:
-        items = _alert_service._intelligence_store
+        items = _alert_service.get_all_intelligence()
 
     return [
         SharedIntelligenceResponse(

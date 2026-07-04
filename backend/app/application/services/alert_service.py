@@ -196,6 +196,11 @@ class AlertIntelligenceService:
         items = [_dict_to_intel(i) for i in raw_list]
         return [intel for intel in items if intel.source_bank_id != bank_id]
 
+    def get_all_intelligence(self) -> list[SharedIntelligence]:
+        """Retrieve all shared intelligence items."""
+        raw_list = self._intelligence_store.get_list("intelligence_list")
+        return [_dict_to_intel(i) for i in raw_list]
+
     def correlate_alerts(self, alerts: list[Alert]) -> list[dict]:
         """Find patterns across multiple alerts.
 
