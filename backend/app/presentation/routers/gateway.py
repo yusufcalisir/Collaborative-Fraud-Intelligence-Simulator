@@ -64,6 +64,7 @@ PATH_ROUTING = {
 
 # ── Gateway Helpers ───────────────────────────────────────────
 
+
 def get_api_keys() -> dict[str, tuple[str, str]]:
     keys_map = {}
     for item in settings.gateway_api_keys.split(","):
@@ -74,6 +75,7 @@ def get_api_keys() -> dict[str, tuple[str, str]]:
             keys_map[parts[0]] = (parts[1], parts[2])
     return keys_map
 
+
 def check_rate_limit(client_id: str) -> bool:
     minute_bucket = int(time.time() / 60)
     key = f"rl:{client_id}:{minute_bucket}"
@@ -83,6 +85,7 @@ def check_rate_limit(client_id: str) -> bool:
         return False
     _rate_limiter.set(key, {"count": count + 1}, ex=60)
     return True
+
 
 def authenticate_request(request_or_websocket: Request | WebSocket) -> tuple[str, str, str | None]:
     """Authenticate request or websocket using API keys.
@@ -98,7 +101,9 @@ def authenticate_request(request_or_websocket: Request | WebSocket) -> tuple[str
             if auth_header and auth_header.startswith("Bearer "):
                 api_key = auth_header.split(" ")[1]
     else:  # WebSocket
-        api_key = request_or_websocket.query_params.get("api_key") or request_or_websocket.headers.get("x-api-key")
+        api_key = request_or_websocket.query_params.get(
+            "api_key"
+        ) or request_or_websocket.headers.get("x-api-key")
 
     if api_key:
         keys_map = get_api_keys()
@@ -111,7 +116,10 @@ def authenticate_request(request_or_websocket: Request | WebSocket) -> tuple[str
 
     return "analyst", "analyst", api_key
 
-def check_authorization(identity: str, role: str, full_path: str, query_params: dict, method: str) -> bool:
+
+def check_authorization(
+    identity: str, role: str, full_path: str, query_params: dict, method: str
+) -> bool:
     if role == "analyst":
         return True
 
@@ -131,6 +139,7 @@ def check_authorization(identity: str, role: str, full_path: str, query_params: 
 
     return True
 
+
 def check_ws_authorization(identity: str, role: str, ws_path: str) -> bool:
     if role == "analyst":
         return True
@@ -139,7 +148,9 @@ def check_ws_authorization(identity: str, role: str, ws_path: str) -> bool:
         return not ws_path.startswith("/ws/training")
     return False
 
+
 # ── Swagger Docs Aggregation ──────────────────────────────────
+
 
 @router.get("/docs/{service_name}", include_in_schema=False)
 async def service_docs(service_name: str):
@@ -152,6 +163,7 @@ async def service_docs(service_name: str):
         swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
         swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
     )
+
 
 @router.get("/openapi/{service_name}.json", include_in_schema=False)
 async def service_openapi(service_name: str):
@@ -169,9 +181,13 @@ async def service_openapi(service_name: str):
             logger.error(f"Failed to fetch OpenAPI for {service_name}: {e}")
             return Response(content=f"Error loading docs: {e}", status_code=502)
 
+
 # ── Dynamic HTTP Proxying ───────────────────────────────────
 
-@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+
+@router.api_route(
+    "/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
+)
 async def http_proxy(request: Request, path: str):
     """Proxy HTTP requests to the corresponding downstream microservice."""
     start_time = time.time()
@@ -234,7 +250,7 @@ async def http_proxy(request: Request, path: str):
                 headers=headers,
                 params=query_params,
                 content=body,
-                timeout=30.0
+                timeout=30.0,
             )
 
             resp_headers = dict(downstream_resp.headers)
@@ -245,7 +261,7 @@ async def http_proxy(request: Request, path: str):
             return Response(
                 content=downstream_resp.content,
                 status_code=downstream_resp.status_code,
-                headers=resp_headers
+                headers=resp_headers,
             )
     except Exception as e:
         logger.error(f"Gateway proxy error to {target_url}: {e}")
@@ -254,10 +270,18 @@ async def http_proxy(request: Request, path: str):
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(
             "GATEWAY: %s - %s %s - Auth: %s (%s) - Status: %s - Time: %dms",
-            client_ip, request.method, full_path, identity, role, status_code, duration_ms
+            client_ip,
+            request.method,
+            full_path,
+            identity,
+            role,
+            status_code,
+            duration_ms,
         )
 
+
 # ── Dynamic WebSocket Proxying ────────────────────────────────
+
 
 @router.websocket("/ws/{path:path}")
 async def ws_proxy(websocket: WebSocket, path: str):
@@ -305,6 +329,7 @@ async def ws_proxy(websocket: WebSocket, path: str):
     try:
         async with websockets.connect(target_url) as downstream_ws:
             status_code = 1000
+
             async def forward_to_client():
                 try:
                     async for message in downstream_ws:
@@ -335,6 +360,10 @@ async def ws_proxy(websocket: WebSocket, path: str):
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(
             "GATEWAY_WS: %s - %s - Auth: %s (%s) - Closed: %s - Time: %dms",
-            client_ip, ws_path, identity, role, status_code, duration_ms
+            client_ip,
+            ws_path,
+            identity,
+            role,
+            status_code,
+            duration_ms,
         )
-

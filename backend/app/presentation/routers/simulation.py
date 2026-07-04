@@ -83,15 +83,18 @@ async def create_simulation(
     }
 
     # Store pending status
-    _simulation_results.set(simulation_id, {
-        "id": simulation_id,
-        "status": SimulationStatus.PENDING.value,
-        "config": config_dict,
-        "current_round": 0,
-        "total_rounds": config.num_rounds,
-        "banks": [],
-        "rounds": [],
-    })
+    _simulation_results.set(
+        simulation_id,
+        {
+            "id": simulation_id,
+            "status": SimulationStatus.PENDING.value,
+            "config": config_dict,
+            "current_round": 0,
+            "total_rounds": config.num_rounds,
+            "banks": [],
+            "rounds": [],
+        },
+    )
 
     # Run simulation in a background thread (no Celery worker needed)
     thread = threading.Thread(

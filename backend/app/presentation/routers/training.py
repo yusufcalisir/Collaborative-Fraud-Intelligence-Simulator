@@ -71,4 +71,3 @@ async def get_training_progress(simulation_id: str) -> dict:
         return events[-1]
 
     return {"event_type": "unknown", "data": {"message": "No progress data available"}}
-

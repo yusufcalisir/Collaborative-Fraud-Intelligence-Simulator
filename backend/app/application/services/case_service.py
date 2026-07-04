@@ -19,6 +19,7 @@ from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
 
+
 def _case_to_dict(c: Case) -> dict[str, Any]:
     return {
         "id": c.id,
@@ -53,8 +54,10 @@ def _case_to_dict(c: Case) -> dict[str, Any]:
         "total_risk_score": c.total_risk_score,
     }
 
+
 def _dict_to_case(d: dict[str, Any]) -> Case:
     from datetime import datetime
+
     d_copy = d.copy()
     d_copy["status"] = CaseStatus(d_copy["status"])
     d_copy["priority"] = CasePriority(d_copy["priority"])
@@ -66,28 +69,31 @@ def _dict_to_case(d: dict[str, Any]) -> Case:
 
     notes = []
     for n in d_copy.get("notes", []):
-        notes.append(CaseNote(
-            id=n["id"],
-            case_id=n["case_id"],
-            author=n["author"],
-            content=n["content"],
-            created_at=datetime.fromisoformat(n["created_at"])
-        ))
+        notes.append(
+            CaseNote(
+                id=n["id"],
+                case_id=n["case_id"],
+                author=n["author"],
+                content=n["content"],
+                created_at=datetime.fromisoformat(n["created_at"]),
+            )
+        )
     d_copy["notes"] = notes
 
     timeline = []
     for e in d_copy.get("timeline", []):
-        timeline.append(CaseEvent(
-            event_type=e["event_type"],
-            description=e["description"],
-            actor=e["actor"],
-            timestamp=datetime.fromisoformat(e["timestamp"]),
-            metadata=e.get("metadata", {})
-        ))
+        timeline.append(
+            CaseEvent(
+                event_type=e["event_type"],
+                description=e["description"],
+                actor=e["actor"],
+                timestamp=datetime.fromisoformat(e["timestamp"]),
+                metadata=e.get("metadata", {}),
+            )
+        )
     d_copy["timeline"] = timeline
 
     return Case(**d_copy)
-
 
 
 # Valid status transitions

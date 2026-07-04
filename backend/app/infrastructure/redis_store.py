@@ -7,6 +7,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+
 class RedisStore:
     """A synchronous Redis-backed key-value and list storage helper.
 
@@ -35,7 +36,7 @@ class RedisStore:
                     self.settings.redis_url,
                     decode_responses=True,
                     socket_connect_timeout=0.5,
-                    socket_timeout=0.5
+                    socket_timeout=0.5,
                 )
                 # Test connection
                 self._redis_client.ping()

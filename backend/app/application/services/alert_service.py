@@ -27,6 +27,7 @@ from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
 
+
 def _alert_to_dict(a: Alert) -> dict[str, Any]:
     return {
         "id": a.id,
@@ -46,8 +47,10 @@ def _alert_to_dict(a: Alert) -> dict[str, Any]:
         "historical_evidence": a.historical_evidence,
     }
 
+
 def _dict_to_alert(d: dict[str, Any]) -> Alert:
     from datetime import datetime
+
     d_copy = d.copy()
     d_copy["severity"] = AlertSeverity(d_copy["severity"])
     d_copy["status"] = AlertStatus(d_copy["status"])
@@ -55,6 +58,7 @@ def _dict_to_alert(d: dict[str, Any]) -> Alert:
     if d_copy.get("updated_at"):
         d_copy["updated_at"] = datetime.fromisoformat(d_copy["updated_at"])
     return Alert(**d_copy)
+
 
 def _intel_to_dict(i: SharedIntelligence) -> dict[str, Any]:
     return {
@@ -70,8 +74,10 @@ def _intel_to_dict(i: SharedIntelligence) -> dict[str, Any]:
         "expires_at": i.expires_at.isoformat() if i.expires_at else None,
     }
 
+
 def _dict_to_intel(d: dict[str, Any]) -> SharedIntelligence:
     from datetime import datetime
+
     d_copy = d.copy()
     d_copy["intelligence_type"] = IntelligenceType(d_copy["intelligence_type"])
     if d_copy.get("entity_type"):
@@ -80,8 +86,6 @@ def _dict_to_intel(d: dict[str, Any]) -> SharedIntelligence:
     if d_copy.get("expires_at"):
         d_copy["expires_at"] = datetime.fromisoformat(d_copy["expires_at"])
     return SharedIntelligence(**d_copy)
-
-
 
 
 class AlertIntelligenceService:

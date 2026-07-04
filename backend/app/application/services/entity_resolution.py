@@ -23,6 +23,7 @@ from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
 
+
 def _entity_to_dict(e: Entity) -> dict[str, Any]:
     return {
         "id": e.id,
@@ -37,14 +38,17 @@ def _entity_to_dict(e: Entity) -> dict[str, Any]:
         "last_seen": e.last_seen.isoformat(),
     }
 
+
 def _dict_to_entity(d: dict[str, Any]) -> Entity:
     from datetime import datetime
+
     d_copy = d.copy()
     d_copy["entity_type"] = EntityType(d_copy["entity_type"])
     d_copy["risk_level"] = RiskLevel(d_copy["risk_level"])
     d_copy["first_seen"] = datetime.fromisoformat(d_copy["first_seen"])
     d_copy["last_seen"] = datetime.fromisoformat(d_copy["last_seen"])
     return Entity(**d_copy)
+
 
 def _relationship_to_dict(r: Relationship) -> dict[str, Any]:
     return {
@@ -57,14 +61,14 @@ def _relationship_to_dict(r: Relationship) -> dict[str, Any]:
         "created_at": r.created_at.isoformat(),
     }
 
+
 def _dict_to_relationship(d: dict[str, Any]) -> Relationship:
     from datetime import datetime
+
     d_copy = d.copy()
     d_copy["relationship_type"] = RelationshipType(d_copy["relationship_type"])
     d_copy["created_at"] = datetime.fromisoformat(d_copy["created_at"])
     return Relationship(**d_copy)
-
-
 
 
 class EntityResolutionService:

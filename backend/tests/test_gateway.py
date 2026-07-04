@@ -47,30 +47,21 @@ def test_gateway_authentication():
 
 def test_gateway_authorization():
     # A bank client tries to start a simulation -> 403 Forbidden
-    response = client.post(
-        "/api/v1/simulations",
-        json={},
-        headers={"X-API-Key": "key_bank_a"}
-    )
+    response = client.post("/api/v1/simulations", json={}, headers={"X-API-Key": "key_bank_a"})
     assert response.status_code == 403
 
     # Bank A tries to request Bank B's alerts -> 403 Forbidden
-    response = client.get(
-        "/api/v1/alerts?bank_id=bank_b",
-        headers={"X-API-Key": "key_bank_a"}
-    )
+    response = client.get("/api/v1/alerts?bank_id=bank_b", headers={"X-API-Key": "key_bank_a"})
     assert response.status_code == 403
 
     # Bank A requests Bank A's alerts -> Not 403 (could be 502/200 depending on downstream)
-    response = client.get(
-        "/api/v1/alerts?bank_id=bank_a",
-        headers={"X-API-Key": "key_bank_a"}
-    )
+    response = client.get("/api/v1/alerts?bank_id=bank_a", headers={"X-API-Key": "key_bank_a"})
     assert response.status_code != 403
 
 
 def test_gateway_rate_limiting():
     from app.presentation.routers.gateway import _rate_limiter
+
     _rate_limiter.clear()
     original_rate_limit = settings.gateway_rate_limit
     # Set low rate limit for test
@@ -91,6 +82,7 @@ def test_gateway_rate_limiting():
         assert "Too Many Requests" in response.text
     finally:
         settings.gateway_rate_limit = original_rate_limit
+
 
 # Clean up environment variable after tests run
 if "SERVICE_NAME" in os.environ:

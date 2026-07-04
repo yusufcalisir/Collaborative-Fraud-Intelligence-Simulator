@@ -269,6 +269,7 @@ app.add_middleware(
 # ── Routers ───────────────────────────────────
 if service_name == "gateway":
     from app.presentation.routers import gateway
+
     app.include_router(health.router)
     app.include_router(gateway.router)
 
@@ -288,8 +289,12 @@ elif service_name == "fraud-alert":
     app.include_router(health.router)
     app.include_router(alerts.router)
     app.include_router(cases.router)
-    app.include_router(entities.router)  # Mounted for read access of entities within streaming engine if queried directly
-    app.include_router(graph.router)     # Mounted for read access of graph within streaming engine if queried directly
+    app.include_router(
+        entities.router
+    )  # Mounted for read access of entities within streaming engine if queried directly
+    app.include_router(
+        graph.router
+    )  # Mounted for read access of graph within streaming engine if queried directly
     app.include_router(scenarios.router)
     app.include_router(dashboard.router)
     app.include_router(streaming_ws.router)
