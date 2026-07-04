@@ -13,13 +13,56 @@ import logging
 from collections import defaultdict, deque
 from typing import TYPE_CHECKING
 
+from typing import Any
 from app.domain.enums import EntityType, RelationshipType, RiskLevel
 from app.domain.value_objects_phase2 import GraphSubgraph
-
-if TYPE_CHECKING:
-    from app.domain.entities_phase2 import Entity, Relationship
+from app.domain.entities_phase2 import Entity, Relationship
+from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
+
+def _entity_to_dict(e: Entity) -> dict[str, Any]:
+    return {
+        "id": e.id,
+        "entity_type": e.entity_type.value,
+        "privacy_id": e.privacy_id,
+        "bank_id": e.bank_id,
+        "display_label": e.display_label,
+        "attributes": e.attributes,
+        "risk_level": e.risk_level.value,
+        "alert_count": e.alert_count,
+        "first_seen": e.first_seen.isoformat(),
+        "last_seen": e.last_seen.isoformat(),
+    }
+
+def _dict_to_entity(d: dict[str, Any]) -> Entity:
+    from datetime import datetime
+    d_copy = d.copy()
+    d_copy["entity_type"] = EntityType(d_copy["entity_type"])
+    d_copy["risk_level"] = RiskLevel(d_copy["risk_level"])
+    d_copy["first_seen"] = datetime.fromisoformat(d_copy["first_seen"])
+    d_copy["last_seen"] = datetime.fromisoformat(d_copy["last_seen"])
+    return Entity(**d_copy)
+
+def _relationship_to_dict(r: Relationship) -> dict[str, Any]:
+    return {
+        "id": r.id,
+        "source_entity_id": r.source_entity_id,
+        "target_entity_id": r.target_entity_id,
+        "relationship_type": r.relationship_type.value,
+        "confidence": r.confidence,
+        "evidence": r.evidence,
+        "created_at": r.created_at.isoformat(),
+    }
+
+def _dict_to_relationship(d: dict[str, Any]) -> Relationship:
+    from datetime import datetime
+    d_copy = d.copy()
+    d_copy["relationship_type"] = RelationshipType(d_copy["relationship_type"])
+    d_copy["created_at"] = datetime.fromisoformat(d_copy["created_at"])
+    return Relationship(**d_copy)
+
+
 
 # Color mapping for React Flow node types
 _NODE_COLORS: dict[str, str] = {
@@ -53,14 +96,21 @@ class GraphEngine:
     """
 
     def __init__(self) -> None:
-        self._entities: dict[str, Entity] = {}
-        self._relationships: dict[str, Relationship] = {}
-        # Adjacency list: entity_id → set of (neighbor_id, relationship_id)
-        self._adjacency: dict[str, set[tuple[str, str]]] = defaultdict(set)
+        self._entities = RedisStore("entity")
+        self._relationships = RedisStore("relationship")
+        self._adjacency = defaultdict(set)
+
+    def _build_adjacency_list(self) -> None:
+        self._adjacency = defaultdict(set)
+        raw_relationships = self._relationships.list_values()
+        for r_dict in raw_relationships:
+            r = _dict_to_relationship(r_dict)
+            self._adjacency[r.source_entity_id].add((r.target_entity_id, r.id))
+            self._adjacency[r.target_entity_id].add((r.source_entity_id, r.id))
 
     def register_entity(self, entity: Entity) -> None:
         """Register an entity in the graph."""
-        self._entities[entity.id] = entity
+        self._entities.set(entity.id, _entity_to_dict(entity))
 
     def register_entities(self, entities: list[Entity]) -> None:
         for entity in entities:
@@ -68,13 +118,7 @@ class GraphEngine:
 
     def add_relationship(self, relationship: Relationship) -> None:
         """Add a relationship (edge) to the graph."""
-        self._relationships[relationship.id] = relationship
-        self._adjacency[relationship.source_entity_id].add(
-            (relationship.target_entity_id, relationship.id)
-        )
-        self._adjacency[relationship.target_entity_id].add(
-            (relationship.source_entity_id, relationship.id)
-        )
+        self._relationships.set(relationship.id, _relationship_to_dict(relationship))
 
     def find_neighbors(
         self,
@@ -92,6 +136,7 @@ class GraphEngine:
         Returns:
             List of neighboring entities (excluding the start node).
         """
+        self._build_adjacency_list()
         visited: set[str] = {entity_id}
         queue: deque[tuple[str, int]] = deque([(entity_id, 0)])
         neighbors: list[Entity] = []
@@ -107,13 +152,15 @@ class GraphEngine:
 
                 # Filter by relationship type if specified
                 if relationship_types:
-                    rel = self._relationships.get(rel_id)
+                    rel_val = self._relationships.get(rel_id)
+                    rel = _dict_to_relationship(rel_val) if rel_val else None
                     if rel and rel.relationship_type not in relationship_types:
                         continue
 
                 visited.add(neighbor_id)
-                entity = self._entities.get(neighbor_id)
-                if entity:
+                entity_val = self._entities.get(neighbor_id)
+                if entity_val:
+                    entity = _dict_to_entity(entity_val)
                     neighbors.append(entity)
                     queue.append((neighbor_id, current_depth + 1))
 
@@ -125,10 +172,13 @@ class GraphEngine:
         Clusters of connected entities often indicate fraud rings
         or organized criminal activity.
         """
+        self._build_adjacency_list()
         visited: set[str] = set()
         clusters: list[list[str]] = []
 
-        for entity_id in self._entities:
+        raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
+        for entity in raw_entities:
+            entity_id = entity.id
             if entity_id in visited:
                 continue
 
@@ -164,7 +214,9 @@ class GraphEngine:
 
         Returns the subgraph in React Flow format for visualization.
         """
-        if center_entity_id not in self._entities:
+        self._build_adjacency_list()
+        center_entity_val = self._entities.get(center_entity_id)
+        if not center_entity_val:
             return GraphSubgraph(center_entity_id=center_entity_id, depth=radius)
 
         # Collect nodes via BFS
@@ -185,9 +237,10 @@ class GraphEngine:
         # Build React Flow nodes
         nodes = []
         for i, nid in enumerate(node_ids):
-            entity = self._entities.get(nid)
-            if not entity:
+            entity_val = self._entities.get(nid)
+            if not entity_val:
                 continue
+            entity = _dict_to_entity(entity_val)
 
             # Radial layout
             import math
@@ -237,7 +290,8 @@ class GraphEngine:
         # Build React Flow edges
         edges = []
         node_id_set = set(node_ids)
-        for rel in self._relationships.values():
+        raw_relationships = [_dict_to_relationship(v) for v in self._relationships.list_values()]
+        for rel in raw_relationships:
             if rel.source_entity_id in node_id_set and rel.target_entity_id in node_id_set:
                 style = _EDGE_STYLES.get(rel.relationship_type, {})
                 edges.append(
@@ -276,7 +330,8 @@ class GraphEngine:
         """Search entities by display label or privacy ID prefix."""
         query_lower = query.lower()
         results = []
-        for entity in self._entities.values():
+        raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
+        for entity in raw_entities:
             if entity_type and entity.entity_type != entity_type:
                 continue
             if (
@@ -290,17 +345,18 @@ class GraphEngine:
 
     @property
     def node_count(self) -> int:
-        return len(self._entities)
+        return len(self._entities.list_values())
 
     @property
     def edge_count(self) -> int:
-        return len(self._relationships)
+        return len(self._relationships.list_values())
 
     def get_stats(self) -> dict:
         """Graph statistics for the dashboard."""
         type_counts: dict[str, int] = defaultdict(int)
         risk_counts: dict[str, int] = defaultdict(int)
-        for entity in self._entities.values():
+        raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
+        for entity in raw_entities:
             type_counts[entity.entity_type.value] += 1
             risk_counts[entity.risk_level.value] += 1
 

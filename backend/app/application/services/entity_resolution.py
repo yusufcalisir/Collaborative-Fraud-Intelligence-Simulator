@@ -16,11 +16,56 @@ import logging
 from collections import defaultdict
 from datetime import UTC, datetime
 
+from typing import Any, cast
 from app.domain.entities_phase2 import Entity, Relationship
 from app.domain.enums import EntityType, RelationshipType, RiskLevel
 from app.domain.value_objects_phase2 import PrivacyPreservingIdentifier
+from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
+
+def _entity_to_dict(e: Entity) -> dict[str, Any]:
+    return {
+        "id": e.id,
+        "entity_type": e.entity_type.value,
+        "privacy_id": e.privacy_id,
+        "bank_id": e.bank_id,
+        "display_label": e.display_label,
+        "attributes": e.attributes,
+        "risk_level": e.risk_level.value,
+        "alert_count": e.alert_count,
+        "first_seen": e.first_seen.isoformat(),
+        "last_seen": e.last_seen.isoformat(),
+    }
+
+def _dict_to_entity(d: dict[str, Any]) -> Entity:
+    from datetime import datetime
+    d_copy = d.copy()
+    d_copy["entity_type"] = EntityType(d_copy["entity_type"])
+    d_copy["risk_level"] = RiskLevel(d_copy["risk_level"])
+    d_copy["first_seen"] = datetime.fromisoformat(d_copy["first_seen"])
+    d_copy["last_seen"] = datetime.fromisoformat(d_copy["last_seen"])
+    return Entity(**d_copy)
+
+def _relationship_to_dict(r: Relationship) -> dict[str, Any]:
+    return {
+        "id": r.id,
+        "source_entity_id": r.source_entity_id,
+        "target_entity_id": r.target_entity_id,
+        "relationship_type": r.relationship_type.value,
+        "confidence": r.confidence,
+        "evidence": r.evidence,
+        "created_at": r.created_at.isoformat(),
+    }
+
+def _dict_to_relationship(d: dict[str, Any]) -> Relationship:
+    from datetime import datetime
+    d_copy = d.copy()
+    d_copy["relationship_type"] = RelationshipType(d_copy["relationship_type"])
+    d_copy["created_at"] = datetime.fromisoformat(d_copy["created_at"])
+    return Relationship(**d_copy)
+
+
 
 
 class EntityResolutionService:
@@ -32,10 +77,9 @@ class EntityResolutionService:
     """
 
     def __init__(self) -> None:
-        self._entities: dict[str, Entity] = {}
-        self._relationships: dict[str, Relationship] = {}
-        # Index: privacy_hash → list of entity IDs
-        self._hash_index: dict[str, list[str]] = defaultdict(list)
+        self._entities = RedisStore("entity")
+        self._relationships = RedisStore("relationship")
+        self._hash_index = RedisStore("hash_index")
 
     def create_entity(
         self,
@@ -56,6 +100,7 @@ class EntityResolutionService:
         existing = self._find_entity(privacy_id, bank_id)
         if existing:
             existing.last_seen = datetime.now(UTC)
+            self._entities.set(existing.id, _entity_to_dict(existing))
             return existing
 
         # Generate a short display label
@@ -79,8 +124,13 @@ class EntityResolutionService:
             attributes=attributes or {},
         )
 
-        self._entities[entity.id] = entity
-        self._hash_index[privacy_id].append(entity.id)
+        self._entities.set(entity.id, _entity_to_dict(entity))
+        
+        val = self._hash_index.get(privacy_id)
+        data = cast(dict, val) if val is not None else {"ids": []}
+        entity_ids = data.setdefault("ids", [])
+        entity_ids.append(entity.id)
+        self._hash_index.set(privacy_id, data)
 
         return entity
 
@@ -91,8 +141,14 @@ class EntityResolutionService:
         indicating they represent the same real-world entity at
         different institutions.
         """
-        entity_ids = self._hash_index.get(privacy_hash, [])
-        entities = [self._entities[eid] for eid in entity_ids if eid in self._entities]
+        val = self._hash_index.get(privacy_hash)
+        data = cast(dict, val) if val is not None else {"ids": []}
+        entity_ids = data.get("ids", [])
+        entities = []
+        for eid in entity_ids:
+            val = self._entities.get(eid)
+            if val:
+                entities.append(_dict_to_entity(val))
 
         if len(entities) > 1:
             banks = set(e.bank_id for e in entities)
@@ -115,8 +171,9 @@ class EntityResolutionService:
         Returns a list of matches with the shared privacy hash and
         entity details from each bank.
         """
-        bank_a_hashes = {e.privacy_id: e for e in self._entities.values() if e.bank_id == bank_a_id}
-        bank_b_hashes = {e.privacy_id: e for e in self._entities.values() if e.bank_id == bank_b_id}
+        raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
+        bank_a_hashes = {e.privacy_id: e for e in raw_entities if e.bank_id == bank_a_id}
+        bank_b_hashes = {e.privacy_id: e for e in raw_entities if e.bank_id == bank_b_id}
 
         shared_hashes = set(bank_a_hashes.keys()) & set(bank_b_hashes.keys())
         matches = []
@@ -146,14 +203,16 @@ class EntityResolutionService:
         Aggregates alert count, relationship count, cross-institution
         presence, and risk factors.
         """
-        entity = self._entities.get(entity_id)
-        if not entity:
+        entity_val = self._entities.get(entity_id)
+        if not entity_val:
             raise ValueError(f"Entity not found: {entity_id}")
+        entity = _dict_to_entity(entity_val)
 
         # Find all related entities via relationships
+        raw_relationships = [_dict_to_relationship(r) for r in self._relationships.list_values()]
         relationships = [
             r
-            for r in self._relationships.values()
+            for r in raw_relationships
             if r.source_entity_id == entity_id or r.target_entity_id == entity_id
         ]
 
@@ -193,21 +252,24 @@ class EntityResolutionService:
             confidence=confidence,
             evidence=evidence or [],
         )
-        self._relationships[rel.id] = rel
+        self._relationships.set(rel.id, _relationship_to_dict(rel))
         return rel
 
     def update_risk_level(self, entity_id: str, risk_level: RiskLevel) -> None:
-        entity = self._entities.get(entity_id)
+        entity = self.get_entity(entity_id)
         if entity:
             entity.risk_level = risk_level
+            self._entities.set(entity.id, _entity_to_dict(entity))
 
     def increment_alert_count(self, entity_id: str) -> None:
-        entity = self._entities.get(entity_id)
+        entity = self.get_entity(entity_id)
         if entity:
             entity.alert_count += 1
+            self._entities.set(entity.id, _entity_to_dict(entity))
 
     def get_entity(self, entity_id: str) -> Entity | None:
-        return self._entities.get(entity_id)
+        val = self._entities.get(entity_id)
+        return _dict_to_entity(val) if val else None
 
     def get_entities(
         self,
@@ -216,7 +278,8 @@ class EntityResolutionService:
         risk_level: RiskLevel | None = None,
         limit: int = 50,
     ) -> list[Entity]:
-        entities = list(self._entities.values())
+        raw_vals = self._entities.list_values()
+        entities = [_dict_to_entity(v) for v in raw_vals]
         if entity_type:
             entities = [e for e in entities if e.entity_type == entity_type]
         if bank_id:
@@ -226,14 +289,17 @@ class EntityResolutionService:
         return sorted(entities, key=lambda e: e.alert_count, reverse=True)[:limit]
 
     def get_relationships(self) -> list[Relationship]:
-        return list(self._relationships.values())
+        raw_vals = self._relationships.list_values()
+        return [_dict_to_relationship(v) for v in raw_vals]
 
     # ── Private helpers ────────────────────────
 
     def _find_entity(self, privacy_id: str, bank_id: str) -> Entity | None:
-        entity_ids = self._hash_index.get(privacy_id, [])
+        val = self._hash_index.get(privacy_id)
+        data = cast(dict, val) if val is not None else {"ids": []}
+        entity_ids = data.get("ids", [])
         for eid in entity_ids:
-            entity = self._entities.get(eid)
+            entity = self.get_entity(eid)
             if entity and entity.bank_id == bank_id:
                 return entity
         return None

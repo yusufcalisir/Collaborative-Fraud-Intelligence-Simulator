@@ -12,10 +12,83 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
+from typing import Any
 from app.domain.entities_phase2 import Case, CaseEvent, CaseNote
 from app.domain.enums import CasePriority, CaseStatus
+from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
+
+def _case_to_dict(c: Case) -> dict[str, Any]:
+    return {
+        "id": c.id,
+        "title": c.title,
+        "status": c.status.value,
+        "priority": c.priority.value,
+        "assigned_to": c.assigned_to,
+        "alert_ids": c.alert_ids,
+        "notes": [
+            {
+                "id": n.id,
+                "case_id": n.case_id,
+                "author": n.author,
+                "content": n.content,
+                "created_at": n.created_at.isoformat(),
+            }
+            for n in c.notes
+        ],
+        "timeline": [
+            {
+                "event_type": e.event_type,
+                "description": e.description,
+                "actor": e.actor,
+                "timestamp": e.timestamp.isoformat(),
+                "metadata": e.metadata,
+            }
+            for e in c.timeline
+        ],
+        "created_at": c.created_at.isoformat(),
+        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+        "closed_at": c.closed_at.isoformat() if c.closed_at else None,
+        "total_risk_score": c.total_risk_score,
+    }
+
+def _dict_to_case(d: dict[str, Any]) -> Case:
+    from datetime import datetime
+    d_copy = d.copy()
+    d_copy["status"] = CaseStatus(d_copy["status"])
+    d_copy["priority"] = CasePriority(d_copy["priority"])
+    d_copy["created_at"] = datetime.fromisoformat(d_copy["created_at"])
+    if d_copy.get("updated_at"):
+        d_copy["updated_at"] = datetime.fromisoformat(d_copy["updated_at"])
+    if d_copy.get("closed_at"):
+        d_copy["closed_at"] = datetime.fromisoformat(d_copy["closed_at"])
+        
+    notes = []
+    for n in d_copy.get("notes", []):
+        notes.append(CaseNote(
+            id=n["id"],
+            case_id=n["case_id"],
+            author=n["author"],
+            content=n["content"],
+            created_at=datetime.fromisoformat(n["created_at"])
+        ))
+    d_copy["notes"] = notes
+
+    timeline = []
+    for e in d_copy.get("timeline", []):
+        timeline.append(CaseEvent(
+            event_type=e["event_type"],
+            description=e["description"],
+            actor=e["actor"],
+            timestamp=datetime.fromisoformat(e["timestamp"]),
+            metadata=e.get("metadata", {})
+        ))
+    d_copy["timeline"] = timeline
+    
+    return Case(**d_copy)
+
+
 
 # Valid status transitions
 _VALID_TRANSITIONS: dict[CaseStatus, set[CaseStatus]] = {
@@ -52,7 +125,7 @@ class CaseManagementService:
     """
 
     def __init__(self) -> None:
-        self._cases: dict[str, Case] = {}
+        self._cases = RedisStore("case")
 
     def create_case(
         self,
@@ -75,7 +148,7 @@ class CaseManagementService:
             )
         )
 
-        self._cases[case.id] = case
+        self._cases.set(case.id, _case_to_dict(case))
         logger.info("Created case %s: %s (priority=%s)", case.id[:8], title, priority.value)
         return case
 
@@ -97,6 +170,7 @@ class CaseManagementService:
         )
 
         logger.info("Assigned case %s to %s", case_id[:8], investigator)
+        self._cases.set(case.id, _case_to_dict(case))
         return case
 
     def add_note(self, case_id: str, author: str, content: str) -> CaseNote:
@@ -115,6 +189,7 @@ class CaseManagementService:
             )
         )
 
+        self._cases.set(case.id, _case_to_dict(case))
         return note
 
     def change_status(self, case_id: str, new_status: CaseStatus, actor: str = "analyst") -> Case:
@@ -149,6 +224,7 @@ class CaseManagementService:
         )
 
         logger.info("Case %s status: %s → %s", case_id[:8], old_status.value, new_status.value)
+        self._cases.set(case.id, _case_to_dict(case))
         return case
 
     def link_alert(self, case_id: str, alert_id: str) -> Case:
@@ -167,6 +243,7 @@ class CaseManagementService:
                 )
             )
 
+        self._cases.set(case.id, _case_to_dict(case))
         return case
 
     def get_timeline(self, case_id: str) -> list[CaseEvent]:
@@ -221,7 +298,8 @@ class CaseManagementService:
         return "\n".join(lines)
 
     def get_case(self, case_id: str) -> Case | None:
-        return self._cases.get(case_id)
+        val = self._cases.get(case_id)
+        return _dict_to_case(val) if val else None
 
     def get_cases(
         self,
@@ -230,7 +308,8 @@ class CaseManagementService:
         limit: int = 50,
     ) -> list[Case]:
         """Retrieve cases with optional filters."""
-        cases = list(self._cases.values())
+        raw_vals = self._cases.list_values()
+        cases = [_dict_to_case(v) for v in raw_vals]
         if status:
             cases = [c for c in cases if c.status == status]
         if priority:
@@ -240,7 +319,7 @@ class CaseManagementService:
     # ── Private helpers ────────────────────────
 
     def _get_case(self, case_id: str) -> Case:
-        case = self._cases.get(case_id)
-        if not case:
+        val = self._cases.get(case_id)
+        if not val:
             raise ValueError(f"Case not found: {case_id}")
-        return case
+        return _dict_to_case(val)

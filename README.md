@@ -59,6 +59,12 @@ To provide real-time transaction screening and investigation capabilities:
 3.  **Interactive Relationship Graphs:** A full visual graph of entities, devices, cards, and accounts built using React Flow, mapping suspicious clusters in real time.
 4.  **Scenario Replay Engine:** Scripted simulation flows representing typologies like Account Takeover (ATO), Card Testing, and Layering networks.
 
+### Track 3: Production Microservices & Secure API Gateway (Phase 3)
+To transform the prototype into a production-oriented distributed system:
+1.  **Microservices Decomposition**: Decoupled backend into 4 autonomous, independent services: `gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert`, enabling horizontal scaling.
+2.  **Fault-Tolerant Shared State**: Replaced in-memory states with `RedisStore` syncing data to a Redis cache while falling back dynamically to thread-safe in-memory cache on connection timeouts.
+3.  **API Gateway Routing & Security Suite**: Centralized traffic routing, versioning checks (enforcing `/api/v1/`), client rate-limiting, auditable request logging, and optional Role-Based Access Control (RBAC) ensuring banks only access their own multi-tenant records.
+
 #### 🔍 The 9-Signal Risk Evaluation Pipeline
 The platform implements a modular **9-Signal Risk Combination Engine** to calculate transaction risk levels dynamically. Each signal outputs a normalized risk weight between `0.0` (benign) and `1.0` (maximum threat):
 
@@ -90,6 +96,9 @@ The platform implements a modular **9-Signal Risk Combination Engine** to calcul
 | **Deterministic Linkage** | Linkage of cross-bank entities using salted HMAC-SHA256 identifiers. | Matches entities (e.g., suspicious cards/devices) without sharing raw names or emails. | Salted SHA-256 One-way Hash Collision Resistance |
 | **9-Signal Risk Engine** | Custom pipeline weighting ML scores, device status, IP velocity, and behavioral shifts. | Builds a comprehensive risk profile for automated alert generation. | Composite heuristics + ML Inference Score |
 | **Real-time Replay** | Replays historical fraud scenarios event-by-event via WebSockets. | Provides a high-fidelity demonstration of how cross-bank intelligence is shared. | Real-time WebSocket event dispatch |
+| **Distributed Microservices** | Mapped endpoints decoupled to `gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert` processes. | Simulates production horizontal scaling in a distributed cloud environment. | Clean operational separation of concerns |
+| **State Synchronizer** | `RedisStore` handling key-value, lists, and lists-push updates with sub-second in-memory fallback. | Synchronizes microservices' state across multiple running containers. | Event-consistent cache synchronization |
+| **Gateway Security Suite** | Fixed-window client rate limiting, path prefix versioning, RBAC policies, and logging middleware. | Centralizes traffic filtering and prevents cross-tenant data leakage. | Multi-tenant tenant boundary isolation |
 
 ***
 
@@ -121,9 +130,11 @@ The platform implements a modular **9-Signal Risk Combination Engine** to calcul
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
 │   │   │   ├── database.py       # SQLAlchemy 2.0 connection engine
 │   │   │   ├── models.py         # Relational tables for simulation logs, alerts, and runs
+│   │   │   ├── redis_store.py    # Redis state syncing client with automatic thread-safe memory fallback
 │   │   │   └── event_bus.py      # Pub/sub channels for real-time WebSocket communication
 │   │   ├── presentation/         # API Controllers and endpoints
 │   │   │   ├── routers/
+│   │   │   │   ├── gateway.py    # Gateway routing middleware (Auth, RBAC, logging, rate limiting)
 │   │   │   │   ├── simulation.py # Handles creation, detail retrieval, and comparison
 │   │   │   │   ├── banks.py      # References profiles of Bank A, B, and C
 │   │   │   │   ├── training.py   # Yields progress data on communication rounds
@@ -201,6 +212,7 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 *   `GET /api/v1/graph/{id}` - Builds subgraphs for interactive network visualization.
 *   `POST /api/v1/scenarios/start` - Launches a real-time replay of cross-bank fraud scenarios.
 *   `WS /ws/streaming/{scenario_id}` - Stream scenario event data in real time.
+*   `GET /docs/{service_name}` - Gateway Swagger UI aggregator (e.g. `/docs/fl-coordinator`, `/docs/identity-graph`, `/docs/fraud-alert`).
 
 ***
 
@@ -275,6 +287,16 @@ cd backend
 *   **Context:** Linking entities (IPs, credit cards) across distinct bank databases without central storage requires collision-resistant matching.
 *   **Decision:** Implement SHA-256 HMAC utilizing a shared secure salt rotated daily. Banks compute `HMAC(entity_value, salt)` and exchange the hashes.
 *   **Trade-off:** Enables entity linkage without disclosing raw database rows, but is vulnerable to dictionary attacks if the shared salt is compromised.
+
+### ADR 03: Microservice Decomposition with Redis/In-Memory Fallback
+*   **Context:** Moving the monolith to production microservices increases complexity and introduces single points of failure if dependency services like Redis go offline.
+*   **Decision:** Build a custom `RedisStore` layer syncing data to a Redis cache while falling back dynamically to thread-safe in-memory cache. A class-level flag immediately bypasses connection checks for all stores if connection fails once.
+*   **Trade-off:** Ensures service resilience and backward compatibility for local test suites and single-port container deploys, but introduces cache consistency limitations if different non-connected instances run concurrently.
+
+### ADR 04: Transparent API Gateway Security for Demo & Production
+*   **Context:** Adding JWT/API Key authentication, rate-limiting, and RBAC to the API Gateway is essential for enterprise security but risks breaking local workflows and zero-config public demos (like Vercel).
+*   **Decision:** Implement Gateway auth middleware checking headers (`X-API-Key`) with a configurable bypass (`gateway_require_auth = False`). When bypassed, the Gateway assigns a default `analyst` role, keeping public demos fully functional without credentials while retaining logging and rate-limiting.
+*   **Trade-off:** Simplifies demo onboarding and user experience, but requires explicit environment variable activation in production to secure endpoints.
 
 ***
 

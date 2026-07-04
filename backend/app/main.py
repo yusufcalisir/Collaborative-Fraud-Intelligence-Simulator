@@ -65,6 +65,8 @@ def seed_mock_data() -> None:
     from app.presentation.routers.cases import get_case_service
     from app.presentation.routers.entities import get_entity_service
     from app.presentation.routers.graph import get_graph_engine
+    from app.application.services.alert_service import _alert_to_dict, _intel_to_dict
+    from app.application.services.case_service import _case_to_dict
 
     alert_svc = get_alert_service()
     case_svc = get_case_service()
@@ -151,7 +153,7 @@ def seed_mock_data() -> None:
             "Unusual high-risk merchant destination",
         ],
     )
-    alert_svc._alert_store[a1.id] = a1
+    alert_svc._alert_store.set(a1.id, _alert_to_dict(a1))
     entity_svc.increment_alert_count(c2.id)
     entity_svc.update_risk_level(c2.id, RiskLevel.HIGH)
 
@@ -168,7 +170,7 @@ def seed_mock_data() -> None:
         top_features=[{"feature": "amount", "value": 0.78}],
         risk_factors=["Transaction amount significantly exceeds customer historical average"],
     )
-    alert_svc._alert_store[a2.id] = a2
+    alert_svc._alert_store.set(a2.id, _alert_to_dict(a2))
     entity_svc.increment_alert_count(c3.id)
     entity_svc.update_risk_level(c3.id, RiskLevel.MEDIUM)
 
@@ -180,6 +182,7 @@ def seed_mock_data() -> None:
     )
     case.assigned_to = "senior_analyst_1"
     case.status = CaseStatus.INVESTIGATING
+    case_svc._cases.set(case.id, _case_to_dict(case))
 
     # 5. Create shared intelligence
     intel = SharedIntelligence(
@@ -191,7 +194,7 @@ def seed_mock_data() -> None:
         entity_type=EntityType.DEVICE,
         related_alert_count=1,
     )
-    alert_svc._intelligence_store.append(intel)
+    alert_svc._intelligence_store.push_list("intelligence_list", _intel_to_dict(intel))
     logger.info("Successfully seeded mock data for Phase 2")
 
 
@@ -220,14 +223,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # ── Application ───────────────────────────────
+service_name = os.getenv("SERVICE_NAME", "").lower()
+
+app_title = "Collaborative Fraud Intelligence Simulator"
+app_description = (
+    "Privacy-preserving cross-institution fraud detection using Federated Learning. "
+    "Simulates collaborative model training between three independent banks without "
+    "sharing raw transaction data. Phase 2 adds collaborative alert intelligence, "
+    "risk scoring, case management, entity resolution, and relationship graphs."
+)
+
+if service_name == "gateway":
+    app_title = "Collaborative Fraud Intelligence Gateway"
+    app_description = "API Gateway for proxying requests to downstream microservices and aggregating API documentation."
+elif service_name == "fl-coordinator":
+    app_title = "Federated Learning Coordinator Service"
+    app_description = "Handles Federated Learning training simulations, participant bank configurations, and metrics."
+elif service_name == "identity-graph":
+    app_title = "Identity & Graph Service"
+    app_description = "Provides privacy-preserving cross-bank entity resolution and relationship network graph visualization."
+elif service_name == "fraud-alert":
+    app_title = "Fraud Engine & Alert Service"
+    app_description = "Provides risk scoring, fraud alert generation, case management, and real-time streaming scenarios."
+
 app = FastAPI(
-    title="Collaborative Fraud Intelligence Simulator",
-    description=(
-        "Privacy-preserving cross-institution fraud detection using Federated Learning. "
-        "Simulates collaborative model training between three independent banks without "
-        "sharing raw transaction data. Phase 2 adds collaborative alert intelligence, "
-        "risk scoring, case management, entity resolution, and relationship graphs."
-    ),
+    title=app_title,
+    description=app_description,
     version="0.2.0",
     lifespan=lifespan,
     docs_url="/docs",
@@ -246,29 +267,56 @@ app.add_middleware(
 
 
 # ── Routers ───────────────────────────────────
-# Phase 1: Federated Learning
-app.include_router(health.router)
-app.include_router(simulation.router)
-app.include_router(banks.router)
-app.include_router(training.router)
-app.include_router(training_ws.router)
+if service_name == "gateway":
+    from app.presentation.routers import gateway
+    app.include_router(health.router)
+    app.include_router(gateway.router)
 
-# Phase 2: AML Intelligence Platform
-app.include_router(alerts.router)
-app.include_router(cases.router)
-app.include_router(entities.router)
-app.include_router(graph.router)
-app.include_router(scenarios.router)
-app.include_router(dashboard.router)
-app.include_router(streaming_ws.router)
+elif service_name == "fl-coordinator":
+    app.include_router(health.router)
+    app.include_router(simulation.router)
+    app.include_router(banks.router)
+    app.include_router(training.router)
+    app.include_router(training_ws.router)
+
+elif service_name == "identity-graph":
+    app.include_router(health.router)
+    app.include_router(entities.router)
+    app.include_router(graph.router)
+
+elif service_name == "fraud-alert":
+    app.include_router(health.router)
+    app.include_router(alerts.router)
+    app.include_router(cases.router)
+    app.include_router(entities.router)  # Mounted for read access of entities within streaming engine if queried directly
+    app.include_router(graph.router)     # Mounted for read access of graph within streaming engine if queried directly
+    app.include_router(scenarios.router)
+    app.include_router(dashboard.router)
+    app.include_router(streaming_ws.router)
+
+else:
+    # Default/Monolith Mode: mount all routers
+    app.include_router(health.router)
+    app.include_router(simulation.router)
+    app.include_router(banks.router)
+    app.include_router(training.router)
+    app.include_router(training_ws.router)
+    app.include_router(alerts.router)
+    app.include_router(cases.router)
+    app.include_router(entities.router)
+    app.include_router(graph.router)
+    app.include_router(scenarios.router)
+    app.include_router(dashboard.router)
+    app.include_router(streaming_ws.router)
 
 
 @app.get("/", tags=["root"])
 async def root() -> dict:
     """API root — returns basic service info."""
     return {
-        "service": "Collaborative Fraud Intelligence Simulator",
+        "service": app_title,
         "version": "0.2.0",
         "docs": "/docs",
         "health": "/health",
+        "service_name": service_name or "monolith",
     }

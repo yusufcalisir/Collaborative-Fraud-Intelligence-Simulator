@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import uuid
 
+from typing import Any
 from app.domain.entities_phase2 import Alert, SharedIntelligence
 from app.domain.enums import (
     AlertSeverity,
@@ -22,8 +23,65 @@ from app.domain.enums import (
     IntelligenceType,
 )
 from app.domain.value_objects_phase2 import PrivacyPreservingIdentifier
+from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
+
+def _alert_to_dict(a: Alert) -> dict[str, Any]:
+    return {
+        "id": a.id,
+        "bank_id": a.bank_id,
+        "transaction_id": a.transaction_id,
+        "risk_score": a.risk_score,
+        "severity": a.severity.value,
+        "status": a.status.value,
+        "reason_codes": a.reason_codes,
+        "confidence": a.confidence,
+        "involved_entity_ids": a.involved_entity_ids,
+        "created_at": a.created_at.isoformat(),
+        "updated_at": a.updated_at.isoformat() if a.updated_at else None,
+        "top_features": a.top_features,
+        "risk_factors": a.risk_factors,
+        "model_confidence": a.model_confidence,
+        "historical_evidence": a.historical_evidence,
+    }
+
+def _dict_to_alert(d: dict[str, Any]) -> Alert:
+    from datetime import datetime
+    d_copy = d.copy()
+    d_copy["severity"] = AlertSeverity(d_copy["severity"])
+    d_copy["status"] = AlertStatus(d_copy["status"])
+    d_copy["created_at"] = datetime.fromisoformat(d_copy["created_at"])
+    if d_copy.get("updated_at"):
+        d_copy["updated_at"] = datetime.fromisoformat(d_copy["updated_at"])
+    return Alert(**d_copy)
+
+def _intel_to_dict(i: SharedIntelligence) -> dict[str, Any]:
+    return {
+        "id": i.id,
+        "source_bank_id": i.source_bank_id,
+        "intelligence_type": i.intelligence_type.value,
+        "privacy_hash": i.privacy_hash,
+        "risk_indicator": i.risk_indicator,
+        "description": i.description,
+        "entity_type": i.entity_type.value if i.entity_type else None,
+        "related_alert_count": i.related_alert_count,
+        "created_at": i.created_at.isoformat(),
+        "expires_at": i.expires_at.isoformat() if i.expires_at else None,
+    }
+
+def _dict_to_intel(d: dict[str, Any]) -> SharedIntelligence:
+    from datetime import datetime
+    d_copy = d.copy()
+    d_copy["intelligence_type"] = IntelligenceType(d_copy["intelligence_type"])
+    if d_copy.get("entity_type"):
+        d_copy["entity_type"] = EntityType(d_copy["entity_type"])
+    d_copy["created_at"] = datetime.fromisoformat(d_copy["created_at"])
+    if d_copy.get("expires_at"):
+        d_copy["expires_at"] = datetime.fromisoformat(d_copy["expires_at"])
+    return SharedIntelligence(**d_copy)
+
+
 
 
 class AlertIntelligenceService:
@@ -37,8 +95,8 @@ class AlertIntelligenceService:
 
     def __init__(self, alert_threshold: float = 0.5) -> None:
         self.alert_threshold = alert_threshold
-        self._intelligence_store: list[SharedIntelligence] = []
-        self._alert_store: dict[str, Alert] = {}
+        self._intelligence_store = RedisStore("intelligence")
+        self._alert_store = RedisStore("alert")
 
     def generate_alerts(
         self,
@@ -83,7 +141,7 @@ class AlertIntelligenceService:
             )
 
             alerts.append(alert)
-            self._alert_store[alert.id] = alert
+            self._alert_store.set(alert.id, _alert_to_dict(alert))
 
         logger.info(
             "Generated %d alerts for %s (threshold=%.2f)",
@@ -115,7 +173,7 @@ class AlertIntelligenceService:
             related_alert_count=1,
         )
 
-        self._intelligence_store.append(intelligence)
+        self._intelligence_store.push_list("intelligence_list", _intel_to_dict(intelligence))
         logger.info(
             "Published intelligence from %s: hash=%s risk=%.2f",
             alert.bank_id,
@@ -130,7 +188,9 @@ class AlertIntelligenceService:
         A bank only sees intelligence published by other institutions,
         never its own (to avoid feedback loops).
         """
-        return [intel for intel in self._intelligence_store if intel.source_bank_id != bank_id]
+        raw_list = self._intelligence_store.get_list("intelligence_list")
+        items = [_dict_to_intel(i) for i in raw_list]
+        return [intel for intel in items if intel.source_bank_id != bank_id]
 
     def correlate_alerts(self, alerts: list[Alert]) -> list[dict]:
         """Find patterns across multiple alerts.
@@ -179,7 +239,8 @@ class AlertIntelligenceService:
         return correlations
 
     def get_alert(self, alert_id: str) -> Alert | None:
-        return self._alert_store.get(alert_id)
+        val = self._alert_store.get(alert_id)
+        return _dict_to_alert(val) if val else None
 
     def get_alerts(
         self,
@@ -189,7 +250,8 @@ class AlertIntelligenceService:
         limit: int = 50,
     ) -> list[Alert]:
         """Retrieve alerts with optional filters."""
-        alerts = list(self._alert_store.values())
+        raw_vals = self._alert_store.list_values()
+        alerts = [_dict_to_alert(v) for v in raw_vals]
         if bank_id:
             alerts = [a for a in alerts if a.bank_id == bank_id]
         if severity:
@@ -204,16 +266,19 @@ class AlertIntelligenceService:
         by_bank: dict[str, int] = {}
         total_risk = 0.0
 
-        for intel in self._intelligence_store:
+        raw_list = self._intelligence_store.get_list("intelligence_list")
+        items = [_dict_to_intel(i) for i in raw_list]
+
+        for intel in items:
             by_type[intel.intelligence_type.value] = (
                 by_type.get(intel.intelligence_type.value, 0) + 1
             )
             by_bank[intel.source_bank_id] = by_bank.get(intel.source_bank_id, 0) + 1
             total_risk += intel.risk_indicator
 
-        n = len(self._intelligence_store) or 1
+        n = len(items) or 1
         return {
-            "total_items": len(self._intelligence_store),
+            "total_items": len(items),
             "items_by_type": by_type,
             "items_by_bank": by_bank,
             "avg_risk_indicator": round(total_risk / n, 4),

@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     fl_default_batch_size: int = 64
     fl_min_clients_per_round: int = 2
 
+    # ── API Gateway Security ──────────────────
+    gateway_require_auth: bool = False
+    gateway_rate_limit: int = 120  # requests per minute
+    gateway_api_keys: str = "key_bank_a:bank_a:bank,key_bank_b:bank_b:bank,key_bank_c:bank_c:bank,key_analyst:analyst:analyst"
+
     @property
     def database_url(self) -> str:
         """Async PostgreSQL connection URL."""

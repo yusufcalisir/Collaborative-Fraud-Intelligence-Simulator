@@ -28,10 +28,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/simulations", tags=["simulations"])
 
 
-# ── In-memory stores ───────────────────────────
-# In a full deployment these would come from a database.
-_simulation_results: dict[str, dict] = {}
-_simulation_events: dict[str, list[dict]] = {}  # simulation_id → list of progress events
+from app.infrastructure.redis_store import RedisStore
+
+# ── Redis-backed stores ───────────────────────────
+_simulation_results = RedisStore("sim_results")
+_simulation_events = RedisStore("sim_events")
 
 
 @router.post(
@@ -83,7 +84,7 @@ async def create_simulation(
     }
 
     # Store pending status
-    _simulation_results[simulation_id] = {
+    _simulation_results.set(simulation_id, {
         "id": simulation_id,
         "status": SimulationStatus.PENDING.value,
         "config": config_dict,
@@ -91,7 +92,7 @@ async def create_simulation(
         "total_rounds": config.num_rounds,
         "banks": [],
         "rounds": [],
-    }
+    })
 
     # Run simulation in a background thread (no Celery worker needed)
     thread = threading.Thread(
@@ -116,7 +117,7 @@ async def list_simulations() -> list[SimulationSummaryResponse]:
     # Results are updated in-place by background threads
 
     summaries = []
-    for sim in _simulation_results.values():
+    for sim in _simulation_results.list_values():
         summaries.append(
             SimulationSummaryResponse(
                 id=sim["id"],
@@ -252,7 +253,10 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
 
     try:
         # Mark as running
-        _simulation_results[simulation_id]["status"] = SimulationStatus.GENERATING_DATA.value
+        sim = _simulation_results.get(simulation_id)
+        if sim:
+            sim["status"] = SimulationStatus.GENERATING_DATA.value
+            _simulation_results.set(simulation_id, sim)
 
         config = SimulationConfig(**config_dict)
 
@@ -306,11 +310,10 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
 
                 # Keep progress_pct fresh for polling endpoints
                 sim["progress_pct"] = _calc_progress(sim)
+                _simulation_results.set(simulation_id, sim)
 
             # Store every event so the training router can serve them
-            _simulation_events.setdefault(simulation_id, []).append(
-                {"event_type": event_type, "data": data}
-            )
+            _simulation_events.push_list(simulation_id, {"event_type": event_type, "data": data})
 
         simulation = simulation_service.run_simulation(
             config=config,
@@ -354,7 +357,7 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
 
         # Preserve config in the stored result
         result["config"] = config_dict
-        _simulation_results[simulation_id] = result
+        _simulation_results.set(simulation_id, result)
 
         logger.info(
             "Background simulation %s completed: %s", simulation_id, simulation.status.value
@@ -365,11 +368,11 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
 
         tb = traceback.format_exc()
         logger.exception("Background simulation %s failed", simulation_id)
-        sim = _simulation_results.get(simulation_id, {})
+        sim = _simulation_results.get(simulation_id) or {}
         sim["status"] = SimulationStatus.FAILED.value
         # Surface the real error to the frontend so it can be debugged
         sim["error_message"] = f"{type(exc).__name__}: {exc}\n{tb[-500:]}"
-        _simulation_results[simulation_id] = sim
+        _simulation_results.set(simulation_id, sim)
 
 
 def _calc_progress(sim: dict) -> float:

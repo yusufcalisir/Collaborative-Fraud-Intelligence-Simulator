@@ -18,11 +18,11 @@ export default function InvestigationDashboard() {
     { label: 'Total Alerts', value: stats.total_alerts, icon: '🚨', color: '#f59e0b', href: '/alerts' },
     { label: 'Critical Alerts', value: stats.critical_alerts, icon: '🔴', color: '#ef4444', href: '/alerts' },
     { label: 'Open Cases', value: stats.open_cases, icon: '📋', color: '#6366f1', href: '/cases' },
-    { label: 'Entities', value: stats.total_entities, icon: '👤', color: '#14b8a6', href: '/entities' },
+    { label: 'Entities', value: stats.total_entities, icon: '👤', color: '#14b8a6', href: '/graph' },
     { label: 'Intelligence Items', value: stats.shared_intelligence_items, icon: '🔗', color: '#8b5cf6', href: '/alerts' },
     { label: 'Graph Clusters', value: stats.graph_clusters, icon: '🕸️', color: '#ec4899', href: '/graph' },
     { label: 'Active Scenarios', value: stats.active_scenarios, icon: '▶️', color: '#06b6d4', href: '/scenarios' },
-    { label: 'Cross-Institution', value: stats.cross_institution_matches, icon: '🏦', color: '#f97316', href: '/entities' },
+    { label: 'Cross-Institution', value: stats.cross_institution_matches, icon: '🏦', color: '#f97316', href: '/graph' },
   ] : [];
 
   return (

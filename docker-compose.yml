@@ -31,8 +31,8 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── FastAPI ─────────────────────────────────
-  api:
+  # ── API Gateway ─────────────────────────────
+  gateway:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -43,6 +43,83 @@ services:
       --workers ${API_WORKERS:-1}
     ports:
       - "8000:8000"
+    environment:
+      - SERVICE_NAME=gateway
+      - FL_COORDINATOR_URL=http://fl-coordinator:8001
+      - IDENTITY_GRAPH_URL=http://identity-graph:8002
+      - FRAUD_ALERT_URL=http://fraud-alert:8003
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fl-coordinator:
+        condition: service_started
+      identity-graph:
+        condition: service_started
+      fraud-alert:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── Federated Learning Coordinator ──────────
+  fl-coordinator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8001
+    ports:
+      - "8001:8001"
+    environment:
+      - SERVICE_NAME=fl-coordinator
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Identity & Graph Resolver ───────────────
+  identity-graph:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8002
+    ports:
+      - "8002:8002"
+    environment:
+      - SERVICE_NAME=identity-graph
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Fraud & Alert Engine ────────────────────
+  fraud-alert:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8003
+    ports:
+      - "8003:8003"
+    environment:
+      - SERVICE_NAME=fraud-alert
     env_file:
       - .env
     depends_on:
@@ -95,7 +172,7 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - api
+      - gateway
     restart: unless-stopped
 
 volumes:
