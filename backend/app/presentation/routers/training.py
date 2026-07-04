@@ -10,13 +10,11 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from app.infrastructure.redis_store import RedisStore
+from app.presentation.routers.simulation import _simulation_events
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
-
-_simulation_events = RedisStore("sim_events")
 
 
 @router.get("/{simulation_id}/rounds")
