@@ -30,7 +30,7 @@ const BANK_POSITIONS = [
   { x: 60, y: 205 },   // Bank B - bottom left
   { x: 340, y: 205 },  // Bank C - bottom right
 ];
-const SERVER_POS = { x: 200, y: 120 };
+const SERVER_POS = { x: 200, y: 125 };
 
 export default function FederatedTrainingAnimation({
   status,
