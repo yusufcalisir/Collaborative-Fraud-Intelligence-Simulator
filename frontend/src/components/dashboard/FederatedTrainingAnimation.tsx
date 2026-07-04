@@ -26,11 +26,11 @@ const PHASE_INFO: Record<string, { label: string; description: string }> = {
 
 // Bank positions in SVG: triangle layout with server in center
 const BANK_POSITIONS = [
-  { x: 200, y: 40 },   // Bank A - top center
-  { x: 60, y: 230 },   // Bank B - bottom left
-  { x: 340, y: 230 },  // Bank C - bottom right
+  { x: 200, y: 35 },   // Bank A - top center
+  { x: 60, y: 205 },   // Bank B - bottom left
+  { x: 340, y: 205 },  // Bank C - bottom right
 ];
-const SERVER_POS = { x: 200, y: 135 };
+const SERVER_POS = { x: 200, y: 120 };
 
 export default function FederatedTrainingAnimation({
   status,
