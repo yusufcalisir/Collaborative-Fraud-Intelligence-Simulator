@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     import numpy as np
@@ -167,7 +167,7 @@ class FlowerFLEngine:
                     self.data["y_test"],
                 )
                 n_samples = len(self.data["X_test"])
-                loss = float(eval_result["loss"])
+                loss = float(cast(float, eval_result["loss"]))
                 return (
                     loss,
                     n_samples,

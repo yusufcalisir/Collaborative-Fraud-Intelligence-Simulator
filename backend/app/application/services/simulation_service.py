@@ -243,6 +243,8 @@ class SimulationService:
 
             fl_engine_type = getattr(config, "fl_engine_type", "custom")
 
+            rounds: list[TrainingRound] = []
+
             if fl_engine_type == "flower":
                 # ── Flower Framework Branch ────────────────────────
                 from app.application.services.flower_engine import FlowerFLEngine
@@ -295,7 +297,7 @@ class SimulationService:
                         config.dp_delta,
                     )
 
-                rounds: list[TrainingRound] = []
+                rounds = []
 
                 for round_num in range(1, config.num_rounds + 1):
                     round_start = time.perf_counter()
