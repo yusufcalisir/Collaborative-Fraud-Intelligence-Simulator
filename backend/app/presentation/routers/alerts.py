@@ -102,6 +102,8 @@ async def explain_alert(alert_id: str) -> ExplainabilityResponse:
 
     report = _explainability_service.explain_alert(alert)
 
+    total_weighted = sum(s.weighted_score for s in report.risk_score_breakdown)
+
     return ExplainabilityResponse(
         alert_id=report.alert_id,
         top_features=report.top_features,
@@ -115,6 +117,7 @@ async def explain_alert(alert_id: str) -> ExplainabilityResponse:
                 "raw_value": s.raw_value,
                 "normalized_score": s.normalized_score,
                 "explanation": s.explanation,
+                "contribution": s.weighted_score / total_weighted if total_weighted > 0 else 0.0,
             }
             for s in report.risk_score_breakdown
         ],

@@ -295,25 +295,35 @@ function ExplainabilityPanel({ alert }: { alert: Alert }) {
               <h4 className="text-xs font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
                 Signal Breakdown
               </h4>
-              <div className="space-y-1.5">
-                {report.risk_score_breakdown.slice(0, 5).map((sig, i) => (
-                  <div key={i} className="text-xs">
-                    <div className="flex justify-between mb-0.5">
-                      <span className="text-[var(--color-text-muted)]">
-                        {sig.signal_name.replace(/_/g, ' ')}
-                      </span>
-                      <span className="font-mono">
-                        {(sig.normalized_score * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="h-1 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
+              <div className="space-y-2">
+                {report.risk_score_breakdown
+                  .slice()
+                  .sort((a, b) => b.contribution - a.contribution)
+                  .slice(0, 5)
+                  .map((sig, i) => (
+                    <div key={i} className="text-xs">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-danger)]"
-                        style={{ width: `${sig.normalized_score * 100}%` }}
-                      />
+                        className="flex justify-between mb-0.5"
+                        title={`Signal Risk Score: ${(sig.normalized_score * 100).toFixed(0)}% | Engine Weight: ${(sig.weight * 100).toFixed(0)}%`}
+                      >
+                        <span className="text-[var(--color-text-muted)] capitalize">
+                          {sig.signal_name.replace(/_/g, ' ').replace('rules', '')}
+                        </span>
+                        <span className="font-mono text-[var(--color-accent-teal)] font-semibold">
+                          {(sig.contribution * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <div
+                        className="h-1 bg-[var(--color-surface-alt)] rounded-full overflow-hidden"
+                        title={`Signal Risk Score: ${(sig.normalized_score * 100).toFixed(0)}% | Engine Weight: ${(sig.weight * 100).toFixed(0)}%`}
+                      >
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-indigo)] to-[var(--color-accent-teal)]"
+                          style={{ width: `${sig.contribution * 100}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}

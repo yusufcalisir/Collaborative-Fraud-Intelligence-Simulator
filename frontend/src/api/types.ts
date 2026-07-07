@@ -207,6 +207,7 @@ export interface RiskSignalData {
   raw_value: number;
   normalized_score: number;
   explanation: string;
+  contribution: number;
 }
 
 export interface SharedIntelligence {
