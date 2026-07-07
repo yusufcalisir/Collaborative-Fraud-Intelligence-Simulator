@@ -18,6 +18,14 @@ const NAV_SECTIONS = [
       { path: '/graph', label: 'Entity Graph', icon: '🕸️' },
     ],
   },
+  {
+    label: 'Observability',
+    items: [
+      { href: 'http://localhost:3001', label: 'Grafana Dashboards', icon: '📈', isExternal: true },
+      { href: 'http://localhost:16686', label: 'Jaeger Tracing', icon: '🔍', isExternal: true },
+      { href: 'http://localhost:9090', label: 'Prometheus Metrics', icon: '🔥', isExternal: true },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -85,11 +93,29 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </p>
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
-                  const isActive = location.pathname === item.path;
+                  if ('isExternal' in item && item.isExternal) {
+                    return (
+                      <li key={item.label}>
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-card)] transition-all duration-200"
+                        >
+                          <span className="text-base">{item.icon}</span>
+                          {item.label}
+                          <span className="text-[10px] text-[var(--color-text-muted)] ml-auto">↗</span>
+                        </a>
+                      </li>
+                    );
+                  }
+
+                  const path = (item as any).path;
+                  const isActive = location.pathname === path;
                   return (
-                    <li key={item.path}>
+                    <li key={path}>
                       <Link
-                        to={item.path}
+                        to={path}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                           isActive
                             ? 'bg-[var(--color-accent-indigo)]/15 text-[var(--color-accent-indigo-light)] border border-[var(--color-accent-indigo)]/30'
