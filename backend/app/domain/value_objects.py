@@ -113,3 +113,11 @@ class SimulationConfig:
     bank_a_transactions: int = 50000
     bank_b_transactions: int = 30000
     bank_c_transactions: int = 20000
+
+    # Aggregation strategy
+    aggregation_method: str = "fed_avg_weighted"
+
+    # Adversarial / poisoning simulation
+    enable_poisoning_simulation: bool = False
+    poisoning_bank_id: str = "bank_c"
+    poisoning_scale: float = 5.0

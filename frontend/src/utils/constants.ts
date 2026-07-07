@@ -17,6 +17,10 @@ export const DEFAULT_SIMULATION_CONFIG = {
   bank_a_transactions: 50000,
   bank_b_transactions: 30000,
   bank_c_transactions: 20000,
+  aggregation_method: 'fed_avg_weighted' as const,
+  enable_poisoning_simulation: false,
+  poisoning_bank_id: 'bank_c',
+  poisoning_scale: 5.0,
 };
 
 export const METRIC_LABELS: Record<string, string> = {

@@ -182,6 +182,75 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
             )}
           </div>
 
+          {/* Aggregation Strategy */}
+          <div>
+            <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+              Aggregation Strategy
+            </h4>
+            <select
+              value={config.aggregation_method}
+              onChange={(e) => updateConfig('aggregation_method', e.target.value as SimulationConfig['aggregation_method'])}
+              className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-indigo)] transition-colors"
+            >
+              <option value="fed_avg_weighted">FedAvg Weighted (Default)</option>
+              <option value="fed_avg">FedAvg (Unweighted)</option>
+              <option value="krum">Krum (Byzantine-Robust)</option>
+              <option value="coordinate_wise_median">Coordinate-wise Median (Byzantine-Robust)</option>
+            </select>
+            <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+              Krum and Median are robust against malicious client attacks
+            </p>
+          </div>
+
+          {/* Adversarial Simulation */}
+          <div>
+            <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+              Adversarial Simulation
+            </h4>
+            <label className="flex items-center gap-2 cursor-pointer mb-2">
+              <input
+                type="checkbox"
+                checked={config.enable_poisoning_simulation}
+                onChange={(e) => updateConfig('enable_poisoning_simulation', e.target.checked)}
+                className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-status-error)] focus:ring-[var(--color-status-error)]"
+              />
+              <span className="text-xs text-[var(--color-text-secondary)]">Enable Model Poisoning</span>
+            </label>
+            {config.enable_poisoning_simulation && (
+              <div className="space-y-2 mt-2">
+                <div>
+                  <label className="block text-xs text-[var(--color-text-muted)] mb-1">Malicious Bank</label>
+                  <select
+                    value={config.poisoning_bank_id}
+                    onChange={(e) => updateConfig('poisoning_bank_id', e.target.value)}
+                    className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-status-error)] transition-colors"
+                  >
+                    <option value="bank_a">Bank A — National Trust</option>
+                    <option value="bank_b">Bank B — Metro Commercial</option>
+                    <option value="bank_c">Bank C — Heritage Regional</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--color-text-muted)] mb-1">
+                    Poisoning Scale: {config.poisoning_scale}x
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={20}
+                    step={0.5}
+                    value={config.poisoning_scale}
+                    onChange={(e) => updateConfig('poisoning_scale', parseFloat(e.target.value))}
+                    className="w-full accent-[var(--color-status-error)]"
+                  />
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+                    Higher scale = more aggressive attack noise injected into model weights
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Data Volume */}
           <div>
             <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">

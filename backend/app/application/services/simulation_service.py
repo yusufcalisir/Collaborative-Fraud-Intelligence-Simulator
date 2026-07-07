@@ -333,6 +333,22 @@ class SimulationService:
 
                     local_w = self.model_service.get_parameters(local_model)
 
+                    # Apply model poisoning if this bank is the attacker
+                    if (
+                        config.enable_poisoning_simulation
+                        and bank.id == config.poisoning_bank_id
+                    ):
+                        local_w = self.fl_engine.apply_model_poisoning(
+                            local_w,
+                            scale=config.poisoning_scale,
+                            rng=rng,
+                        )
+                        logger.warning(
+                            "Round %d: Bank %s sent POISONED weights",
+                            round_num,
+                            bank.name,
+                        )
+
                     # Apply DP if enabled
                     if enable_dp:
                         local_w = privacy_service.clip_model_update(
@@ -366,12 +382,15 @@ class SimulationService:
                         rng=rng,
                     )
 
-                # Aggregate
+                # Aggregate using the user-configured strategy
+                agg_method = AggregationMethod(
+                    getattr(config, "aggregation_method", "fed_avg_weighted")
+                )
                 agg_start = time.perf_counter()
                 global_weights = self.fl_engine.aggregate_parameters(
                     client_weights,
                     client_samples,
-                    method=AggregationMethod.FED_AVG_WEIGHTED,
+                    method=agg_method,
                 )
                 agg_time = (time.perf_counter() - agg_start) * 1000
 

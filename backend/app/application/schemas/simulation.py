@@ -37,6 +37,17 @@ class SimulationConfigRequest(BaseModel):
     bank_b_transactions: int = Field(default=30000, ge=1000, le=200000)
     bank_c_transactions: int = Field(default=20000, ge=1000, le=200000)
 
+    # Aggregation strategy
+    aggregation_method: str = Field(
+        default="fed_avg_weighted",
+        description="Aggregation algorithm: fed_avg_weighted, fed_avg, krum, coordinate_wise_median",
+    )
+
+    # Adversarial / poisoning simulation
+    enable_poisoning_simulation: bool = False
+    poisoning_bank_id: str = Field(default="bank_c", description="Bank to act as malicious client")
+    poisoning_scale: float = Field(default=5.0, ge=1.0, le=20.0, description="Poisoning noise magnitude")
+
 
 class SimulationSummaryResponse(BaseModel):
     """Abbreviated simulation info for list views."""

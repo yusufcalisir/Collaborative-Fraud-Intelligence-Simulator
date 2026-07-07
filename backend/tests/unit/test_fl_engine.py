@@ -149,3 +149,66 @@ class TestSecureAggregation:
         masked_avg = np.mean([w.flat_weights for w in masked], axis=0)
 
         np.testing.assert_allclose(plain_avg, masked_avg, atol=1e-10)
+
+
+class TestByzantineRobustness:
+    def test_krum_robustness_selects_closest(
+        self,
+        fl_engine: FederatedLearningEngine,
+    ) -> None:
+        """Krum should select the honest client closest to all others, rejecting the outlier."""
+        shapes = [(3,)]
+        # Two clients are close to each other (honest), one is far away (Byzantine attacker)
+        weights = [
+            ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 1.0, 1.0]),  # Honest 1
+            ModelWeights(layer_shapes=shapes, flat_weights=[1.1, 1.1, 1.1]),  # Honest 2
+            ModelWeights(layer_shapes=shapes, flat_weights=[100.0, 100.0, 100.0]),  # Attacker (Poisoned)
+        ]
+
+        result = fl_engine.aggregate_parameters(
+            weights,
+            client_samples=[100, 100, 100],
+            method=AggregationMethod.KRUM,
+        )
+
+        # Krum should choose one of the honest weights (closest to most others), not the attacker
+        assert max(result.flat_weights) < 2.0
+
+    def test_coordinate_wise_median(
+        self,
+        fl_engine: FederatedLearningEngine,
+    ) -> None:
+        """Coordinate-wise median should take the element-wise median across clients."""
+        shapes = [(3,)]
+        weights = [
+            ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 5.0, 10.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 4.0, 20.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[3.0, 3.0, 100.0]),  # Attacker has large outlier in index 2
+        ]
+
+        result = fl_engine.aggregate_parameters(
+            weights,
+            client_samples=[100, 100, 100],
+            method=AggregationMethod.COORDINATE_WISE_MEDIAN,
+        )
+
+        # Median of [1, 2, 3] = 2.0
+        # Median of [5, 4, 3] = 4.0
+        # Median of [10, 20, 100] = 20.0
+        assert result.flat_weights == [2.0, 4.0, 20.0]
+
+    def test_apply_model_poisoning(
+        self,
+        fl_engine: FederatedLearningEngine,
+    ) -> None:
+        """Model poisoning should corrupt honest weights with noise scaling."""
+        shapes = [(3,)]
+        honest = ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 1.0, 1.0])
+
+        rng = np.random.default_rng(42)
+        poisoned = fl_engine.apply_model_poisoning(honest, scale=5.0, rng=rng)
+
+        # Poisoned weights should be different from honest weights
+        assert poisoned.flat_weights != honest.flat_weights
+        assert poisoned.layer_shapes == honest.layer_shapes
+

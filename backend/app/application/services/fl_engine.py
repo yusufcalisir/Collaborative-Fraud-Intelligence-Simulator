@@ -1,10 +1,13 @@
 """Federated Learning engine.
 
-Implements FedAvg aggregation with support for:
-- Weighted averaging proportional to dataset size
+Implements multiple aggregation strategies with support for:
+- FedAvg: weighted/unweighted averaging (McMahan et al., 2017)
+- Krum: Byzantine-robust selection (Blanchard et al., 2017)
+- Coordinate-wise Median: element-wise median aggregation
 - Network latency simulation
 - Client dropout and reconnection
 - Secure aggregation simulation (simplified)
+- Model poisoning simulation for adversarial robustness testing
 
 This is a custom simulation engine, not the Flower (flwr) framework.
 See docs/engineering-decisions.md for the rationale. In short: Flower is
@@ -40,9 +43,10 @@ class FederatedLearningEngine:
     Responsible for:
     1. Distributing global model parameters to clients
     2. Collecting locally-trained parameters
-    3. Aggregating parameters (FedAvg)
+    3. Aggregating parameters (FedAvg, Krum, or Coordinate-wise Median)
     4. Simulating network conditions (latency, dropout)
     5. Applying privacy mechanisms before aggregation
+    6. Simulating adversarial model poisoning attacks
     """
 
     def __init__(
@@ -63,9 +67,10 @@ class FederatedLearningEngine:
     ) -> ModelWeights:
         """Aggregate model parameters from multiple clients.
 
-        FedAvg: weighted average of parameters proportional to local dataset size.
-        This is the same algorithm used by McMahan et al. (2017) and implemented
-        in Flower's FedAvg strategy.
+        Supports multiple strategies:
+        - FedAvg / FedAvg Weighted: standard averaging (McMahan et al., 2017)
+        - Krum: selects the single client closest to all others (Blanchard et al., 2017)
+        - Coordinate-wise Median: takes element-wise median across clients
 
         Args:
             client_weights: Parameter sets from each participating client.
@@ -97,6 +102,38 @@ class FederatedLearningEngine:
             for w, proportion in zip(client_weights, proportions, strict=False):
                 avg_weights += np.array(w.flat_weights) * proportion
             avg_weights = avg_weights.tolist()
+
+        elif method == AggregationMethod.KRUM:
+            # Krum (Blanchard et al., 2017): Select the client whose
+            # parameters are closest to the most other clients.
+            # For each client i, compute the sum of squared distances
+            # to the (n - f - 2) closest other clients, where f is the
+            # number of assumed Byzantine workers. Here f = 1.
+            weights_array = np.array([w.flat_weights for w in client_weights])
+            n = len(weights_array)
+            f = 1  # assume at most 1 Byzantine client
+            num_closest = max(1, n - f - 2)
+
+            scores = []
+            for i in range(n):
+                dists = []
+                for j in range(n):
+                    if i != j:
+                        dist = float(np.sum((weights_array[i] - weights_array[j]) ** 2))
+                        dists.append(dist)
+                dists.sort()
+                scores.append(sum(dists[:num_closest]))
+
+            best_idx = int(np.argmin(scores))
+            avg_weights = weights_array[best_idx].tolist()
+            logger.info("Krum selected client %d as representative", best_idx)
+
+        elif method == AggregationMethod.COORDINATE_WISE_MEDIAN:
+            # Coordinate-wise Median: for each parameter index, take the
+            # median value across all clients. Robust to outlier parameters
+            # injected by a Byzantine client.
+            weights_array = np.array([w.flat_weights for w in client_weights])
+            avg_weights = np.median(weights_array, axis=0).tolist()
 
         else:
             raise ValueError(f"Unsupported aggregation method: {method}")
@@ -225,3 +262,51 @@ class FederatedLearningEngine:
 
         logger.info("Applied secure aggregation masks to %d clients", n_clients)
         return masked_weights
+
+    def apply_model_poisoning(
+        self,
+        honest_weights: ModelWeights,
+        scale: float = 5.0,
+        rng: np.random.Generator | None = None,
+    ) -> ModelWeights:
+        """Simulate a model poisoning attack by corrupting model weights.
+
+        Replaces the honest local model weights with random noise scaled
+        by ``scale``. This emulates a Byzantine client that either:
+        - Sends random garbage to degrade the global model, or
+        - Sends carefully crafted updates to introduce a backdoor.
+
+        For this simulator we use the simpler random-noise approach,
+        which is sufficient to demonstrate Krum/Median defences.
+
+        Args:
+            honest_weights: The correctly-trained local weights to corrupt.
+            scale: Multiplier on the random noise magnitude.
+            rng: Random generator for reproducibility.
+
+        Returns:
+            Poisoned ModelWeights with the same shape metadata.
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+
+        honest_arr = np.array(honest_weights.flat_weights)
+        # Generate noise with same magnitude as the honest weights,
+        # scaled up by the poisoning factor. If std is zero (e.g. constant weights),
+        # fallback to 1.0.
+        std_val = float(np.std(honest_arr))
+        if std_val == 0.0:
+            std_val = 1.0
+        noise = rng.standard_normal(len(honest_arr)) * std_val * scale
+        poisoned = (honest_arr + noise).tolist()
+
+        logger.warning(
+            "Applied model poisoning (scale=%.1f) — %d parameters corrupted",
+            scale,
+            len(poisoned),
+        )
+
+        return ModelWeights(
+            layer_shapes=honest_weights.layer_shapes,
+            flat_weights=poisoned,
+        )

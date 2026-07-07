@@ -117,6 +117,9 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 | :--- | :--- | :--- | :--- |
 | **Non-IID Synthetic Data** | `DataGenerator` generates skewed distributions per bank (skewed fraud rates, different feature means). | Simulates real-world heterogeneity where banks have distinct customer bases. | Statistical Non-Identical & Independent Distribution (Non-IID) |
 | **FedAvg Aggregation** | Weighted averaging of local weights based on relative client sample counts. | Central algorithm for model parameter synchronization in Federated Learning. | Convergence on global optima without raw data pooling |
+| **Krum Aggregation** | Byzantine-robust selection (Blanchard et al., 2017): selects the single client update closest to all others, rejecting outlier poisoned weights. | Defends the global model when a compromised bank sends malicious (poisoned) parameters. | Tolerates up to f Byzantine workers among n clients |
+| **Coordinate-wise Median** | Element-wise median aggregation across all client parameter vectors. | Robust alternative to averaging that limits the influence of any single outlier client. | Breakdown point of 50% — tolerates up to half the clients being adversarial |
+| **Model Poisoning Simulation** | Corrupts a designated bank's trained weights by injecting random noise scaled by a configurable magnitude factor. | Enables side-by-side comparison: FedAvg collapses under attack while Krum/Median defend. | Adversarial robustness stress testing |
 | **Differential Privacy** | Gaussian noise addition to gradients combined with L2 norm clipping. | Mathematically guarantees that individual transaction signatures cannot be leaked. | $(\epsilon, \delta)$-Differential Privacy |
 | **Client Failures** | Dynamic simulation of network latency, dropouts, and reconnection cycles. | Tests the resilience of the aggregation server against real-world connection drops. | Quorum enforcement ($\ge$ Min Clients) |
 | **Deterministic Linkage** | Linkage of cross-bank entities using salted HMAC-SHA256 identifiers. | Matches entities (e.g., suspicious cards/devices) without sharing raw names or emails. | Salted SHA-256 One-way Hash Collision Resistance |
@@ -342,8 +345,9 @@ This application functions as a high-fidelity simulator. Transitioning this mode
 │ DP Accounting            │ Basic sequential composition│ Rényi Differential Privacy    │
 │                          │ sum tracking                │ (RDP) using Opacus library    │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ Aggregator Integrity     │ Honest aggregation server   │ Byzantine Fault Defenses      │
-│                          │                             │ (Krum, Coordinate-wise Median)│
+│ Aggregator Integrity     │ Krum, Coordinate-wise    │ Additional Byzantine Fault    │
+│                          │ Median, and Model        │ Defenses (Trimmed Mean,       │
+│                          │ Poisoning Simulation     │ Multi-Krum)                   │
 └──────────────────────────┴─────────────────────────────┴───────────────────────────────┘
 ```
 
@@ -354,9 +358,9 @@ This application functions as a high-fidelity simulator. Transitioning this mode
 2. **Basic Privacy Budget Composition (Differential Privacy Limitation)**:
    * *Simulator Detail*: The simulator tracks privacy expenditure ($\epsilon$) round-by-round using simple sequential composition (adding $\epsilon$ linearly). Over N rounds, this results in a high cumulative privacy loss (e.g. $\epsilon = 10.0$ for 10 rounds).
    * *Production Target*: Under basic composition, the privacy budget exhausts too fast for deep models. Production deployments utilize **Rényi Differential Privacy (RDP)** or the **Moments Accountant** method (typically implemented via the **PyTorch Opacus** library). This yields much tighter privacy bounds, keeping $\epsilon$ low and utility high across dozens of training rounds.
-3. **Byzantine & Poisoning Vulnerabilities (Integrity Limitation)**:
-   * *Simulator Detail*: The aggregation loop uses standard FedAvg, assuming that all participating banks are "semi-honest" and train their local models correctly without uploading malicious updates.
-   * *Production Target*: A compromised client node could execute **Model Poisoning** or **Data Poisoning** attacks (e.g., uploading random weights or introducing a backdoor into the model). Production systems must implement **Byzantine-Robust Aggregators** (such as Krum, Trimmed Mean, or Coordinate-wise Median) and check update norms to isolate and reject malicious or heavily-deviated updates before aggregation.
+3. **Byzantine & Poisoning Defences (Partially Addressed)**:
+   * *Implemented*: The simulator now ships with **Krum** (Blanchard et al., 2017) and **Coordinate-wise Median** aggregation, alongside a **Model Poisoning Simulation** toggle that lets any bank act as a Byzantine attacker sending corrupted weights (located in [fl_engine.py](file:///backend/app/application/services/fl_engine.py)).
+   * *Remaining Gap*: Production systems should additionally implement **Multi-Krum**, **Trimmed Mean**, and anomaly detection on update norms (e.g., z-score outlier rejection) for defence in depth.
 
 ***
 
