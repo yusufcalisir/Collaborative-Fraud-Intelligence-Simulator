@@ -19,7 +19,7 @@ Architecture::
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -53,11 +53,11 @@ class _NoOpUpDownCounter:
 
 
 # Public metric handles — always safe to use.
-simulation_rounds_total: _NoOpCounter | object = _NoOpCounter()
-simulation_duration_seconds: _NoOpHistogram | object = _NoOpHistogram()
-active_simulations: _NoOpUpDownCounter | object = _NoOpUpDownCounter()
-alerts_generated_total: _NoOpCounter | object = _NoOpCounter()
-http_request_duration_seconds: _NoOpHistogram | object = _NoOpHistogram()
+simulation_rounds_total: Any = _NoOpCounter()
+simulation_duration_seconds: Any = _NoOpHistogram()
+active_simulations: Any = _NoOpUpDownCounter()
+alerts_generated_total: Any = _NoOpCounter()
+http_request_duration_seconds: Any = _NoOpHistogram()
 
 
 # ── Setup ─────────────────────────────────────────────────────

@@ -342,15 +342,15 @@ class ModelService:
             scaled_inputs.append(baseline_tensor + alpha * (input_tensor - baseline_tensor))
 
         # Stack scaled inputs to process as a single batch
-        scaled_inputs = torch.cat(scaled_inputs, dim=0).requires_grad_(True).to(self.device)
+        scaled_inputs_batch = torch.cat(scaled_inputs, dim=0).requires_grad_(True).to(self.device)
 
         # Forward pass
-        predictions = model(scaled_inputs)
+        predictions = model(scaled_inputs_batch)
 
         # Backward pass to get gradients
         gradients = torch.autograd.grad(
             outputs=predictions,
-            inputs=scaled_inputs,
+            inputs=scaled_inputs_batch,
             grad_outputs=torch.ones_like(predictions),
             create_graph=False,
             retain_graph=False,
