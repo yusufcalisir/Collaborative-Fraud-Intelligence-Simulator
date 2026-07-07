@@ -21,9 +21,24 @@ const NAV_SECTIONS = [
   {
     label: 'Observability',
     items: [
-      { href: 'http://localhost:3001', label: 'Grafana Dashboards', icon: '📈', isExternal: true },
-      { href: 'http://localhost:16686', label: 'Jaeger Tracing', icon: '🔍', isExternal: true },
-      { href: 'http://localhost:9090', label: 'Prometheus Metrics', icon: '🔥', isExternal: true },
+      { 
+        href: import.meta.env.VITE_GRAFANA_URL ?? 'http://localhost:3001', 
+        label: 'Grafana Dashboards', 
+        icon: '📈', 
+        isExternal: true 
+      },
+      { 
+        href: import.meta.env.VITE_JAEGER_URL ?? 'http://localhost:16686', 
+        label: 'Jaeger Tracing', 
+        icon: '🔍', 
+        isExternal: true 
+      },
+      { 
+        href: import.meta.env.VITE_PROMETHEUS_URL ?? 'http://localhost:9090', 
+        label: 'Prometheus Metrics', 
+        icon: '🔥', 
+        isExternal: true 
+      },
     ],
   },
 ];
