@@ -100,11 +100,11 @@ async def get_bank_distributions() -> dict[str, Any]:
     amount_arrays: dict[str, np.ndarray] = {}
 
     for bank_id, (df, labels) in datasets.items():
-        amounts = df["transaction_amount"].values
+        amounts: np.ndarray = df["transaction_amount"].to_numpy()
         amount_arrays[bank_id] = amounts
-        hours = df["hour_of_day"].values
-        merchants = df["merchant_category"].values
-        is_fraud = labels.values.astype(bool)
+        hours: np.ndarray = df["hour_of_day"].to_numpy()
+        merchants: np.ndarray = df["merchant_category"].to_numpy()
+        is_fraud: np.ndarray = labels.to_numpy().astype(bool)
 
         # 1) Transaction amount histogram (log-scale bins)
         log_bins = np.logspace(
