@@ -329,41 +329,6 @@ cd backend
 
 ***
 
-## Production Hardening Gap Analysis
-
-This application functions as a high-fidelity simulator. Transitioning this model into a real-world enterprise deployment requires hardening several architectural components:
-
-```
-┌──────────────────────────┬─────────────────────────────┬───────────────────────────────┐
-│ Security/ML Layer        │ Simulator Implementation    │ Enterprise Production Target  │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ Transport Security       │ Raw HTTP / WebSockets       │ Mutual TLS (mTLS 1.3) auth    │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ Secure Aggregation       │ Pairwise mathematical masks │ Secure Multiparty Computation │
-│                          │ simulated in-memory         │ (SMPC) via secret sharing     │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ DP Accounting            │ Basic sequential composition│ Rényi Differential Privacy    │
-│                          │ sum tracking                │ (RDP) using Opacus library    │
-├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ Aggregator Integrity     │ Krum, Coordinate-wise    │ Additional Byzantine Fault    │
-│                          │ Median, and Model        │ Defenses (Trimmed Mean,       │
-│                          │ Poisoning Simulation     │ Multi-Krum)                   │
-└──────────────────────────┴─────────────────────────────┴───────────────────────────────┘
-```
-
-### Detailed Limitation Analysis & Enterprise Hardening Targets
-1. **Centralized Mask Generation (Secure Aggregation Limitation)**:
-   * *Simulator Detail*: To demonstrate how parameter masks hide raw model weights from the server, the simulator generates zero-sum pairwise masks centrally (located in [fl_engine.py](file:///backend/app/application/services/fl_engine.py#L185)). 
-   * *Production Target*: In a real multi-bank deployment, a central server cannot be trusted to generate masks. Instead, banks must collaboratively establish masks using distributed **Diffie-Hellman Key Exchange** and **Secure Multi-Party Computation (SMPC)** protocols (e.g., Bonawitz et al. 2017). This ensures that even if the server is compromised, it cannot reconstruct individual client weights.
-2. **Basic Privacy Budget Composition (Differential Privacy Limitation)**:
-   * *Simulator Detail*: The simulator tracks privacy expenditure ($\epsilon$) round-by-round using simple sequential composition (adding $\epsilon$ linearly). Over N rounds, this results in a high cumulative privacy loss (e.g. $\epsilon = 10.0$ for 10 rounds).
-   * *Production Target*: Under basic composition, the privacy budget exhausts too fast for deep models. Production deployments utilize **Rényi Differential Privacy (RDP)** or the **Moments Accountant** method (typically implemented via the **PyTorch Opacus** library). This yields much tighter privacy bounds, keeping $\epsilon$ low and utility high across dozens of training rounds.
-3. **Byzantine & Poisoning Defences (Partially Addressed)**:
-   * *Implemented*: The simulator now ships with **Krum** (Blanchard et al., 2017) and **Coordinate-wise Median** aggregation, alongside a **Model Poisoning Simulation** toggle that lets any bank act as a Byzantine attacker sending corrupted weights (located in [fl_engine.py](file:///backend/app/application/services/fl_engine.py)).
-   * *Remaining Gap*: Production systems should additionally implement **Multi-Krum**, **Trimmed Mean**, and anomaly detection on update norms (e.g., z-score outlier rejection) for defence in depth.
-
-***
-
 ## Project Development Methodology
 
 This project was developed using a hybrid engineering approach, combining custom core system design with modern developer tooling and coding assistants. The division of implementation tasks is outlined below:
