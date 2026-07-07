@@ -63,9 +63,9 @@ To provide real-time transaction screening and investigation capabilities:
 
 ### Track 3: Production Microservices & Secure API Gateway (Phase 3)
 To transform the prototype into a production-oriented distributed system:
-1.  **Microservices Decomposition**: Decoupled backend into 4 autonomous, independent services: `gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert`, enabling horizontal scaling.
-2.  **Fault-Tolerant Shared State**: Replaced in-memory states with `RedisStore` syncing data to a Redis cache while falling back dynamically to thread-safe in-memory cache on connection timeouts.
-3.  **API Gateway Routing & Security Suite**: Centralized traffic routing, versioning checks (enforcing `/api/v1/`), client rate-limiting, auditable request logging, and optional Role-Based Access Control (RBAC) ensuring banks only access their own multi-tenant records.
+1.  **Microservices Decomposition**: Decoupled the backend into 4 autonomous, independent services: `gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert` (dynamically loaded in [main.py](file:///backend/app/main.py#L236-L300) and orchestrated in [docker-compose.yml](file:///docker-compose.yml)).
+2.  **Fault-Tolerant Shared State**: Replaced standard variables with [RedisStore](file:///backend/app/infrastructure/redis_store.py) syncing data to a Redis cache while falling back dynamically to thread-safe in-memory cache on connection timeouts.
+3.  **API Gateway Routing & Security Suite**: Centralized traffic routing, versioning checks (enforcing `/api/v1/`), rate-limiting, and auditable request logging implemented in [gateway.py](file:///backend/app/presentation/routers/gateway.py).
 
 #### 🔍 The 9-Signal Risk Evaluation Pipeline
 The platform implements a modular **9-Signal Risk Combination Engine** to calculate transaction risk levels dynamically. Each signal outputs a normalized risk weight between `0.0` (benign) and `1.0` (maximum threat):
