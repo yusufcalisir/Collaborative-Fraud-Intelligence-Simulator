@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiClient } from './client';
 import type {
   Alert,
+  BankDistributions,
   BankInfo,
   Case,
   CaseSummary,
@@ -75,6 +76,17 @@ export function useBanks() {
       const { data } = await apiClient.get('/api/v1/banks');
       return data;
     },
+  });
+}
+
+export function useBankDistributions() {
+  return useQuery<BankDistributions>({
+    queryKey: ['bank-distributions'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/banks/distributions');
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // Static data, cache for 5 minutes
   });
 }
 

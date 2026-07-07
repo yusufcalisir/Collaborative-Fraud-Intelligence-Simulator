@@ -53,6 +53,42 @@ export interface DataProfile {
   mean_velocity: number;
 }
 
+// ── Data Drift / Distribution Visualization ────
+
+export interface AmountHistogram {
+  bins: number[];
+  counts: number[];
+  fraud_counts: number[];
+}
+
+export interface HourlyFraudRate {
+  hours: number[];
+  total: number[];
+  fraud: number[];
+}
+
+export interface MerchantRisk {
+  categories: string[];
+  fraud_rates: number[];
+  counts: number[];
+}
+
+export interface BankDistributionData {
+  amount_histogram: AmountHistogram;
+  hourly_fraud_rate: HourlyFraudRate;
+  merchant_risk: MerchantRisk;
+}
+
+export interface DivergenceSummary {
+  amount_ks_statistic: Record<string, number>;
+  overall_non_iid_score: number;
+}
+
+export interface BankDistributions {
+  banks: Record<string, BankDistributionData>;
+  divergence_summary: DivergenceSummary;
+}
+
 export interface BankResult {
   id: string;
   name: string;

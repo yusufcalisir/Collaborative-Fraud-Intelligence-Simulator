@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useBanks, useSimulations } from '../api/queries';
 import BankCard from '../components/dashboard/BankCard';
+import DataDriftPanel from '../components/dashboard/DataDriftPanel';
 import SimulationControls from '../components/dashboard/SimulationControls';
 import { formatDuration } from '../utils/formatters';
 
@@ -53,6 +54,11 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Data Drift Visualization */}
+      <div className="shrink-0 mb-2">
+        <DataDriftPanel />
       </div>
 
       {/* Controls + Recent Simulations */}
