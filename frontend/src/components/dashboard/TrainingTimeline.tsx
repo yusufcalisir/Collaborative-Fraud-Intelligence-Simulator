@@ -11,7 +11,7 @@ interface TrainingTimelineProps {
 
 export default function TrainingTimeline({ rounds, currentRound, totalRounds }: TrainingTimelineProps) {
   return (
-    <div className="glass-card p-5 h-[420px] flex flex-col">
+    <div className="glass-card p-5 min-h-[420px] lg:h-[430px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Training Timeline
@@ -87,11 +87,10 @@ export default function TrainingTimeline({ rounds, currentRound, totalRounds }: 
             >
               {/* Round number */}
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                  hasDropout
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${hasDropout
                     ? 'bg-[var(--color-accent-rose)]/20 text-[var(--color-accent-rose)]'
                     : 'bg-[var(--color-accent-indigo)]/20 text-[var(--color-accent-indigo-light)]'
-                }`}
+                  }`}
               >
                 {round.round_number}
               </div>

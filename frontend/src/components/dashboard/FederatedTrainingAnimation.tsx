@@ -51,7 +51,7 @@ export default function FederatedTrainingAnimation({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-3 sm:p-4 xl:p-4 overflow-hidden h-[420px] flex flex-col"
+      className="glass-card p-3 sm:p-4 xl:p-4 overflow-hidden min-h-[420px] lg:h-[430px] flex flex-col"
     >
       {/* Phase Stepper */}
       <div className="flex items-start justify-between mb-3 w-full">
@@ -66,27 +66,24 @@ export default function FederatedTrainingAnimation({
             <div key={step} className="flex items-start flex-1 last:flex-initial">
               <div className="w-10 sm:w-12 2xl:w-16 shrink-0 flex flex-col items-center">
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0 ${
-                    isDone
-                      ? 'bg-[var(--color-status-success)] text-white'
-                      : isCurrent
-                        ? 'bg-[var(--color-accent-indigo)] text-white shadow-lg shadow-[var(--color-accent-indigo)]/30'
-                        : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]'
-                  }`}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0 ${isDone
+                    ? 'bg-[var(--color-status-success)] text-white'
+                    : isCurrent
+                      ? 'bg-[var(--color-accent-indigo)] text-white shadow-lg shadow-[var(--color-accent-indigo)]/30'
+                      : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]'
+                    }`}
                 >
                   {isDone ? '✓' : idx + 1}
                 </div>
-                <span className={`text-[8px] 2xl:text-[9px] mt-1 text-center whitespace-normal max-w-[40px] sm:max-w-[48px] 2xl:max-w-[64px] leading-tight ${
-                  isCurrent ? 'text-[var(--color-accent-indigo-light)] font-medium' : 'text-[var(--color-text-muted)]'
-                }`}>
+                <span className={`text-[8px] 2xl:text-[9px] mt-1 text-center whitespace-normal max-w-[40px] sm:max-w-[48px] 2xl:max-w-[64px] leading-tight ${isCurrent ? 'text-[var(--color-accent-indigo-light)] font-medium' : 'text-[var(--color-text-muted)]'
+                  }`}>
                   {stepPhase.label}
                 </span>
               </div>
               {idx < arr.length - 1 && (
                 <div
-                  className={`flex-1 h-[2px] mt-[13px] mx-0.5 2xl:mx-1 transition-colors duration-500 ${
-                    isDone ? 'bg-[var(--color-status-success)]' : 'bg-[var(--color-border)]'
-                  }`}
+                  className={`flex-1 h-[2px] mt-[13px] mx-0.5 2xl:mx-1 transition-colors duration-500 ${isDone ? 'bg-[var(--color-status-success)]' : 'bg-[var(--color-border)]'
+                    }`}
                 />
               )}
             </div>
@@ -154,8 +151,12 @@ export default function FederatedTrainingAnimation({
       )}
 
       {/* SVG Animation */}
-      <div className="relative flex-1 flex flex-col justify-center items-center">
-        <svg viewBox="0 0 400 280" className="w-full max-w-md my-auto" style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}>
+      <div className="relative flex-1 min-h-0 flex flex-col justify-center items-center">
+        <svg
+          viewBox="0 0 400 280"
+          className="w-full h-full max-h-[210px] sm:max-h-[230px] max-w-md my-auto"
+          style={{ filter: isActive ? undefined : 'grayscale(0.2)' }}
+        >
           <defs>
             {/* Gradient for data flow */}
             <linearGradient id="flow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -204,7 +205,7 @@ export default function FederatedTrainingAnimation({
                   strokeWidth={isPipeGlowing ? "5" : "2"}
                   opacity={isPipeGlowing ? 0.15 : 0.2}
                 />
-                
+
                 {/* Inner cable line */}
                 <line
                   x1={pos.x} y1={pos.y}
