@@ -217,7 +217,7 @@ class ModelService:
         actual_epsilon = privacy_engine.get_epsilon(delta=target_delta)
 
         # De-wrap the module before returning it
-        model_final = cast(FraudDetectionModel, model_private._module)
+        model_final = cast("FraudDetectionModel", model_private._module)
 
         import gc
 
