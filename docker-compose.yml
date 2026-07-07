@@ -48,6 +48,9 @@ services:
       - FL_COORDINATOR_URL=http://fl-coordinator:8001
       - IDENTITY_GRAPH_URL=http://identity-graph:8002
       - FRAUD_ALERT_URL=http://fraud-alert:8003
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=cfi-gateway
     env_file:
       - .env
     depends_on:
@@ -60,6 +63,8 @@ services:
       identity-graph:
         condition: service_started
       fraud-alert:
+        condition: service_started
+      jaeger:
         condition: service_started
     restart: unless-stopped
 
@@ -76,6 +81,9 @@ services:
       - "8001:8001"
     environment:
       - SERVICE_NAME=fl-coordinator
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=cfi-fl-coordinator
     env_file:
       - .env
     depends_on:
@@ -83,6 +91,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     restart: unless-stopped
 
   # ── Identity & Graph Resolver ───────────────
@@ -98,6 +108,9 @@ services:
       - "8002:8002"
     environment:
       - SERVICE_NAME=identity-graph
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=cfi-identity-graph
     env_file:
       - .env
     depends_on:
@@ -105,6 +118,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     restart: unless-stopped
 
   # ── Fraud & Alert Engine ────────────────────
@@ -120,6 +135,9 @@ services:
       - "8003:8003"
     environment:
       - SERVICE_NAME=fraud-alert
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=cfi-fraud-alert
     env_file:
       - .env
     depends_on:
@@ -127,6 +145,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     restart: unless-stopped
 
   # ── Celery Worker ───────────────────────────
@@ -175,6 +195,57 @@ services:
       - gateway
     restart: unless-stopped
 
+  # ══════════════════════════════════════════════
+  # OBSERVABILITY STACK
+  # ══════════════════════════════════════════════
+
+  # ── Jaeger (Distributed Tracing) ────────────
+  jaeger:
+    image: jaegertracing/jaeger:2
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+  # ── Prometheus (Metrics) ────────────────────
+  prometheus:
+    image: prom/prometheus:v3.4.2
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  # ── Grafana (Dashboards) ────────────────────
+  grafana:
+    image: grafana/grafana:11.6.0
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - jaeger
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  grafana_data:

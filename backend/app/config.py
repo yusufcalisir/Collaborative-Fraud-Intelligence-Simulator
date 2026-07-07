@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     gateway_rate_limit: int = 120  # requests per minute
     gateway_api_keys: str = "key_bank_a:bank_a:bank,key_bank_b:bank_b:bank,key_bank_c:bank_c:bank,key_analyst:analyst:analyst"
 
+    # ── Observability (OpenTelemetry) ─────────
+    otel_enabled: bool = False
+    otel_exporter_otlp_endpoint: str = "http://jaeger:4317"
+    otel_service_name: str = "cfi-backend"
+
     @property
     def database_url(self) -> str:
         """Async PostgreSQL connection URL."""

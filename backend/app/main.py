@@ -265,6 +265,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Observability ─────────────────────────────
+from app.infrastructure.telemetry import setup_telemetry
+
+setup_telemetry(app)
+
 
 # ── Routers ───────────────────────────────────
 if service_name == "gateway":

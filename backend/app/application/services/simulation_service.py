@@ -88,9 +88,16 @@ class SimulationService:
         It's synchronous and can take several minutes depending on
         data volume and number of rounds.
         """
+        from app.infrastructure.telemetry import (
+            active_simulations,
+            simulation_duration_seconds,
+            simulation_rounds_total,
+        )
+
         simulation = SimulationRun(config=config, total_rounds=config.num_rounds)
         simulation.started_at = _now()
         rng = np.random.default_rng(42)
+        active_simulations.add(1)
 
         try:
             # Phase 1: Generate data
@@ -510,6 +517,10 @@ class SimulationService:
                         round_duration,
                     )
 
+                    # Record OTEL metrics for this round
+                    simulation_rounds_total.add(1)
+                    simulation_duration_seconds.record(round_duration / 1000)
+
                     self._notify(
                         progress_callback,
                         simulation.id,
@@ -561,6 +572,7 @@ class SimulationService:
                 )
 
             # Finalize
+            active_simulations.add(-1)
             simulation.status = SimulationStatus.COMPLETED
             simulation.completed_at = _now()
 
@@ -584,6 +596,7 @@ class SimulationService:
             return simulation
 
         except Exception as e:
+            active_simulations.add(-1)
             simulation.status = SimulationStatus.FAILED
             simulation.error_message = str(e)
             simulation.completed_at = _now()

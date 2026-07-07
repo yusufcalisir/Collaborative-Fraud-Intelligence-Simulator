@@ -1,0 +1,15 @@
+# Grafana dashboard provisioning
+# Auto-loads dashboard JSON files from the dashboards directory
+
+apiVersion: 1
+
+providers:
+  - name: 'CFI Dashboards'
+    orgId: 1
+    folder: 'CFI Platform'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

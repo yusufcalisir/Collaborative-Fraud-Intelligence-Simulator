@@ -246,12 +246,120 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 │   ├── Dockerfile
 │   └── package.json
 ├── docs/                         # Extended systems design and threat models
+├── monitoring/                   # Observability stack configuration
+│   ├── prometheus.yml            # Prometheus scrape targets (all backend services)
+│   └── grafana/
+│       ├── provisioning/         # Auto-provisioned datasources (Prometheus, Jaeger) & dashboards
+│       └── dashboards/           # Pre-built JSON dashboard: CFI Platform Overview
 ├── docker-compose.yml
 ├── Makefile
 └── .github/                      # CI/CD Workflows
 ```
 
 ***
+
+## 🔭 Observability Stack (Prometheus + Grafana + OpenTelemetry + Jaeger)
+
+The platform ships with a production-grade observability stack that provides **distributed tracing**, **real-time metrics**, and **pre-built dashboards** out of the box. The stack is fully containerised and auto-provisions on first `docker compose up`.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       FastAPI Services                          │
+│  (Gateway · FL-Coordinator · Identity-Graph · Fraud-Alert)      │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              OpenTelemetry SDK (auto-instrument)          │   │
+│  │                                                           │   │
+│  │   Traces ──→ OTLP/gRPC ──→ Jaeger (:4317)               │   │
+│  │   Metrics ──→ /metrics endpoint                          │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │                    │
+                    ┌─────────┘                    └──────────┐
+                    ▼                                          ▼
+          ┌─────────────────┐                      ┌───────────────────┐
+          │   Jaeger UI      │                      │   Prometheus      │
+          │   :16686         │                      │   :9090           │
+          │                  │                      │   Scrapes /metrics│
+          │  Distributed     │                      │   every 15s       │
+          │  trace viewer    │                      │   7-day retention │
+          └─────────────────┘                      └─────────┬─────────┘
+                                                              │
+                                                              ▼
+                                                   ┌───────────────────┐
+                                                   │   Grafana         │
+                                                   │   :3001           │
+                                                   │                   │
+                                                   │  Pre-provisioned  │
+                                                   │  CFI dashboard    │
+                                                   └───────────────────┘
+```
+
+### Access URLs
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **Jaeger UI** (Traces) | http://localhost:16686 | None required |
+| **Prometheus** (Metrics) | http://localhost:9090 | None required |
+| **Grafana** (Dashboards) | http://localhost:3001 | `admin` / `admin` |
+
+### Custom Application Metrics
+
+The following domain-specific metrics are exported via OpenTelemetry and scraped by Prometheus:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `simulation_rounds_total` | Counter | Total FL training rounds completed across all simulations |
+| `simulation_duration_seconds` | Histogram | Duration of each individual training round (in seconds) |
+| `active_simulations` | UpDownCounter | Number of simulations currently in progress |
+| `alerts_generated_total` | Counter | Total fraud alerts raised by the streaming engine |
+| `http_request_duration_seconds` | Histogram | HTTP request latency per route (auto-instrumented) |
+
+### Pre-Built Grafana Dashboard
+
+The **CFI Platform Overview** dashboard is auto-provisioned on first boot and includes:
+
+* **HTTP Request Rate** — Requests per second across all services
+* **HTTP Latency (p95)** — 95th percentile response time per route
+* **Active Simulations Gauge** — Real-time count of running FL simulations
+* **FL Training Rounds Counter** — Cumulative rounds completed
+* **Round Duration Distribution** — Histogram of per-round training times
+* **Alerts Generated** — Total fraud alerts counter
+* **Jaeger Trace Link** — Direct link to distributed trace viewer
+
+### Configuration
+
+Telemetry is controlled by environment variables and is **disabled by default** so that local development, CI tests, and Hugging Face Spaces runs have zero overhead:
+
+```bash
+# Enable telemetry (set in docker-compose.yml for containerised runs)
+OTEL_ENABLED=true
+
+# Jaeger OTLP endpoint (traces are sent here via gRPC)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+
+# Service name visible in Jaeger trace list
+OTEL_SERVICE_NAME=cfi-backend
+```
+
+### Quick Start
+
+```bash
+# Start the full platform with observability
+docker compose up -d
+
+# Verify Prometheus targets are UP
+open http://localhost:9090/targets
+
+# Explore traces in Jaeger
+open http://localhost:16686
+
+# View dashboards in Grafana
+open http://localhost:3001
+# Login: admin / admin
+```
 
 ## Configuration Options
 
