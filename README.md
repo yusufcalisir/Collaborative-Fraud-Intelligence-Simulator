@@ -192,21 +192,37 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 │   │   │       ├── simulation_service.py # Orchestrates local training, FL loops, evaluations, comparisons
 │   │   │       └── streaming_engine.py # Event emitter for scenario replay
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
+│   │   │   ├── cache.py          # Local in-memory caching fallback logic
+│   │   │   ├── celery_app.py     # Celery app initialization for background jobs
 │   │   │   ├── database.py       # SQLAlchemy 2.0 connection engine
+│   │   │   ├── event_bus.py      # Pub/sub channels for real-time WebSocket communication
 │   │   │   ├── models.py         # Relational tables for simulation logs, alerts, and runs
 │   │   │   ├── redis_store.py    # Redis state syncing client with automatic thread-safe memory fallback
-│   │   │   └── event_bus.py      # Pub/sub channels for real-time WebSocket communication
+│   │   │   └── repositories/     # Data access layer implementing repository pattern
+│   │   │       ├── bank_repository.py # Performs DB operations for bank details
+│   │   │       ├── metrics_repository.py # Saves and fetches training round metrics
+│   │   │       └── simulation_repository.py # Manages simulation runs and configurations in database
 │   │   ├── presentation/         # API Controllers and endpoints
 │   │   │   ├── routers/
-│   │   │   │   ├── aml.py        # Serves Alerts, Cases, Entity Graphs, and Scenarios
-│   │   │   │   ├── banks.py      # Bank profiles and distributions histogram endpoints
+│   │   │   │   ├── alerts.py     # Transaction alerts query, resolution, and explanations
+│   │   │   │   ├── banks.py      # Bank profiles and distributions endpoints (KS-statistics)
+│   │   │   │   ├── cases.py      # Collaboratively managed AML investigation cases
+│   │   │   │   ├── dashboard.py  # High-level overview aggregation metrics
+│   │   │   │   ├── entities.py   # HMAC identification mapping endpoints
 │   │   │   │   ├── gateway.py    # Gateway routing middleware (Auth, RBAC, logging, rate limiting)
-│   │   │   │   ├── simulation.py # Handles creation, detail retrieval, and comparison
+│   │   │   │   ├── graph.py      # Graph visualization queries for cross-bank accounts
+│   │   │   │   ├── health.py     # System service health checking
+│   │   │   │   ├── scenarios.py  # Controls AML scenario simulation streams
+│   │   │   │   ├── simulation.py # Handles creation, retrieval, and comparison of FL runs
 │   │   │   │   └── training.py   # Yields progress data on communication rounds
 │   │   │   └── websockets/
 │   │   │       ├── streaming_ws.py # Manages live WebSocket streams for scenario replays
 │   │   │       └── training_ws.py # Manages persistent WebSocket feeds for training rounds progress
-│   │   └── tasks/                # Background tasks (Celery asynchronous runners)
+│   │   ├── tasks/                # Background tasks (Celery asynchronous runners)
+│   │   │   └── simulation_tasks.py # Async tasks for running Flower/Custom simulation loops
+│   │   ├── config.py             # Global application settings loading
+│   │   ├── dependencies.py       # FastAPI dependency injection providers
+│   │   └── main.py               # Application entrypoint and microservices gateways
 │   ├── tests/                    # Integration and unit test suite
 │   │   └── unit/
 │   │       ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
@@ -214,7 +230,8 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 │   │       ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes
 │   │       ├── test_metrics_service.py # Asserts correctness of evaluation metrics serialization
 │   │       ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
-│   │       └── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
+│   │       ├── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
+│   │       └── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
@@ -222,9 +239,9 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 │   │   ├── api/                  # API client instance, queries, mutations (React Query)
 │   │   ├── components/           # Reusable UI elements
 │   │   │   ├── layout/           # Sidebar, Header, Page layout wrappers
-│   │   │   ├── dashboard/        # BankCard, DataDriftPanel, FederatedTrainingAnimation, SimulationControls
+│   │   │   ├── dashboard/        # BankCard, DataDriftPanel, FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline
 │   │   │   └── charts/           # LossChart, ROCCurve, ConfusionMatrix, FeatureImportance, MetricsRadar
-│   │   ├── pages/                # Application views: Dashboard, Alerts, Cases, Scenarios, Graph, SimulationView
+│   │   ├── pages/                # Application views: Dashboard, SimulationView, AlertsPage, CasesPage, CaseDetailPage, InvestigationDashboard, ScenariosPage, GraphPage
 │   │   └── utils/                # Numerical formatters and constants
 │   ├── Dockerfile
 │   └── package.json
