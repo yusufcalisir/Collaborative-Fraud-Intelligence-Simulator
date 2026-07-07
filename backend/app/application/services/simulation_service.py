@@ -258,32 +258,16 @@ class SimulationService:
                     },
                 )
 
+                def flower_progress_cb(sim_id: str, event_type: str, data: dict[str, Any]) -> None:
+                    self._notify(progress_callback, sim_id, event_type, data)
+
                 flower_result = flower_engine.run_federated_training(
                     config=config,
                     bank_data=bank_data,
                     global_model=global_model,
-                    progress_callback=self._notify.__func__.__get__(self, type(self))
-                    if progress_callback
-                    else None,
+                    progress_callback=flower_progress_cb if progress_callback else None,
                     simulation_id=simulation.id,
                 )
-
-                # Fire progress via the raw callback since Flower manages its own loop
-                if progress_callback and flower_result.get("rounds"):
-                    for rinfo in flower_result["rounds"]:
-                        progress_callback(
-                            simulation.id,
-                            "round_complete",
-                            {
-                                "round": rinfo["round_number"],
-                                "total": config.num_rounds,
-                                "loss": rinfo["global_loss"],
-                                "participants": rinfo["participating_bank_ids"],
-                                "dropped": rinfo["dropped_bank_ids"],
-                                "duration_ms": rinfo["round_duration_ms"],
-                                "privacy_budget": 0.0,
-                            },
-                        )
 
                 rounds = [
                     TrainingRound(
