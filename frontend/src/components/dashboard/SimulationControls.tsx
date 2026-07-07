@@ -10,14 +10,16 @@ interface SimulationControlsProps {
 
 export default function SimulationControls({ onSimulationCreated }: SimulationControlsProps) {
   const [config, setConfig] = useState<Partial<SimulationConfig>>(DEFAULT_SIMULATION_CONFIG);
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  const [isLargeMonitor, setIsLargeMonitor] = useState(() => {
+    return typeof window !== 'undefined' && window.innerWidth >= 1600 && window.innerHeight >= 900;
+  });
   const [isExpanded, setIsExpanded] = useState(false);
   const createMutation = useCreateSimulation();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleResize = () => {
-      setIsDesktop(window.innerWidth >= 1024);
+      setIsLargeMonitor(window.innerWidth >= 1600 && window.innerHeight >= 900);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -46,7 +48,7 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
           Simulation Configuration
         </h3>
-        {!isDesktop && (
+        {!isLargeMonitor && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
@@ -95,9 +97,9 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
       </div>
 
       {/* Advanced Settings */}
-      {(isExpanded || isDesktop) && (
+      {(isExpanded || isLargeMonitor) && (
         <motion.div
-          initial={isDesktop ? false : { opacity: 0, height: 0 }}
+          initial={isLargeMonitor ? false : { opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ duration: 0.3 }}
           className="space-y-4 border-t border-[var(--color-border-subtle)] pt-4"
