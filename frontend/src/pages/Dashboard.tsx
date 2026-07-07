@@ -20,7 +20,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-auto lg:h-full flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -62,14 +62,14 @@ export default function Dashboard() {
       </div>
 
       {/* Controls + Recent Simulations */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:flex-1 lg:min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Simulation Controls */}
-        <div className="lg:col-span-2 flex flex-col lg:min-h-0 lg:overflow-y-auto pr-1">
+        <div className="lg:col-span-2 flex flex-col pr-1">
           <SimulationControls onSimulationCreated={handleSimulationCreated} />
         </div>
 
         {/* Recent Simulations */}
-        <div className="glass-card p-4 flex flex-col lg:min-h-0">
+        <div className="glass-card p-4 flex flex-col max-h-[600px]">
           <h3 className="text-xs font-semibold text-[var(--color-text-primary)] mb-3 shrink-0">
             Recent Simulations
           </h3>
