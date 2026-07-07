@@ -222,6 +222,7 @@ class FederatedLearningEngine:
     def apply_secure_aggregation_masks(
         self,
         client_weights: list[ModelWeights],
+        client_samples: list[int] | None = None,
         rng: np.random.Generator | None = None,
     ) -> list[ModelWeights]:
         """Simulate secure aggregation by applying pairwise masks.
@@ -232,10 +233,11 @@ class FederatedLearningEngine:
         aggregator never sees raw parameters.
 
         This is a simplified demonstration: we add random masks that
-        sum to zero across all clients. The aggregated result is identical
-        to plaintext FedAvg, but individual client parameters are obscured.
+        sum to zero across all clients (weighted or unweighted based on config).
+        The aggregated result is identical to plaintext FedAvg, but individual
+        client parameters are obscured.
 
-        Limitations (documented in threat-model.md):
+        Limitations (documented in docs/threat-model.md or docs/):
         - No key exchange protocol
         - Masks are generated centrally (defeats the purpose in production)
         - No dropout recovery (real protocols handle this with Shamir secret sharing)
@@ -246,9 +248,27 @@ class FederatedLearningEngine:
         n_clients = len(client_weights)
         n_params = len(client_weights[0].flat_weights)
 
-        # Generate masks that sum to zero
+        # Generate random masks
         masks = rng.standard_normal((n_clients, n_params))
-        masks[-1] = -masks[:-1].sum(axis=0)  # Last mask ensures sum = 0
+
+        if client_samples is not None and len(client_samples) == n_clients:
+            total_samples = sum(client_samples)
+            if total_samples > 0:
+                proportions = [s / total_samples for s in client_samples]
+                p_n = proportions[-1]
+                if p_n > 0:
+                    # Weighted: sum_{i=1}^n p_i * m_i = 0 => m_n = - (sum_{i=1}^{n-1} p_i * m_i) / p_n
+                    weighted_sum_prev = np.zeros(n_params)
+                    for i in range(n_clients - 1):
+                        weighted_sum_prev += proportions[i] * masks[i]
+                    masks[-1] = -weighted_sum_prev / p_n
+                else:
+                    masks[-1] = -masks[:-1].sum(axis=0)
+            else:
+                masks[-1] = -masks[:-1].sum(axis=0)
+        else:
+            # Unweighted: sum_{i=1}^n m_i = 0
+            masks[-1] = -masks[:-1].sum(axis=0)
 
         masked_weights = []
         for w, mask in zip(client_weights, masks, strict=False):

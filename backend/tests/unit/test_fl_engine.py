@@ -150,6 +150,30 @@ class TestSecureAggregation:
 
         np.testing.assert_allclose(plain_avg, masked_avg, atol=1e-10)
 
+    def test_weighted_masks_preserve_aggregate(
+        self,
+        fl_engine: FederatedLearningEngine,
+    ) -> None:
+        """Masked weighted aggregation should produce the same result as plaintext."""
+        shapes: list[tuple[int, ...]] = [(3,)]
+        weights = [
+            ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 2.0, 3.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[4.0, 5.0, 6.0]),
+        ]
+        samples = [100, 200]
+
+        rng = np.random.default_rng(42)
+        masked = fl_engine.apply_secure_aggregation_masks(weights, client_samples=samples, rng=rng)
+
+        # Individual masked weights should differ from original
+        assert masked[0].flat_weights != weights[0].flat_weights
+
+        # But the weighted average should be the same
+        plain_avg = fl_engine.aggregate_parameters(weights, samples, method=AggregationMethod.FED_AVG_WEIGHTED)
+        masked_avg = fl_engine.aggregate_parameters(masked, samples, method=AggregationMethod.FED_AVG_WEIGHTED)
+
+        np.testing.assert_allclose(plain_avg.flat_weights, masked_avg.flat_weights, atol=1e-10)
+
 
 class TestByzantineRobustness:
     def test_krum_robustness_selects_closest(

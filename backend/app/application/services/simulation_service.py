@@ -447,6 +447,7 @@ class SimulationService:
                     if enable_sa and len(client_weights) > 1:
                         client_weights = self.fl_engine.apply_secure_aggregation_masks(
                             client_weights,
+                            client_samples=client_samples,
                             rng=rng,
                         )
 
