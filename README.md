@@ -16,6 +16,26 @@ A production-grade, enterprise-ready simulation framework demonstrating privacy-
 
 ***
 
+## Table of Contents
+
+- [The Core Challenge: Siloed Fraud Detection](#the-core-challenge-siloed-fraud-detection)
+- [The Technical Solution](#the-technical-solution)
+  - [Track 1: Privacy-Preserving Federated Learning (Phase 1)](#track-1-privacy-preserving-federated-learning-phase-1)
+  - [Track 2: Collaborative AML Intelligence \& 9-Signal Risk Engine (Phase 2)](#track-2-collaborative-aml-intelligence--9-signal-risk-engine-phase-2)
+  - [Track 3: Production Microservices \& Secure API Gateway (Phase 3)](#track-3-production-microservices--secure-api-gateway-phase-3)
+- [Model Validation \& Correctness Verification](#model-validation--correctness-verification)
+- [Feature Comparison Matrix](#feature-comparison-matrix)
+- [Clean Architecture Directory Structure](#clean-architecture-directory-structure)
+- [Configuration Options](#configuration-options)
+- [API Endpoint Blueprints](#api-endpoint-blueprints)
+- [Quick Start Guide](#quick-start-guide)
+- [Verification and Quality Checks](#verification-and-quality-checks)
+- [Architectural Decision Records (ADRs)](#architectural-decision-records-adrs)
+- [Project Development Methodology](#project-development-methodology)
+- [License](#license)
+
+***
+
 ## The Core Challenge: Siloed Fraud Detection
 
 Financial institutions detect fraud and money laundering in absolute isolation. Each bank trains machine learning models solely on its own internal transaction databases. This isolation creates significant vulnerabilities:
