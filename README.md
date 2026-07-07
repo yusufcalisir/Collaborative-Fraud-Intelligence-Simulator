@@ -85,6 +85,32 @@ The platform implements a modular **9-Signal Risk Combination Engine** to calcul
 
 ***
 
+## Model Validation & Correctness Verification
+
+A key challenge in Federated Learning is verifying that the collaboratively trained model is actually correct, accurate, and adds value, without centralizing or viewing the raw transaction data. The framework addresses this through four core validation layers:
+
+### 1. Local Verification via Holdout Sets (Distributed Validation)
+Every bank in the simulation splits its generated synthetic dataset into an **80% training set** and a **20% testing set** (using stratified splits to maintain class/fraud ratios, located in [simulation_service.py](file:///backend/app/application/services/simulation_service.py#L149-169)). 
+* The **test set is a strict holdout set** that is never seen during the local training process or global aggregation.
+* At the end of each round, the global server sends the aggregated weights to the banks. Each bank evaluates the global model locally on its own private holdout test set using PyTorch (located in [model_service.py](file:///backend/app/application/services/model_service.py#L138-199)) and returns only the performance metrics (AUC, Recall, F1-Score, Loss) to the server.
+
+### 2. Side-by-Side Baseline Comparison (Value Proof)
+To prove the correctness and utility of the federated model, the engine trains **Local-Only Baseline Models** (Phase 2).
+* Each bank trains a model *only* on its own data, evaluates it, and stores the results.
+* Once the federated training is complete, the final global model's performance on each bank's test set is compared directly against that bank's local model.
+* For smaller banks (e.g., Bank C / Heritage Regional) which suffer from sparse fraud samples, the collaborative model shows a **significant boost in F1-Score and AUC-ROC**, proving the federated model has correctly learned generalized patterns from other institutions.
+
+### 3. Convergence Monitoring
+During the simulation, the central aggregator tracks the **Global Loss** after each communication round.
+* A decreasing loss curve (visualized in the *Loss Chart*) mathematically confirms that the parameter updates from the participating clients are successfully minimizing the binary cross-entropy (BCE) objective function.
+
+### 4. Cryptographic & Mathematical Correctness
+To verify that privacy enforcement doesn't break the model's mathematical correctness:
+* **Secure Aggregation (SecAgg):** The framework adds pairwise masks to the local parameters that perfectly sum to zero across all clients (located in [fl_engine.py](file:///backend/app/application/services/fl_engine.py#L185)). This guarantees that the final aggregated global model is mathematically identical to plaintext FedAvg, proving that privacy is achieved without sacrificing model accuracy.
+* **Differential Privacy (DP) Accounting:** The cumulative privacy loss is tracked using basic composition, showing the exact privacy-utility tradeoff (epsilon, delta) corresponding to the added Gaussian noise.
+
+***
+
 ## Feature Comparison Matrix
 
 | Feature | Technical Implementation | Purpose / Advantage | Cryptographic / ML Guarantee |
