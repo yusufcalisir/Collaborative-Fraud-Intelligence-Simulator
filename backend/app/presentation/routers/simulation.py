@@ -72,6 +72,7 @@ async def create_simulation(
         "dp_epsilon": config.dp_epsilon,
         "dp_delta": config.dp_delta,
         "dp_max_grad_norm": config.dp_max_grad_norm,
+        "dp_mode": config.dp_mode,
         "enable_secure_aggregation": config.privacy_mechanism
         in (
             PrivacyMechanism.SECURE_AGGREGATION,
@@ -80,6 +81,11 @@ async def create_simulation(
         "bank_a_transactions": config.bank_a_transactions,
         "bank_b_transactions": config.bank_b_transactions,
         "bank_c_transactions": config.bank_c_transactions,
+        "aggregation_method": config.aggregation_method,
+        "fl_engine_type": config.fl_engine_type,
+        "enable_poisoning_simulation": config.enable_poisoning_simulation,
+        "poisoning_bank_id": config.poisoning_bank_id,
+        "poisoning_scale": config.poisoning_scale,
     }
 
     # Store pending status
@@ -171,6 +177,39 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
             local_epochs=config.get("local_epochs", 3),
             learning_rate=config.get("learning_rate", 0.001),
             batch_size=config.get("batch_size", 64),
+            min_clients_per_round=config.get("min_clients_per_round", 2),
+            enable_latency_simulation=config.get("enable_latency_simulation", False),
+            latency_min_ms=config.get("latency_range_ms", (50, 500))[0]
+            if isinstance(config.get("latency_range_ms"), (list, tuple))
+            else 50,
+            latency_max_ms=config.get("latency_range_ms", (50, 500))[1]
+            if isinstance(config.get("latency_range_ms"), (list, tuple))
+            else 500,
+            enable_dropout_simulation=config.get("enable_dropout_simulation", False),
+            dropout_probability=config.get("dropout_probability", 0.2),
+            enable_reconnect_simulation=config.get("enable_reconnect_simulation", True),
+            privacy_mechanism=(
+                PrivacyMechanism.BOTH
+                if config.get("enable_differential_privacy")
+                and config.get("enable_secure_aggregation")
+                else PrivacyMechanism.DIFFERENTIAL_PRIVACY
+                if config.get("enable_differential_privacy")
+                else PrivacyMechanism.SECURE_AGGREGATION
+                if config.get("enable_secure_aggregation")
+                else PrivacyMechanism.NONE
+            ),
+            dp_epsilon=config.get("dp_epsilon", 1.0),
+            dp_delta=config.get("dp_delta", 1e-5),
+            dp_max_grad_norm=config.get("dp_max_grad_norm", 1.0),
+            dp_mode=config.get("dp_mode", "post_hoc"),
+            bank_a_transactions=config.get("bank_a_transactions", 50000),
+            bank_b_transactions=config.get("bank_b_transactions", 30000),
+            bank_c_transactions=config.get("bank_c_transactions", 20000),
+            aggregation_method=config.get("aggregation_method", "fed_avg_weighted"),
+            fl_engine_type=config.get("fl_engine_type", "custom"),
+            enable_poisoning_simulation=config.get("enable_poisoning_simulation", False),
+            poisoning_bank_id=config.get("poisoning_bank_id", "bank_c"),
+            poisoning_scale=config.get("poisoning_scale", 5.0),
         ),
         current_round=sim.get("current_round", 0),
         total_rounds=sim.get("total_rounds", 10),
