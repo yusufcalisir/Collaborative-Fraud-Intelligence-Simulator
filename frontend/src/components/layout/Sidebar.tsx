@@ -56,6 +56,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     onClose();
   }, [location.pathname]);
 
+  // Only show Observability section when running locally on localhost or 127.0.0.1
+  const isLocal = 
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1';
+
+  const visibleSections = NAV_SECTIONS.filter(section => {
+    if (section.label === 'Observability') {
+      return isLocal;
+    }
+    return true;
+  });
+
   return (
     <>
       {/* Mobile Backdrop Overlay */}
@@ -101,7 +113,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
-          {NAV_SECTIONS.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.label}>
               <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                 {section.label}
