@@ -334,10 +334,7 @@ class SimulationService:
                     local_w = self.model_service.get_parameters(local_model)
 
                     # Apply model poisoning if this bank is the attacker
-                    if (
-                        config.enable_poisoning_simulation
-                        and bank.id == config.poisoning_bank_id
-                    ):
+                    if config.enable_poisoning_simulation and bank.id == config.poisoning_bank_id:
                         local_w = self.fl_engine.apply_model_poisoning(
                             local_w,
                             scale=config.poisoning_scale,

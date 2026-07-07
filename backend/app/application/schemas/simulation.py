@@ -46,7 +46,9 @@ class SimulationConfigRequest(BaseModel):
     # Adversarial / poisoning simulation
     enable_poisoning_simulation: bool = False
     poisoning_bank_id: str = Field(default="bank_c", description="Bank to act as malicious client")
-    poisoning_scale: float = Field(default=5.0, ge=1.0, le=20.0, description="Poisoning noise magnitude")
+    poisoning_scale: float = Field(
+        default=5.0, ge=1.0, le=20.0, description="Poisoning noise magnitude"
+    )
 
 
 class SimulationSummaryResponse(BaseModel):

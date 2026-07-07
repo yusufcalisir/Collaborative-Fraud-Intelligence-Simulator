@@ -162,7 +162,9 @@ class TestByzantineRobustness:
         weights = [
             ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 1.0, 1.0]),  # Honest 1
             ModelWeights(layer_shapes=shapes, flat_weights=[1.1, 1.1, 1.1]),  # Honest 2
-            ModelWeights(layer_shapes=shapes, flat_weights=[100.0, 100.0, 100.0]),  # Attacker (Poisoned)
+            ModelWeights(
+                layer_shapes=shapes, flat_weights=[100.0, 100.0, 100.0]
+            ),  # Attacker (Poisoned)
         ]
 
         result = fl_engine.aggregate_parameters(
@@ -183,7 +185,9 @@ class TestByzantineRobustness:
         weights = [
             ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 5.0, 10.0]),
             ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 4.0, 20.0]),
-            ModelWeights(layer_shapes=shapes, flat_weights=[3.0, 3.0, 100.0]),  # Attacker has large outlier in index 2
+            ModelWeights(
+                layer_shapes=shapes, flat_weights=[3.0, 3.0, 100.0]
+            ),  # Attacker has large outlier in index 2
         ]
 
         result = fl_engine.aggregate_parameters(
@@ -211,4 +215,3 @@ class TestByzantineRobustness:
         # Poisoned weights should be different from honest weights
         assert poisoned.flat_weights != honest.flat_weights
         assert poisoned.layer_shapes == honest.layer_shapes
-
