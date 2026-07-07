@@ -182,8 +182,25 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
                   </p>
                 </div>
               )}
+              {(config.privacy_mechanism === 'differential_privacy' || config.privacy_mechanism === 'both') && (
+                <div className="mt-3">
+                  <label className="block text-xs text-[var(--color-text-muted)] mb-1">
+                    DP Implementation
+                  </label>
+                  <select
+                    value={config.dp_mode}
+                    onChange={(e) => updateConfig('dp_mode', e.target.value as SimulationConfig['dp_mode'])}
+                    className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-indigo)] transition-colors"
+                  >
+                    <option value="post_hoc">Post-Hoc (Clip + Noise after training)</option>
+                    <option value="opacus">Opacus (Per-Sample Gradient Privacy)</option>
+                  </select>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+                    Opacus uses Meta AI's library for industry-standard per-sample gradient clipping
+                  </p>
+                </div>
+              )}
             </div>
-
             {/* Aggregation Strategy */}
             <div>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">

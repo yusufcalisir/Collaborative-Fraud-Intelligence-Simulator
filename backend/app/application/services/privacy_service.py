@@ -163,6 +163,22 @@ class PrivacyService:
             flat_weights=clipped.tolist(),
         )
 
+    def record_opacus_epsilon(self, simulation_id: str, epsilon: float) -> None:
+        """Record the actual privacy budget spent in Opacus mode for a round.
+
+        Since Opacus computes the total Rényi Differential Privacy (RDP)
+        epsilon across multiple steps using composition, we directly record the
+        resulting epsilon computed by the PrivacyEngine.
+        """
+        budget = self.get_or_create_budget(simulation_id)
+        budget.spend(epsilon)
+        logger.info(
+            "Recorded Opacus DP spend for simulation %s: round_epsilon=%.4f, total_spent_epsilon=%.4f",
+            simulation_id,
+            epsilon,
+            budget.total_epsilon,
+        )
+
     def clear_budget(self, simulation_id: str) -> None:
         """Remove privacy budget for a completed simulation."""
         self._budgets.pop(simulation_id, None)

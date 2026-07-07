@@ -14,6 +14,7 @@ export const DEFAULT_SIMULATION_CONFIG = {
   dp_epsilon: 1.0,
   dp_delta: 1e-5,
   dp_max_grad_norm: 1.0,
+  dp_mode: 'post_hoc' as const,
   bank_a_transactions: 50000,
   bank_b_transactions: 30000,
   bank_c_transactions: 20000,

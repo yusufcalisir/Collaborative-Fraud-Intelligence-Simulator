@@ -61,6 +61,18 @@ class PrivacyMechanism(StrEnum):
     BOTH = "both"
 
 
+class DPMode(StrEnum):
+    """Differential privacy implementation mode.
+
+    POST_HOC: Simplified approach — clip weight delta and add noise after training.
+    OPACUS: Industry-standard — per-sample gradient clipping and noise during training
+            using Meta AI's Opacus library.
+    """
+
+    POST_HOC = "post_hoc"
+    OPACUS = "opacus"
+
+
 # ── Phase 2: AML Intelligence Platform ────────
 
 

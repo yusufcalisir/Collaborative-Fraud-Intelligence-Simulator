@@ -131,3 +131,18 @@ class TestBudgetManagement:
         budget = privacy_service.get_or_create_budget("sim_1", epsilon=5.0)
         assert budget.epsilon_per_round == 5.0
         assert budget.rounds_spent == 0
+
+
+class TestOpacusRecording:
+    def test_record_opacus_epsilon(self, privacy_service: PrivacyService) -> None:
+        privacy_service.record_opacus_epsilon("sim_opacus", 0.6)
+        budget = privacy_service.get_or_create_budget("sim_opacus")
+        assert budget.rounds_spent == 1
+        assert budget.history == [0.6]
+
+    def test_record_opacus_epsilon_accumulates(self, privacy_service: PrivacyService) -> None:
+        privacy_service.record_opacus_epsilon("sim_opacus_2", 0.5)
+        privacy_service.record_opacus_epsilon("sim_opacus_2", 0.7)
+        budget = privacy_service.get_or_create_budget("sim_opacus_2")
+        assert budget.rounds_spent == 2
+        assert budget.history == [0.5, 0.7]

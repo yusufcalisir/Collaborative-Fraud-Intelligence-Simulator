@@ -36,16 +36,18 @@ class FraudDetectionModel(nn.Module):
     and possibly temporal features via LSTM.
     """
 
-    def __init__(self, input_dim: int = NUM_FEATURES) -> None:
+    def __init__(self, input_dim: int = NUM_FEATURES, dp_compatible: bool = False) -> None:
         super().__init__()
+        norm1 = nn.GroupNorm(8, 64) if dp_compatible else nn.BatchNorm1d(64)
+        norm2 = nn.GroupNorm(4, 32) if dp_compatible else nn.BatchNorm1d(32)
         self.network = nn.Sequential(
             nn.Linear(input_dim, 64),
             nn.ReLU(),
-            nn.BatchNorm1d(64),
+            norm1,
             nn.Dropout(0.3),
             nn.Linear(64, 32),
             nn.ReLU(),
-            nn.BatchNorm1d(32),
+            norm2,
             nn.Dropout(0.2),
             nn.Linear(32, 1),
             nn.Sigmoid(),
@@ -67,9 +69,9 @@ class ModelService:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info("ModelService using device: %s", self.device)
 
-    def create_model(self) -> FraudDetectionModel:
+    def create_model(self, dp_compatible: bool = False) -> FraudDetectionModel:
         """Create a fresh model instance with random initialization."""
-        model = FraudDetectionModel(input_dim=NUM_FEATURES)
+        model = FraudDetectionModel(input_dim=NUM_FEATURES, dp_compatible=dp_compatible)
         return model.to(self.device)
 
     def train_local(
@@ -134,6 +136,90 @@ class ModelService:
         gc.collect()
 
         return model, loss_history
+
+    def train_local_with_opacus(
+        self,
+        model: FraudDetectionModel,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        target_epsilon: float,
+        target_delta: float,
+        max_grad_norm: float = 1.0,
+        epochs: int | None = None,
+        learning_rate: float | None = None,
+        batch_size: int | None = None,
+    ) -> tuple[FraudDetectionModel, list[float], float]:
+        """Train the model on a bank's local data with Differential Privacy using Opacus.
+
+        Performs per-sample gradient clipping and noise injection during training.
+        Returns the trained model, loss history, and actual epsilon spent.
+        """
+        from opacus import PrivacyEngine
+
+        epochs = epochs or self.settings.fl_default_local_epochs
+        learning_rate = learning_rate or self.settings.fl_default_learning_rate
+        batch_size = batch_size or self.settings.fl_default_batch_size
+
+        model.train()
+
+        criterion: Any = nn.BCELoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+        dataset = TensorDataset(
+            torch.FloatTensor(X_train).to(self.device),
+            torch.FloatTensor(y_train).to(self.device),
+        )
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
+
+        privacy_engine = PrivacyEngine()
+
+        model_private, optimizer_private, loader_private = privacy_engine.make_private_with_epsilon(
+            module=model,
+            optimizer=optimizer,
+            data_loader=loader,
+            target_epsilon=target_epsilon,
+            target_delta=target_delta,
+            epochs=epochs,
+            max_grad_norm=max_grad_norm,
+        )
+
+        import time
+
+        loss_history: list[float] = []
+
+        for epoch in range(epochs):
+            epoch_loss = 0.0
+            n_batches = 0
+
+            for X_batch, y_batch in loader_private:
+                optimizer_private.zero_grad()
+                predictions = model_private(X_batch)
+                loss = criterion(predictions, y_batch)
+                loss.backward()
+                optimizer_private.step()
+
+                epoch_loss += loss.item()
+                n_batches += 1
+
+                # Yield control to prevent GIL starvation
+                time.sleep(0.005)
+
+            avg_loss = epoch_loss / max(n_batches, 1)
+            loss_history.append(avg_loss)
+            logger.debug("Opacus Epoch %d/%d — loss: %.4f", epoch + 1, epochs, avg_loss)
+
+            time.sleep(0.02)
+
+        actual_epsilon = privacy_engine.get_epsilon(delta=target_delta)
+
+        # De-wrap the module before returning it
+        model_final = model_private._module
+
+        import gc
+
+        gc.collect()
+
+        return model_final, loss_history, actual_epsilon
 
     def evaluate(
         self,

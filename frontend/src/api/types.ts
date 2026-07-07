@@ -16,6 +16,7 @@ export interface SimulationConfig {
   dp_epsilon: number;
   dp_delta: number;
   dp_max_grad_norm: number;
+  dp_mode: 'post_hoc' | 'opacus';
   bank_a_transactions: number;
   bank_b_transactions: number;
   bank_c_transactions: number;

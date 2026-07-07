@@ -31,6 +31,10 @@ class SimulationConfigRequest(BaseModel):
     dp_epsilon: float = Field(default=1.0, gt=0)
     dp_delta: float = Field(default=1e-5, gt=0)
     dp_max_grad_norm: float = Field(default=1.0, gt=0)
+    dp_mode: str = Field(
+        default="post_hoc",
+        description="DP implementation mode: post_hoc (clip+noise after training) or opacus (per-sample gradient privacy)",
+    )
 
     # Data volume
     bank_a_transactions: int = Field(default=50000, ge=1000, le=200000)

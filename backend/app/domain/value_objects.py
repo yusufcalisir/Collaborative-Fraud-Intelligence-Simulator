@@ -107,6 +107,7 @@ class SimulationConfig:
     dp_epsilon: float = 1.0
     dp_delta: float = 1e-5
     dp_max_grad_norm: float = 1.0
+    dp_mode: str = "post_hoc"
     enable_secure_aggregation: bool = False
 
     # Data

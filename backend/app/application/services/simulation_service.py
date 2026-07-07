@@ -222,11 +222,6 @@ class SimulationService:
 
             # Phase 3: Federated training
             simulation.status = SimulationStatus.TRAINING_FEDERATED
-            global_model = self.model_service.create_model()
-            global_weights = self.model_service.get_parameters(global_model)
-            dropped_banks: set[str] = set()
-            privacy_service = PrivacyService()
-
             enable_dp = config.enable_differential_privacy or getattr(
                 config, "privacy_mechanism", None
             ) in (
@@ -239,6 +234,13 @@ class SimulationService:
                 PrivacyMechanism.SECURE_AGGREGATION,
                 PrivacyMechanism.BOTH,
             )
+            dp_mode = getattr(config, "dp_mode", "post_hoc")
+            use_opacus_dp = enable_dp and dp_mode == "opacus"
+
+            global_model = self.model_service.create_model(dp_compatible=use_opacus_dp)
+            global_weights = self.model_service.get_parameters(global_model)
+            dropped_banks: set[str] = set()
+            privacy_service = PrivacyService()
 
             if enable_dp:
                 budget = privacy_service.get_or_create_budget(
@@ -318,20 +320,37 @@ class SimulationService:
                     data = bank_data[bank.id]
 
                     # Start from global model
-                    local_model = self.model_service.create_model()
+                    local_model = self.model_service.create_model(dp_compatible=use_opacus_dp)
                     local_model = self.model_service.set_parameters(local_model, global_weights)
 
-                    # Train locally
-                    local_model, loss_hist = self.model_service.train_local(
-                        local_model,
-                        data["X_train"],
-                        data["y_train"],
-                        epochs=1,  # Fixed to 1 for fast completion on constrained hosts
-                        learning_rate=config.learning_rate,
-                        batch_size=config.batch_size,
-                    )
-
-                    local_w = self.model_service.get_parameters(local_model)
+                    if use_opacus_dp:
+                        # Opacus mode: per-sample gradient clipping + noise during training
+                        local_model, loss_hist, actual_eps = (
+                            self.model_service.train_local_with_opacus(
+                                local_model,
+                                data["X_train"],
+                                data["y_train"],
+                                target_epsilon=config.dp_epsilon,
+                                target_delta=config.dp_delta,
+                                max_grad_norm=config.dp_max_grad_norm,
+                                epochs=1,
+                                learning_rate=config.learning_rate,
+                                batch_size=config.batch_size,
+                            )
+                        )
+                        local_w = self.model_service.get_parameters(local_model)
+                        privacy_service.record_opacus_epsilon(simulation.id, actual_eps)
+                    else:
+                        # Standard training (post-hoc DP applied below if enabled)
+                        local_model, loss_hist = self.model_service.train_local(
+                            local_model,
+                            data["X_train"],
+                            data["y_train"],
+                            epochs=1,
+                            learning_rate=config.learning_rate,
+                            batch_size=config.batch_size,
+                        )
+                        local_w = self.model_service.get_parameters(local_model)
 
                     # Apply model poisoning if this bank is the attacker
                     if config.enable_poisoning_simulation and bank.id == config.poisoning_bank_id:
@@ -346,8 +365,9 @@ class SimulationService:
                             bank.name,
                         )
 
-                    # Apply DP if enabled
-                    if enable_dp:
+                    # Apply post-hoc DP if enabled and NOT using Opacus
+                    # (Opacus already applied privacy during training)
+                    if enable_dp and not use_opacus_dp:
                         local_w = privacy_service.clip_model_update(
                             global_weights,
                             local_w,
