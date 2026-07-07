@@ -347,6 +347,17 @@ This application functions as a high-fidelity simulator. Transitioning this mode
 └──────────────────────────┴─────────────────────────────┴───────────────────────────────┘
 ```
 
+### Detailed Limitation Analysis & Enterprise Hardening Targets
+1. **Centralized Mask Generation (Secure Aggregation Limitation)**:
+   * *Simulator Detail*: To demonstrate how parameter masks hide raw model weights from the server, the simulator generates zero-sum pairwise masks centrally (located in [fl_engine.py](file:///backend/app/application/services/fl_engine.py#L185)). 
+   * *Production Target*: In a real multi-bank deployment, a central server cannot be trusted to generate masks. Instead, banks must collaboratively establish masks using distributed **Diffie-Hellman Key Exchange** and **Secure Multi-Party Computation (SMPC)** protocols (e.g., Bonawitz et al. 2017). This ensures that even if the server is compromised, it cannot reconstruct individual client weights.
+2. **Basic Privacy Budget Composition (Differential Privacy Limitation)**:
+   * *Simulator Detail*: The simulator tracks privacy expenditure ($\epsilon$) round-by-round using simple sequential composition (adding $\epsilon$ linearly). Over N rounds, this results in a high cumulative privacy loss (e.g. $\epsilon = 10.0$ for 10 rounds).
+   * *Production Target*: Under basic composition, the privacy budget exhausts too fast for deep models. Production deployments utilize **Rényi Differential Privacy (RDP)** or the **Moments Accountant** method (typically implemented via the **PyTorch Opacus** library). This yields much tighter privacy bounds, keeping $\epsilon$ low and utility high across dozens of training rounds.
+3. **Byzantine & Poisoning Vulnerabilities (Integrity Limitation)**:
+   * *Simulator Detail*: The aggregation loop uses standard FedAvg, assuming that all participating banks are "semi-honest" and train their local models correctly without uploading malicious updates.
+   * *Production Target*: A compromised client node could execute **Model Poisoning** or **Data Poisoning** attacks (e.g., uploading random weights or introducing a backdoor into the model). Production systems must implement **Byzantine-Robust Aggregators** (such as Krum, Trimmed Mean, or Coordinate-wise Median) and check update norms to isolate and reject malicious or heavily-deviated updates before aggregation.
+
 ***
 
 ## Project Development Methodology
