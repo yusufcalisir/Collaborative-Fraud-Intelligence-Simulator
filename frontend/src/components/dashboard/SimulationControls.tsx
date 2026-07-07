@@ -106,17 +106,38 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
             transition={{ duration: 0.3 }}
             className="space-y-4 border-t border-[var(--color-border-subtle)] pt-4"
           >
-            {/* Failure Simulation */}
+            {/* FL Engine Selection */}
             <div>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
-                Failure Simulation
+                FL Engine
+              </h4>
+              <select
+                value={config.fl_engine_type}
+                onChange={(e) => updateConfig('fl_engine_type', e.target.value as SimulationConfig['fl_engine_type'])}
+                className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-indigo)] transition-colors"
+              >
+                <option value="custom">Custom Engine (Built-in Simulator)</option>
+                <option value="flower">Flower Framework (flwr.dev)</option>
+              </select>
+              {config.fl_engine_type === 'flower' && (
+                <p className="text-[10px] text-[var(--color-accent-amber)] mt-1">
+                  ⚡ Flower mode uses FedAvg only. Dropout, latency, poisoning, and Byzantine-robust aggregation are disabled.
+                </p>
+              )}
+            </div>
+
+            {/* Failure Simulation */}
+            <div className={config.fl_engine_type === 'flower' ? 'opacity-40 pointer-events-none' : ''}>
+              <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+                Failure Simulation {config.fl_engine_type === 'flower' && <span className="text-[var(--color-accent-amber)]">(Flower N/A)</span>}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={config.enable_dropout_simulation}
+                    checked={config.fl_engine_type === 'flower' ? false : config.enable_dropout_simulation}
                     onChange={(e) => updateConfig('enable_dropout_simulation', e.target.checked)}
+                    disabled={config.fl_engine_type === 'flower'}
                     className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-accent-indigo)] focus:ring-[var(--color-accent-indigo)]"
                   />
                   <span className="text-xs text-[var(--color-text-secondary)]">Client Dropout</span>
@@ -124,8 +145,9 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={config.enable_latency_simulation}
+                    checked={config.fl_engine_type === 'flower' ? false : config.enable_latency_simulation}
                     onChange={(e) => updateConfig('enable_latency_simulation', e.target.checked)}
+                    disabled={config.fl_engine_type === 'flower'}
                     className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-accent-indigo)] focus:ring-[var(--color-accent-indigo)]"
                   />
                   <span className="text-xs text-[var(--color-text-secondary)]">Network Latency</span>
@@ -202,35 +224,37 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
               )}
             </div>
             {/* Aggregation Strategy */}
-            <div>
+            <div className={config.fl_engine_type === 'flower' ? 'opacity-60' : ''}>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
-                Aggregation Strategy
+                Aggregation Strategy {config.fl_engine_type === 'flower' && <span className="text-[var(--color-accent-amber)]">(FedAvg only)</span>}
               </h4>
               <select
-                value={config.aggregation_method}
+                value={config.fl_engine_type === 'flower' ? 'fed_avg_weighted' : config.aggregation_method}
                 onChange={(e) => updateConfig('aggregation_method', e.target.value as SimulationConfig['aggregation_method'])}
+                disabled={config.fl_engine_type === 'flower'}
                 className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-indigo)] transition-colors"
               >
                 <option value="fed_avg_weighted">FedAvg Weighted (Default)</option>
                 <option value="fed_avg">FedAvg (Unweighted)</option>
-                <option value="krum">Krum (Byzantine-Robust)</option>
-                <option value="coordinate_wise_median">Coordinate-wise Median (Byzantine-Robust)</option>
+                <option value="krum" disabled={config.fl_engine_type === 'flower'}>Krum (Byzantine-Robust)</option>
+                <option value="coordinate_wise_median" disabled={config.fl_engine_type === 'flower'}>Coordinate-wise Median (Byzantine-Robust)</option>
               </select>
               <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
-                Krum and Median are robust against malicious client attacks
+                {config.fl_engine_type === 'flower' ? 'Flower uses its built-in FedAvg implementation' : 'Krum and Median are robust against malicious client attacks'}
               </p>
             </div>
 
             {/* Adversarial Simulation */}
-            <div>
+            <div className={config.fl_engine_type === 'flower' ? 'opacity-40 pointer-events-none' : ''}>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
-                Adversarial Simulation
+                Adversarial Simulation {config.fl_engine_type === 'flower' && <span className="text-[var(--color-accent-amber)]">(Flower N/A)</span>}
               </h4>
               <label className="flex items-center gap-2 cursor-pointer mb-2">
                 <input
                   type="checkbox"
-                  checked={config.enable_poisoning_simulation}
+                  checked={config.fl_engine_type === 'flower' ? false : config.enable_poisoning_simulation}
                   onChange={(e) => updateConfig('enable_poisoning_simulation', e.target.checked)}
+                  disabled={config.fl_engine_type === 'flower'}
                   className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-status-error)] focus:ring-[var(--color-status-error)]"
                 />
                 <span className="text-xs text-[var(--color-text-secondary)]">Enable Model Poisoning</span>

@@ -118,6 +118,9 @@ class SimulationConfig:
     # Aggregation strategy
     aggregation_method: str = "fed_avg_weighted"
 
+    # FL engine selection
+    fl_engine_type: str = "custom"
+
     # Adversarial / poisoning simulation
     enable_poisoning_simulation: bool = False
     poisoning_bank_id: str = "bank_c"

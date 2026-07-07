@@ -24,6 +24,7 @@ export interface SimulationConfig {
   enable_poisoning_simulation: boolean;
   poisoning_bank_id: string;
   poisoning_scale: number;
+  fl_engine_type: 'custom' | 'flower';
 }
 
 export interface EvaluationMetrics {

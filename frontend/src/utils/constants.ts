@@ -22,6 +22,7 @@ export const DEFAULT_SIMULATION_CONFIG = {
   enable_poisoning_simulation: false,
   poisoning_bank_id: 'bank_c',
   poisoning_scale: 5.0,
+  fl_engine_type: 'custom' as const,
 };
 
 export const METRIC_LABELS: Record<string, string> = {

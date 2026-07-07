@@ -47,6 +47,12 @@ class SimulationConfigRequest(BaseModel):
         description="Aggregation algorithm: fed_avg_weighted, fed_avg, krum, coordinate_wise_median",
     )
 
+    # FL engine selection
+    fl_engine_type: str = Field(
+        default="custom",
+        description="FL engine: custom (built-in simulator) or flower (Flower framework via Ray simulation)",
+    )
+
     # Adversarial / poisoning simulation
     enable_poisoning_simulation: bool = False
     poisoning_bank_id: str = Field(default="bank_c", description="Bank to act as malicious client")

@@ -73,6 +73,19 @@ class DPMode(StrEnum):
     OPACUS = "opacus"
 
 
+class FLEngineType(StrEnum):
+    """Federated learning engine implementation.
+
+    CUSTOM: Built-in simulation engine with full control over failure
+            injection, Byzantine robustness, and real-time observability.
+    FLOWER: Industry-standard Flower (flwr.dev) framework adapter using
+            Ray-based simulation for standards-compliant FL execution.
+    """
+
+    CUSTOM = "custom"
+    FLOWER = "flower"
+
+
 # ── Phase 2: AML Intelligence Platform ────────
 
 
