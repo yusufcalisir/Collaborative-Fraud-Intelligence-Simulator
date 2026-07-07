@@ -166,24 +166,30 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 ├── backend/
 │   ├── app/
 │   │   ├── domain/               # Core domain entities, enums, value objects (Pure Python)
-│   │   │   ├── enums.py          # Aggregation Method, Privacy Mechanism, Simulation Status
+│   │   │   ├── enums.py          # FL Engine Type, Privacy Mechanism, Simulation Status, Bank Tier
 │   │   │   ├── entities.py       # Bank, SimulationRun, TrainingRound models
 │   │   │   ├── entities_phase2.py # Alerts, Cases, Resolved Entities, Scenario definitions
+│   │   │   ├── value_objects.py  # ModelWeights, EvaluationMetrics, RoundMetrics, BankDataProfile, SimulationConfig
 │   │   │   └── value_objects_phase2.py # Risk weight specifications, Graph nodes/edges
 │   │   ├── application/          # Services, validation schemas, interfaces (Ports)
 │   │   │   ├── schemas/
-│   │   │   │   └── simulation.py # Pydantic v2 schemas for client-server communication
+│   │   │   │   ├── phase2.py     # Pydantic schemas for Phase 2 entities (Alerts, Cases, Graphs)
+│   │   │   │   └── simulation.py # Pydantic schemas for Phase 1 simulation configuration and details
 │   │   │   └── services/
-│   │   │       ├── data_generator.py # Synthetic Non-IID transaction generation
-│   │   │       ├── model_service.py # PyTorch MLP creation, training loops, evaluation
-│   │   │       ├── fl_engine.py     # FedAvg mechanics, secure aggregation, client dropouts
-│   │   │       ├── privacy_service.py # Differential privacy noise, gradient clipping, budgets
 │   │   │       ├── alert_service.py # Aggregates and alerts on suspicious transactions
-│   │   │       ├── risk_engine.py   # Computes composite scores via 9-signal pipeline
 │   │   │       ├── case_service.py  # Coordinates multi-bank AML investigation cases
+│   │   │       ├── data_generator.py # Synthetic Non-IID transaction generation
 │   │   │       ├── entity_resolution.py # Matches cross-bank users deterministic via HMACs
-│   │   │       ├── graph_engine.py  # Assembles node-link data models for React Flow
 │   │   │       ├── explainability_service.py # Explains risk indicator contributions
+│   │   │       ├── fl_engine.py     # Custom FedAvg simulator (latent simulation, secure aggregation, client dropout)
+│   │   │       ├── flower_engine.py # Flower framework adapter service using Ray simulation backend
+│   │   │       ├── graph_engine.py  # Assembles node-link data models for React Flow visualization
+│   │   │       ├── metrics_service.py # Calculations for F1, Accuracy, Precision, and Recall improvements
+│   │   │       ├── model_service.py # PyTorch MLP creation, training loops, evaluation
+│   │   │       ├── privacy_service.py # Differential privacy noise, gradient clipping, budgets
+│   │   │       ├── risk_engine.py   # Computes composite risk scores via 9-signal pipeline
+│   │   │       ├── scenario_service.py # Scripted transaction AML scenarios loader
+│   │   │       ├── simulation_service.py # Orchestrates local training, FL loops, evaluations, comparisons
 │   │   │       └── streaming_engine.py # Event emitter for scenario replay
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
 │   │   │   ├── database.py       # SQLAlchemy 2.0 connection engine
@@ -192,15 +198,23 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 │   │   │   └── event_bus.py      # Pub/sub channels for real-time WebSocket communication
 │   │   ├── presentation/         # API Controllers and endpoints
 │   │   │   ├── routers/
+│   │   │   │   ├── aml.py        # Serves Alerts, Cases, Entity Graphs, and Scenarios
+│   │   │   │   ├── banks.py      # Bank profiles and distributions histogram endpoints
 │   │   │   │   ├── gateway.py    # Gateway routing middleware (Auth, RBAC, logging, rate limiting)
 │   │   │   │   ├── simulation.py # Handles creation, detail retrieval, and comparison
-│   │   │   │   ├── banks.py      # References profiles of Bank A, B, and C
-│   │   │   │   ├── training.py   # Yields progress data on communication rounds
-│   │   │   │   └── aml.py        # Serves Alerts, Cases, Entity Graphs, and Scenarios
+│   │   │   │   └── training.py   # Yields progress data on communication rounds
 │   │   │   └── websockets/
-│   │   │       └── training_ws.py # Manages persistent WebSocket feeds to the dashboard
+│   │   │       ├── streaming_ws.py # Manages live WebSocket streams for scenario replays
+│   │   │       └── training_ws.py # Manages persistent WebSocket feeds for training rounds progress
 │   │   └── tasks/                # Background tasks (Celery asynchronous runners)
 │   ├── tests/                    # Integration and unit test suite
+│   │   └── unit/
+│   │       ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
+│   │       ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
+│   │       ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes
+│   │       ├── test_metrics_service.py # Asserts correctness of evaluation metrics serialization
+│   │       ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
+│   │       └── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
@@ -208,9 +222,9 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 │   │   ├── api/                  # API client instance, queries, mutations (React Query)
 │   │   ├── components/           # Reusable UI elements
 │   │   │   ├── layout/           # Sidebar, Header, Page layout wrappers
-│   │   │   ├── dashboard/        # Stepper, FederatedTrainingAnimation, Bank cards
-│   │   │   └── charts/           # PyTorch Loss, ROC Curve, Confusion Matrix, Radar charts
-│   │   ├── pages/                # Application views (Dashboard, Simulation details)
+│   │   │   ├── dashboard/        # BankCard, DataDriftPanel, FederatedTrainingAnimation, SimulationControls
+│   │   │   └── charts/           # LossChart, ROCCurve, ConfusionMatrix, FeatureImportance, MetricsRadar
+│   │   ├── pages/                # Application views: Dashboard, Alerts, Cases, Scenarios, Graph, SimulationView
 │   │   └── utils/                # Numerical formatters and constants
 │   ├── Dockerfile
 │   └── package.json
