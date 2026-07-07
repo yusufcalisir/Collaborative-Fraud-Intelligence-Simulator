@@ -10,7 +10,9 @@ interface SimulationControlsProps {
 
 export default function SimulationControls({ onSimulationCreated }: SimulationControlsProps) {
   const [config, setConfig] = useState<Partial<SimulationConfig>>(DEFAULT_SIMULATION_CONFIG);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(() => {
+    return typeof window !== 'undefined' && window.innerWidth >= 1024;
+  });
   const createMutation = useCreateSimulation();
 
   const handleStart = () => {
