@@ -22,7 +22,7 @@ def fl_engine() -> FederatedLearningEngine:
 @pytest.fixture
 def sample_weights() -> list[ModelWeights]:
     """Create sample model weights for testing aggregation."""
-    shapes = [(4, 2), (4,)]
+    shapes: list[tuple[int, ...]] = [(4, 2), (4,)]
     return [
         ModelWeights(layer_shapes=shapes, flat_weights=[1.0] * 12),
         ModelWeights(layer_shapes=shapes, flat_weights=[3.0] * 12),
@@ -157,7 +157,7 @@ class TestByzantineRobustness:
         fl_engine: FederatedLearningEngine,
     ) -> None:
         """Krum should select the honest client closest to all others, rejecting the outlier."""
-        shapes = [(3,)]
+        shapes: list[tuple[int, ...]] = [(3,)]
         # Two clients are close to each other (honest), one is far away (Byzantine attacker)
         weights = [
             ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 1.0, 1.0]),  # Honest 1
@@ -179,7 +179,7 @@ class TestByzantineRobustness:
         fl_engine: FederatedLearningEngine,
     ) -> None:
         """Coordinate-wise median should take the element-wise median across clients."""
-        shapes = [(3,)]
+        shapes: list[tuple[int, ...]] = [(3,)]
         weights = [
             ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 5.0, 10.0]),
             ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 4.0, 20.0]),
@@ -202,7 +202,7 @@ class TestByzantineRobustness:
         fl_engine: FederatedLearningEngine,
     ) -> None:
         """Model poisoning should corrupt honest weights with noise scaling."""
-        shapes = [(3,)]
+        shapes: list[tuple[int, ...]] = [(3,)]
         honest = ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 1.0, 1.0])
 
         rng = np.random.default_rng(42)
