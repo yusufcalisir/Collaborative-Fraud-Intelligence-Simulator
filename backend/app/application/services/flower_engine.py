@@ -167,7 +167,7 @@ class FlowerFLEngine:
                     self.data["y_test"],
                 )
                 n_samples = len(self.data["X_test"])
-                loss = float(cast(float, eval_result["loss"]))
+                loss = cast(float, eval_result["loss"])
                 return (
                     loss,
                     n_samples,
