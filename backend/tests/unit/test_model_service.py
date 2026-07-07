@@ -122,3 +122,10 @@ class TestModelService:
 
         assert set(importance.keys()) == set(FEATURE_NAMES)
         assert all(0 <= v <= 1 for v in importance.values())
+
+        # Test Integrated Gradients with reference data
+        X_ref = np.random.randn(20, 10)
+        importance_ig = model_service.get_feature_importance(model, X_ref=X_ref)
+        assert set(importance_ig.keys()) == set(FEATURE_NAMES)
+        assert any(v > 0 for v in importance_ig.values())
+        assert all(0 <= v <= 1 for v in importance_ig.values())

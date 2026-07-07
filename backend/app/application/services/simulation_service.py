@@ -476,6 +476,13 @@ class SimulationService:
                     )
                     round_loss = round_eval["loss"]
 
+                    # Calculate feature importance for the global model at this round
+                    # using the first participating bank's training data as reference
+                    ref_X = first_bank_data["X_train"]
+                    round_feature_importance = self.model_service.get_feature_importance(
+                        global_model, ref_X
+                    )
+
                     round_duration = (time.perf_counter() - round_start) * 1000
 
                     training_round = TrainingRound(
@@ -515,6 +522,7 @@ class SimulationService:
                             "dropped": dropped_this_round,
                             "duration_ms": round_duration,
                             "privacy_budget": budget.total_epsilon if enable_dp else 0.0,
+                            "feature_importance": round_feature_importance,
                         },
                     )
 

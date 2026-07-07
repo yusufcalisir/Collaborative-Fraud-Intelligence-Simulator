@@ -312,7 +312,63 @@ class ModelService:
 
         return model
 
-    def get_feature_importance(self, model: FraudDetectionModel) -> dict[str, float]:
+    def compute_integrated_gradients(
+        self,
+        model: FraudDetectionModel,
+        input_tensor: torch.Tensor,
+        baseline_tensor: torch.Tensor | None = None,
+        steps: int = 50,
+    ) -> np.ndarray:
+        """Compute Integrated Gradients attribution for a given input tensor.
+
+        Args:
+            model: The trained FraudDetectionModel.
+            input_tensor: Shape (N, 10) representing the input features.
+            baseline_tensor: Optional shape (10,) or (N, 10) representing the baseline.
+                             Defaults to all zeros if None.
+            steps: Number of integration steps.
+
+        Returns:
+            np.ndarray of shape (N, 10) representing feature attributions.
+        """
+        model.eval()
+        if baseline_tensor is None:
+            baseline_tensor = torch.zeros_like(input_tensor)
+
+        # Scale inputs from baseline to input
+        scaled_inputs = []
+        for i in range(steps + 1):
+            alpha = i / steps
+            scaled_inputs.append(baseline_tensor + alpha * (input_tensor - baseline_tensor))
+
+        # Stack scaled inputs to process as a single batch
+        scaled_inputs = torch.cat(scaled_inputs, dim=0).requires_grad_(True).to(self.device)
+
+        # Forward pass
+        predictions = model(scaled_inputs)
+
+        # Backward pass to get gradients
+        gradients = torch.autograd.grad(
+            outputs=predictions,
+            inputs=scaled_inputs,
+            grad_outputs=torch.ones_like(predictions),
+            create_graph=False,
+            retain_graph=False,
+        )[0]
+
+        # Average the gradients across steps
+        gradients = gradients.reshape(steps + 1, input_tensor.shape[0], input_tensor.shape[1])
+        avg_gradients = gradients.mean(dim=0)  # Shape (N, 10)
+
+        # IG = (input - baseline) * avg_gradients
+        delta = input_tensor.to(self.device) - baseline_tensor.to(self.device)
+        attributions = delta * avg_gradients
+
+        return attributions.detach().cpu().numpy()
+
+    def get_feature_importance(
+        self, model: FraudDetectionModel, X_ref: np.ndarray | None = None
+    ) -> dict[str, float]:
         """Extract feature importance from the first layer weights.
 
         Uses absolute weight magnitude as a proxy for importance.
@@ -321,8 +377,15 @@ class ModelService:
         """
         from app.application.services.data_generator import FEATURE_NAMES
 
-        first_layer = list(model.parameters())[0]  # Shape: [64, 10]
-        importance = first_layer.abs().mean(dim=0).detach().cpu().numpy()
+        if X_ref is None or len(X_ref) == 0:
+            first_layer = list(model.parameters())[0]  # Shape: [64, 10]
+            importance = first_layer.abs().mean(dim=0).detach().cpu().numpy()
+        else:
+            # Calculate Integrated Gradients on reference data
+            ref_size = min(100, len(X_ref))
+            input_tensor = torch.FloatTensor(X_ref[:ref_size]).to(self.device)
+            attributions = self.compute_integrated_gradients(model, input_tensor)
+            importance = np.mean(np.abs(attributions), axis=0)
 
         # Normalize to [0, 1]
         max_imp = importance.max()

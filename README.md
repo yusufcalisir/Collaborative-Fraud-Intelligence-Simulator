@@ -239,7 +239,7 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 │   │   ├── api/                  # API client instance, queries, mutations (React Query)
 │   │   ├── components/           # Reusable UI elements
 │   │   │   ├── layout/           # Sidebar, Header, Page layout wrappers
-│   │   │   ├── dashboard/        # BankCard, DataDriftPanel, FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline, PrivacyMonitor
+│   │   │   ├── dashboard/        # BankCard, DataDriftPanel, FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline, PrivacyMonitor, FeatureImportanceTimeline
 │   │   │   └── charts/           # LossChart, ROCCurve, ConfusionMatrix, FeatureImportance, MetricsRadar
 │   │   ├── pages/                # Application views: Dashboard, SimulationView, AlertsPage, CasesPage, CaseDetailPage, InvestigationDashboard, ScenariosPage, GraphPage
 │   │   └── utils/                # Numerical formatters and constants

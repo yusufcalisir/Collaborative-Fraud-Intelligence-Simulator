@@ -110,6 +110,7 @@ export interface TrainingRound {
   dropped_banks: string[];
   duration_ms: number;
   privacy_budget: number;
+  feature_importance?: Record<string, number>;
 }
 
 export interface SimulationSummary {
