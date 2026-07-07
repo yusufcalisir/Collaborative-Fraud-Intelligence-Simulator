@@ -8,7 +8,7 @@ is the federated learning architecture, not model complexity.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import torch
@@ -173,7 +173,8 @@ class ModelService:
 
         privacy_engine = PrivacyEngine()
 
-        model_private, optimizer_private, loader_private = privacy_engine.make_private_with_epsilon(
+        # Cast to Any to prevent IDE type checker errors caused by Opacus overloading definitions
+        res: Any = privacy_engine.make_private_with_epsilon(
             module=model,
             optimizer=optimizer,
             data_loader=loader,
@@ -182,6 +183,9 @@ class ModelService:
             epochs=epochs,
             max_grad_norm=max_grad_norm,
         )
+        model_private: Any = res[0]
+        optimizer_private: Any = res[1]
+        loader_private: Any = res[2]
 
         import time
 
@@ -213,7 +217,7 @@ class ModelService:
         actual_epsilon = privacy_engine.get_epsilon(delta=target_delta)
 
         # De-wrap the module before returning it
-        model_final = model_private._module
+        model_final = cast(FraudDetectionModel, model_private._module)
 
         import gc
 
