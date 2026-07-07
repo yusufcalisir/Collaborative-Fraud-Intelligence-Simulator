@@ -169,8 +169,12 @@ class TestSecureAggregation:
         assert masked[0].flat_weights != weights[0].flat_weights
 
         # But the weighted average should be the same
-        plain_avg = fl_engine.aggregate_parameters(weights, samples, method=AggregationMethod.FED_AVG_WEIGHTED)
-        masked_avg = fl_engine.aggregate_parameters(masked, samples, method=AggregationMethod.FED_AVG_WEIGHTED)
+        plain_avg = fl_engine.aggregate_parameters(
+            weights, samples, method=AggregationMethod.FED_AVG_WEIGHTED
+        )
+        masked_avg = fl_engine.aggregate_parameters(
+            masked, samples, method=AggregationMethod.FED_AVG_WEIGHTED
+        )
 
         np.testing.assert_allclose(plain_avg.flat_weights, masked_avg.flat_weights, atol=1e-10)
 
