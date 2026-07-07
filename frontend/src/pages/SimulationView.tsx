@@ -6,6 +6,7 @@ import { useSimulation, useTrainingRounds } from '../api/queries';
 import MetricsComparison from '../components/dashboard/MetricsComparison';
 import TrainingTimeline from '../components/dashboard/TrainingTimeline';
 import FederatedTrainingAnimation from '../components/dashboard/FederatedTrainingAnimation';
+import PrivacyMonitor from '../components/dashboard/PrivacyMonitor';
 import LossChart from '../components/charts/LossChart';
 import ROCCurve from '../components/charts/ROCCurve';
 import ConfusionMatrix from '../components/charts/ConfusionMatrix';
@@ -181,6 +182,17 @@ export default function SimulationView() {
             />
           </div>
         </div>
+
+        {/* Privacy Monitor */}
+        {(simulation.config.privacy_mechanism === 'differential_privacy' || simulation.config.privacy_mechanism === 'both') && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <PrivacyMonitor simulation={simulation} rounds={rounds ?? []} />
+          </motion.div>
+        )}
 
         {/* Detailed Metrics Comparison Charts (visible when complete) */}
         {isComplete && banks.length > 0 && banks[0]?.local_metrics && (

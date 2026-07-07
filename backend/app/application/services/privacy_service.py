@@ -40,8 +40,8 @@ class PrivacyBudget:
 
     @property
     def total_epsilon(self) -> float:
-        """Cumulative privacy loss under basic composition."""
-        return self.epsilon_per_round * self.rounds_spent
+        """Cumulative privacy loss."""
+        return sum(self._epsilon_history)
 
     @property
     def total_delta(self) -> float:
