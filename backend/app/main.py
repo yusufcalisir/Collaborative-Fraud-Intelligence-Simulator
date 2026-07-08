@@ -205,15 +205,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown hooks."""
     logger.info("Environment: %s", settings.app_env)
 
-    # Configure PyTorch runtime threads for 2 cores
-    try:
-        import torch
-
-        torch.set_num_threads(2)
-        torch.set_num_interop_threads(2)
-    except Exception as e:
-        logger.warning("Could not set PyTorch threading limits: %s", e)
-
     # Seed mock data
     try:
         seed_mock_data()
