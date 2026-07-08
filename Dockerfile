@@ -32,5 +32,5 @@ COPY --chown=user backend/alembic.ini .
 # Expose the default Hugging Face Spaces port
 EXPOSE 7860
 
-# Start backend application via python module to ensure clean module path loading
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Start backend application via python module with pure-Python fallbacks to bypass C-extension issues (uvloop/httptools)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860", "--loop", "asyncio", "--http", "h11", "--log-level", "debug"]
