@@ -7,6 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Copy backend requirements and install dependencies globally as root
+COPY backend/requirements.txt requirements.txt
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
 # Create non-root user for Hugging Face Spaces compliance
 RUN useradd -m -u 1000 user
 USER user
@@ -14,11 +18,7 @@ ENV PATH="/home/user/.local/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=UTF-8
 
-# Copy backend requirements and install dependencies
-COPY --chown=user backend/requirements.txt requirements.txt
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
-
-# Copy backend application source files
+# Copy backend application source files with owner permissions
 COPY --chown=user backend/app ./app
 COPY --chown=user backend/alembic ./alembic
 COPY --chown=user backend/alembic.ini .
@@ -26,5 +26,5 @@ COPY --chown=user backend/alembic.ini .
 # Expose the default Hugging Face Spaces port
 EXPOSE 7860
 
-# Start backend application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Start backend application via python module to ensure clean module path loading
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
