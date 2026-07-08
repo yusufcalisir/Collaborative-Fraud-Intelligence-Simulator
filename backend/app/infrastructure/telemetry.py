@@ -95,6 +95,7 @@ def setup_telemetry(app: FastAPI) -> None:
         try:
             from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
             from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+
             has_push_metrics = True
         except ImportError:
             has_push_metrics = False
@@ -129,7 +130,9 @@ def setup_telemetry(app: FastAPI) -> None:
 
     # ── Metrics → Prometheus /metrics OR Grafana Cloud via OTLP ──
     metric_readers = []
-    use_push_metrics = has_push_metrics and (is_secure or os.environ.get("OTEL_METRICS_EXPORTER") == "otlp")
+    use_push_metrics = has_push_metrics and (
+        is_secure or os.environ.get("OTEL_METRICS_EXPORTER") == "otlp"
+    )
 
     if use_push_metrics:
         otlp_metric_exporter = OTLPMetricExporter(
