@@ -11,6 +11,8 @@ WORKDIR /app
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONIOENCODING=UTF-8
 
 # Copy backend requirements and install dependencies
 COPY --chown=user backend/requirements.txt requirements.txt
