@@ -6,15 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /home/user/app
-
-# Copy backend requirements and install dependencies globally as root
-COPY backend/requirements.txt requirements.txt
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
-
-# Verify that all critical backend dependencies import successfully at build time
-RUN python -c "import fastapi, uvicorn, pydantic, sqlalchemy, celery, redis, numpy, pandas, sklearn, torch; print('Build verification: All dependencies imported successfully!')"
-
 # Create non-root user for Hugging Face Spaces compliance
 RUN useradd -m -u 1000 user
 
@@ -24,8 +15,18 @@ ENV HOME=/home/user \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8
 
-# Switch to non-root user
+# Set working directory to user's home app folder
+WORKDIR /home/user/app
+
+# Switch to non-root user BEFORE installing packages
 USER user
+
+# Copy backend requirements and install dependencies as non-root user
+COPY --chown=user backend/requirements.txt requirements.txt
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Verify that all critical backend dependencies import successfully at build time as non-root user
+RUN python -c "import fastapi, uvicorn, pydantic, sqlalchemy, celery, redis, numpy, pandas, sklearn, torch; print('Build verification: All dependencies imported successfully!')"
 
 # Copy backend application source files with owner permissions
 COPY --chown=user backend/app ./app
