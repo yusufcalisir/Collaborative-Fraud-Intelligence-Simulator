@@ -1,19 +1,24 @@
 {
-  "annotations": { "list": [] },
-  "editable": true,
-  "fiscalYearStartMonth": 0,
-  "graphTooltip": 1,
-  "links": [],
+  "id": null,
+  "uid": "cfi-overview",
+  "title": "CFI Platform Overview",
+  "tags": ["cfi", "fraud", "federated-learning"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
   "panels": [
     {
+      "id": 1,
       "title": "HTTP Request Rate (req/s)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "rate(http_server_duration_milliseconds_count[1m])",
-          "legendFormat": "{{http_method}} {{http_route}}",
+          "expr": "rate(http_server_duration_milliseconds_count{job=\"cfi-gateway\"}[1m])",
+          "legendFormat": "{{http_method}} {{http_target}}",
           "refId": "A"
         }
       ],
@@ -23,17 +28,19 @@
           "custom": { "lineWidth": 2, "fillOpacity": 10 },
           "unit": "reqps"
         }
-      }
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } }
     },
     {
+      "id": 2,
       "title": "HTTP Latency p95 (ms)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(http_server_duration_milliseconds_bucket[5m]))",
-          "legendFormat": "p95 {{http_route}}",
+          "expr": "histogram_quantile(0.95, rate(http_server_duration_milliseconds_bucket{job=\"cfi-gateway\"}[5m])) * 1000",
+          "legendFormat": "p95 {{http_target}}",
           "refId": "A"
         }
       ],
@@ -46,111 +53,146 @@
       }
     },
     {
-      "title": "Active Simulations",
+      "id": 3,
+      "title": "Active HTTP Requests",
       "type": "gauge",
       "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "active_simulations",
+          "expr": "sum(http_server_active_requests{job=\"cfi-gateway\"}) or vector(0)",
           "legendFormat": "Active",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "unit": "short",
           "thresholds": {
+            "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 2 },
-              { "color": "red", "value": 5 }
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
             ]
-          },
-          "min": 0,
-          "max": 10
+          }
         }
       }
     },
     {
-      "title": "FL Training Rounds (total)",
+      "id": 4,
+      "title": "Total HTTP Requests",
       "type": "stat",
       "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "simulation_rounds_total",
-          "legendFormat": "Rounds",
+          "expr": "sum(http_server_duration_milliseconds_count{job=\"cfi-gateway\"})",
+          "legendFormat": "Total Requests",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
+          "unit": "short",
           "color": { "mode": "thresholds" },
           "thresholds": {
-            "steps": [
-              { "color": "blue", "value": null }
-            ]
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
           }
         }
-      }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "background" }
     },
     {
-      "title": "Round Duration Distribution",
-      "type": "histogram",
+      "id": 5,
+      "title": "Avg Response Size (bytes)",
+      "type": "stat",
       "gridPos": { "h": 6, "w": 6, "x": 12, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "rate(simulation_duration_seconds_bucket[5m])",
-          "legendFormat": "{{le}}",
+          "expr": "rate(http_server_response_size_bytes_sum{job=\"cfi-gateway\"}[5m]) / rate(http_server_response_size_bytes_count{job=\"cfi-gateway\"}[5m])",
+          "legendFormat": "Avg Response Size",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "bytes",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
         }
-      }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "background" }
     },
     {
-      "title": "Alerts Generated (total)",
+      "id": 6,
+      "title": "Prometheus Scrape Health",
       "type": "stat",
       "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "alerts_generated_total",
-          "legendFormat": "Alerts",
+          "expr": "up",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "mappings": [
+            { "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }
+          ],
           "thresholds": {
+            "mode": "absolute",
             "steps": [
-              { "color": "orange", "value": null }
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
             ]
-          }
+          },
+          "color": { "mode": "thresholds" }
         }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto", "colorMode": "background" }
+    },
+    {
+      "id": 7,
+      "title": "HTTP Request Rate by Endpoint",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(http_server_duration_milliseconds_count{job=\"cfi-gateway\"}[2m])",
+          "legendFormat": "{{http_method}} {{http_target}} ({{http_status_code}})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 1, "fillOpacity": 5 },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
       }
     },
     {
-      "title": "Jaeger Traces",
+      "id": 8,
+      "title": "Jaeger Traces — Live",
       "type": "text",
-      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 22 },
       "options": {
-        "mode": "markdown",
-        "content": "### 🔍 Distributed Traces\n\nView detailed request traces in the **[Jaeger UI](http://localhost:16686)**.\n\nTraces are automatically captured for every HTTP request via OpenTelemetry auto-instrumentation.\n\nFilter by service name `cfi-backend` to see all spans."
+        "mode": "html",
+        "content": "<div style=\"text-align:center;padding:12px;font-family:sans-serif\"><a href=\"http://localhost:16686\" target=\"_blank\" style=\"background:#3b82f6;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:15px\">🔍 Open Jaeger Distributed Tracing UI →</a><p style=\"margin-top:8px;color:#888;font-size:12px\">Service: <b>cfi-backend</b> — all API traces are live</p></div>"
       }
     }
-  ],
-  "schemaVersion": 39,
-  "tags": ["cfi", "fraud-detection", "federated-learning"],
-  "templating": { "list": [] },
-  "time": { "from": "now-1h", "to": "now" },
-  "title": "CFI Platform Overview",
-  "uid": "cfi-overview",
-  "version": 1
+  ]
 }

@@ -319,15 +319,21 @@ The following domain-specific metrics are exported via OpenTelemetry and scraped
 
 ### Pre-Built Grafana Dashboard
 
-The **CFI Platform Overview** dashboard is auto-provisioned on first boot and includes:
+The **CFI Platform Overview** dashboard is auto-provisioned on first boot and includes live panels designed to work instantly in both single-process and multi-service environments:
 
-* **HTTP Request Rate** — Requests per second across all services
-* **HTTP Latency (p95)** — 95th percentile response time per route
-* **Active Simulations Gauge** — Real-time count of running FL simulations
-* **FL Training Rounds Counter** — Cumulative rounds completed
-* **Round Duration Distribution** — Histogram of per-round training times
-* **Alerts Generated** — Total fraud alerts counter
-* **Jaeger Trace Link** — Direct link to distributed trace viewer
+* **HTTP Request Rate** — Requests per second handled across all API routes.
+* **HTTP Latency (p95)** — 95th percentile request execution latency.
+* **Active HTTP Requests** — Real-time gauge of active transactions.
+* **Total HTTP Requests** — Running counter of total system hits.
+* **Avg Response Size** — Average response payload size in bytes.
+* **Prometheus Scrape Health** — Status check of active metrics-gathering connections.
+* **Request Rate by Endpoint** — Breakdown of traffic by path, method, and HTTP status code.
+* **Jaeger Traces Link** — Direct button redirecting you to search live tracing spans.
+
+> [!NOTE]
+> **Monitoring Modes & Scrape Target Status:**
+> * **Local Monolith Mode (`run_local.bat`):** The application runs as a single process on port `8000`. Only the `cfi-gateway` target (`gateway:8000`) is active and scraped, capturing all platform API traces and metrics under one namespace (`cfi-backend`). Other microservice-specific scrapers (port 8001-8003) will show as down/inactive, which is the expected local behavior.
+> * **Docker Compose Mode (`docker compose up`):** Decoupled containers execute independent services on ports `8000-8003`, with all targets scraped individually by Prometheus.
 
 ### Configuration
 

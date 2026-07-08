@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
 from scipy import stats
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 from app.application.services.data_generator import DataGenerator
 
@@ -97,14 +100,14 @@ async def get_bank_distributions() -> dict[str, Any]:
     )
 
     banks_data: dict[str, Any] = {}
-    amount_arrays: dict[str, np.ndarray[Any, Any]] = {}
+    amount_arrays: dict[str, NDArray[Any]] = {}
 
     for bank_id, (df, labels) in datasets.items():
-        amounts: np.ndarray[Any, Any] = df["transaction_amount"].to_numpy()
+        amounts: NDArray[Any] = df["transaction_amount"].to_numpy()
         amount_arrays[bank_id] = amounts
-        hours: np.ndarray[Any, Any] = df["hour_of_day"].to_numpy()
-        merchants: np.ndarray[Any, Any] = df["merchant_category"].to_numpy()
-        is_fraud: np.ndarray[Any, Any] = labels.to_numpy().astype(bool)
+        hours: NDArray[Any] = df["hour_of_day"].to_numpy()
+        merchants: NDArray[Any] = df["merchant_category"].to_numpy()
+        is_fraud: NDArray[Any] = labels.to_numpy().astype(bool)
 
         # 1) Transaction amount histogram (log-scale bins)
         log_bins = np.logspace(

@@ -201,13 +201,17 @@ services:
 
   # ── Jaeger (Distributed Tracing) ────────────
   jaeger:
-    image: jaegertracing/jaeger:2
+    image: jaegertracing/all-in-one:latest
     ports:
       - "16686:16686"   # Jaeger UI
       - "4317:4317"     # OTLP gRPC receiver
       - "4318:4318"     # OTLP HTTP receiver
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+    volumes:
+      - ./monitoring/jaeger-ui-config.json:/etc/jaeger/ui-config.json:ro
+    command:
+      - "--query.ui-config=/etc/jaeger/ui-config.json"
     restart: unless-stopped
 
   # ── Prometheus (Metrics) ────────────────────
@@ -215,6 +219,11 @@ services:
     image: prom/prometheus:v3.4.2
     ports:
       - "9090:9090"
+    extra_hosts:
+      - "gateway:host-gateway"
+      - "fl-coordinator:host-gateway"
+      - "identity-graph:host-gateway"
+      - "fraud-alert:host-gateway"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus

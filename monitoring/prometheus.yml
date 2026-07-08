@@ -1,36 +1,36 @@
 # Prometheus configuration for CFI Platform
-# Scrapes metrics from all backend services via OpenTelemetry /metrics endpoint
+# Scrapes metrics from all backend services in both monolith and microservices modes
 
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
 scrape_configs:
-  # ── Gateway Service ──────────────────────────
+  # ── Gateway Service / Monolith Backend ──
   - job_name: 'cfi-gateway'
     static_configs:
       - targets: ['gateway:8000']
-    metrics_path: /metrics
+    metrics_path: /metrics/
 
-  # ── FL Coordinator Service ───────────────────
+  # ── FL Coordinator Service ──
   - job_name: 'cfi-fl-coordinator'
     static_configs:
       - targets: ['fl-coordinator:8001']
-    metrics_path: /metrics
+    metrics_path: /metrics/
 
-  # ── Identity & Graph Service ─────────────────
+  # ── Identity & Graph Service ──
   - job_name: 'cfi-identity-graph'
     static_configs:
       - targets: ['identity-graph:8002']
-    metrics_path: /metrics
+    metrics_path: /metrics/
 
-  # ── Fraud & Alert Engine ─────────────────────
+  # ── Fraud & Alert Engine ──
   - job_name: 'cfi-fraud-alert'
     static_configs:
       - targets: ['fraud-alert:8003']
-    metrics_path: /metrics
+    metrics_path: /metrics/
 
-  # ── Prometheus self-monitoring ───────────────
+  # ── Prometheus self-monitoring ──
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
