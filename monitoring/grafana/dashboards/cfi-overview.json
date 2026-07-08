@@ -191,7 +191,7 @@
       "gridPos": { "h": 4, "w": 24, "x": 0, "y": 22 },
       "options": {
         "mode": "html",
-        "content": "<div style=\"text-align:center;padding:12px;font-family:sans-serif\"><a href=\"http://localhost:16686\" target=\"_blank\" style=\"background:#3b82f6;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:15px\">🔍 Open Jaeger Distributed Tracing UI →</a><p style=\"margin-top:8px;color:#888;font-size:12px\">Service: <b>cfi-backend</b> — all API traces are live</p></div>"
+        "content": "<div style=\"text-align:center;padding:12px;font-family:sans-serif\"><a href=\"/explore\" target=\"_blank\" style=\"background:#3b82f6;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:15px\">🔍 Open Jaeger Distributed Tracing UI →</a><p style=\"margin-top:8px;color:#888;font-size:12px\">Service: <b>cfi-backend</b> — all API traces are live</p></div>"
       }
     }
   ]

@@ -22,19 +22,19 @@ const NAV_SECTIONS = [
     label: 'Observability',
     items: [
       { 
-        href: import.meta.env.VITE_GRAFANA_URL ?? 'http://localhost:3001', 
+        href: import.meta.env.VITE_GRAFANA_URL ?? 'https://curiousheather2678.grafana.net/d/cfi-overview/cfi-platform-overview', 
         label: 'Grafana Dashboards', 
         icon: '📈', 
         isExternal: true 
       },
       { 
-        href: import.meta.env.VITE_JAEGER_URL ?? 'http://localhost:16686', 
-        label: 'Jaeger Tracing', 
+        href: import.meta.env.VITE_JAEGER_URL ?? 'https://curiousheather2678.grafana.net/explore', 
+        label: 'Jaeger Tracing (Tempo)', 
         icon: '🔍', 
         isExternal: true 
       },
       { 
-        href: import.meta.env.VITE_PROMETHEUS_URL ?? 'http://localhost:9090', 
+        href: import.meta.env.VITE_PROMETHEUS_URL ?? 'https://curiousheather2678.grafana.net/explore', 
         label: 'Prometheus Metrics', 
         icon: '🔥', 
         isExternal: true 
@@ -56,17 +56,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     onClose();
   }, [location.pathname]);
 
-  // Only show Observability section when running locally on localhost or 127.0.0.1
-  const isLocal = 
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1';
-
-  const visibleSections = NAV_SECTIONS.filter(section => {
-    if (section.label === 'Observability') {
-      return isLocal;
-    }
-    return true;
-  });
+  const visibleSections = NAV_SECTIONS;
 
   return (
     <>
