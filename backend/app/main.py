@@ -11,6 +11,8 @@ os.environ["OPENBLAS_NUM_THREADS"] = "2"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "2"
 os.environ["NUMEXPR_NUM_THREADS"] = "2"
 
+print(">>> Python main.py loaded successfully! <<<", flush=True)
+
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
