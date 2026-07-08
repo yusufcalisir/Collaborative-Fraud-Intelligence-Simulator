@@ -80,6 +80,7 @@ def setup_telemetry(app: FastAPI) -> None:
     # in environments that haven't installed the optional dependencies.
     try:
         import os
+
         from opentelemetry import metrics, trace
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
         from opentelemetry.exporter.prometheus import PrometheusMetricReader
@@ -107,7 +108,7 @@ def setup_telemetry(app: FastAPI) -> None:
     # ── Parse secure/insecure connection & headers ────────────
     endpoint = settings.otel_exporter_otlp_endpoint
     is_secure = endpoint.startswith("https://") if endpoint else False
-    
+
     headers = {}
     headers_str = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "")
     if headers_str:
