@@ -129,7 +129,9 @@ def setup_telemetry(app: FastAPI) -> None:
     trace.set_tracer_provider(tracer_provider)
 
     # ── Metrics → Prometheus /metrics OR Grafana Cloud via OTLP ──
-    metric_readers = []
+    from opentelemetry.sdk.metrics.export import MetricReader
+
+    metric_readers: list[MetricReader] = []
     use_push_metrics = has_push_metrics and (
         is_secure or os.environ.get("OTEL_METRICS_EXPORTER") == "otlp"
     )
