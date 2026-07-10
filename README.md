@@ -263,14 +263,19 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   ├── tests/                    # Integration and unit test suite
 │   │   └── unit/
 │   │       ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
+│   │       ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks
+│   │       ├── test_explainability_service.py # Verifies SHAP kernel value estimation and fallback heuristic rules
 │   │       ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
 │   │       ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes
 │   │       ├── test_metrics_service.py # Asserts correctness of evaluation metrics serialization
+│   │       ├── test_model_registry.py # Validates model saving, manifest versions list, promotion status updates, and canary evaluations
 │   │       ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
 │   │       ├── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
-│   │       └── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
+│   │       ├── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
+│   │       └── test_property_based.py # Property-based tests verifying core mathematical invariants
 │   ├── Dockerfile
 │   └── requirements.txt
+├── benchmark.py                  # Scientific benchmark and experimental validation suite
 ├── frontend/
 │   ├── src/
 │   │   ├── api/                  # API client instance, queries, mutations (React Query)
@@ -559,10 +564,10 @@ cd backend
 The test suite utilizes the **Hypothesis** library to mathematically verify core components against arbitrary inputs and edge cases, asserting critical invariants:
 1. **FedAvg Convergence:** Arithmetic mean invariant for varying client weights.
 2. **Weighted FedAvg:** Weighted average invariant across uneven dataset sizes.
-3. **Coordinate Median:** Bounded coordinates verification ($\text{min} \le \theta_{\text{med}} \le \text{max}$).
+3. **Coordinate Median:** Bounded coordinates verification ($\min \le \theta_{\text{med}} \le \max$).
 4. **Krum Aggregation:** Selection determinism, index validation, and distance score minimization.
-5. **Secure Aggregation:** Verification of mathematical mask cancellation ($\sum M_i == 0$) for up to 10 clients.
-6. **Differential Privacy:** Bounded clipping ($\|\Delta\|_2 \le \text{max\_norm}$) and Gaussian noise statistics (mean $\approx 0$).
+5. **Secure Aggregation:** Verification of mathematical mask cancellation ($\sum M_i = 0$) for up to 10 clients.
+6. **Differential Privacy:** Bounded clipping ($\|\Delta\|_2 \le C$) and Gaussian noise statistics ($\text{mean} \approx 0$).
 7. **Drift Metrics:** JS Divergence symmetry/non-negativity and PSI non-negativity.
 8. **Risk Scoring Engine:** Composite score bounding ($0 \le S \le 1000$) and monotonicity.
 9. **Explainability & IG:** Dimension consistency and zero attributions on baseline inputs.
