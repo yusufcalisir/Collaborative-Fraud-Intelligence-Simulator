@@ -173,7 +173,7 @@ class ModelRegistry:
 
         # Mark target as active, all others as inactive
         for entry in manifest:
-            entry["is_active"] = (entry["version"] == version)
+            entry["is_active"] = entry["version"] == version
 
         self._save_manifest(simulation_id, manifest)
         self._update_global_model_link(simulation_id, filepath)

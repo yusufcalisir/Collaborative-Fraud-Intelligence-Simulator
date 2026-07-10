@@ -360,7 +360,9 @@ class AlertIntelligenceService:
                 for f in shap_features
             ]
         except Exception as e:
-            logger.warning("SHAP explainability computation failed: %s. Falling back to heuristic.", e)
+            logger.warning(
+                "SHAP explainability computation failed: %s. Falling back to heuristic.", e
+            )
             features: list[dict[str, float | str]] = []
             feature_weights = {
                 "transaction_amount": 0.20,
@@ -379,11 +381,13 @@ class AlertIntelligenceService:
                 if isinstance(val, str):
                     val = hash(val) % 100 / 100  # Normalize categorical
                 contribution = base_weight * score * (0.5 + 0.5 * min(1.0, float(val) / 100))
-                features.append({
-                    "feature": feat,
-                    "contribution": round(contribution, 4),
-                    "value": round(contribution, 4),
-                })
+                features.append(
+                    {
+                        "feature": feat,
+                        "contribution": round(contribution, 4),
+                        "value": round(contribution, 4),
+                    }
+                )
             return sorted(features, key=lambda f: float(f["contribution"]), reverse=True)
 
     @staticmethod

@@ -1,5 +1,4 @@
-"""Unit tests for the Model Registry and Rollback service.
-"""
+"""Unit tests for the Model Registry and Rollback service."""
 
 from __future__ import annotations
 
@@ -74,9 +73,7 @@ class TestModelRegistry(unittest.TestCase):
         # Save v2 (promoted)
         v2_sd = {"weight": [0.9, 0.9], "bias": [1.0]}
         v2_metrics = {"auc_roc": 0.91, "f1_score": 0.88, "loss": 0.09}
-        self.registry.save_version(
-            self.simulation_id, v2_sd, v2_metrics, is_promoted=True
-        )
+        self.registry.save_version(self.simulation_id, v2_sd, v2_metrics, is_promoted=True)
 
         # Verify active version is v2
         active = self.registry.get_active_version(self.simulation_id)

@@ -277,7 +277,11 @@ class StreamingEngine:
             # Map of reason codes to features, values, and descriptions
             code_feature_map = {
                 "VEL-001": ("velocity", 15.0, "Rapid transaction frequency (velocity anomaly)"),
-                "DEV-ANOM": ("device_type", "other", "New device registration (device type mismatch)"),
+                "DEV-ANOM": (
+                    "device_type",
+                    "other",
+                    "New device registration (device type mismatch)",
+                ),
                 "AMT-ANOM": (
                     "transaction_amount",
                     8500.0,

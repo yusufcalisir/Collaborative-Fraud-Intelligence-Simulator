@@ -1,5 +1,4 @@
-"""Model Registry and Rollback API endpoints.
-"""
+"""Model Registry and Rollback API endpoints."""
 
 from __future__ import annotations
 

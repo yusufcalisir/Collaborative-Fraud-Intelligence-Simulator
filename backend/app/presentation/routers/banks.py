@@ -207,9 +207,7 @@ def _compute_feature_drift(df_exp: pd.DataFrame, df_act: pd.DataFrame) -> dict[s
             ks_stat, _ = stats.ks_2samp(exp_vals, act_vals)
             psi = _compute_psi(exp_vals, act_vals)
             bins = np.linspace(
-                min(exp_vals.min(), act_vals.min()),
-                max(exp_vals.max(), act_vals.max()) + 1e-5,
-                11
+                min(exp_vals.min(), act_vals.min()), max(exp_vals.max(), act_vals.max()) + 1e-5, 11
             )
             hist_exp, _ = np.histogram(exp_vals, bins=bins)
             hist_act, _ = np.histogram(act_vals, bins=bins)
@@ -237,13 +235,13 @@ def _compute_feature_drift(df_exp: pd.DataFrame, df_act: pd.DataFrame) -> dict[s
             "psi": psi_val,
             "js_divergence": js_val,
             "ks": ks_val,
-            "status": status
+            "status": status,
         }
 
     return {
         "overall_psi": round(sum(psi_values) / len(psi_values), 4),
         "overall_js": round(sum(js_values) / len(js_values), 4),
-        "features": features_drift
+        "features": features_drift,
     }
 
 
@@ -300,8 +298,12 @@ def _compute_concept_drift(
     # Hour of day fraud occurrences normalized
     hours_exp = df_exp["hour_of_day"].to_numpy()
     hours_act = df_act["hour_of_day"].to_numpy()
-    h_fraud_exp = np.array([np.sum((hours_exp == h) & is_fraud_exp) for h in range(24)], dtype=float)
-    h_fraud_act = np.array([np.sum((hours_act == h) & is_fraud_act) for h in range(24)], dtype=float)
+    h_fraud_exp = np.array(
+        [np.sum((hours_exp == h) & is_fraud_exp) for h in range(24)], dtype=float
+    )
+    h_fraud_act = np.array(
+        [np.sum((hours_act == h) & is_fraud_act) for h in range(24)], dtype=float
+    )
     hour_cond_js = _compute_js_divergence(h_fraud_exp, h_fraud_act)
 
     # Merchant category fraud occurrences normalized
@@ -314,7 +316,7 @@ def _compute_concept_drift(
 
     conditional_drifts = {
         "hour_of_day": round(hour_cond_js, 4),
-        "merchant_category": round(merchant_cond_js, 4)
+        "merchant_category": round(merchant_cond_js, 4),
     }
 
     overall_psi = pred_psi
@@ -324,7 +326,7 @@ def _compute_concept_drift(
         "overall_psi": overall_psi,
         "overall_js": overall_js,
         "model_prediction_drift": model_prediction_drift,
-        "conditional_drifts": conditional_drifts
+        "conditional_drifts": conditional_drifts,
     }
 
 
@@ -433,8 +435,7 @@ async def get_bank_distributions() -> dict[str, Any]:
 
         # Model-based and segment-based concept drift
         concept_drifts[key] = _compute_concept_drift(
-            datasets[b1][0], datasets[b1][1],
-            datasets[b2][0], datasets[b2][1]
+            datasets[b1][0], datasets[b1][1], datasets[b2][0], datasets[b2][1]
         )
 
     overall_score = round(sum(ks_stats.values()) / len(ks_stats), 4)

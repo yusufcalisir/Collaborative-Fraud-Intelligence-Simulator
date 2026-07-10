@@ -318,7 +318,9 @@ class ExplainabilityService:
                 return sorted(features, key=lambda f: abs(f["contribution"]), reverse=True)
 
             except Exception as e:
-                logger.warning("SHAP execution failed: %s. Falling back to analytical heuristic.", e)
+                logger.warning(
+                    "SHAP execution failed: %s. Falling back to analytical heuristic.", e
+                )
 
         # 4. Fallback analytical heuristic if SHAP fails/not installed or model load fails
         features = []

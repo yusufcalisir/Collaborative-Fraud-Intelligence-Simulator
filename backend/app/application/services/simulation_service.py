@@ -79,6 +79,7 @@ class SimulationService:
         self.metrics_service = metrics_service
         self.model_service = model_service
         from app.application.services.model_registry import ModelRegistry
+
         self.model_registry = ModelRegistry()
 
     def run_simulation(
@@ -518,7 +519,7 @@ class SimulationService:
                             )
 
                     # Quality gate comparison
-                    is_promoted = (candidate_auc >= promoted_auc - canary_tolerance)
+                    is_promoted = candidate_auc >= promoted_auc - canary_tolerance
                     if is_promoted:
                         if active_meta:
                             reason = (
@@ -709,8 +710,8 @@ class SimulationService:
 
             # Log final parameters/metrics and mark MLflow run as failed
             self._finalize_mlflow(
-                mlflow_run if 'mlflow_run' in locals() else None,
-                banks if 'banks' in locals() else [],
+                mlflow_run if "mlflow_run" in locals() else None,
+                banks if "banks" in locals() else [],
                 "failed",
                 error_message=str(e),
             )
@@ -736,6 +737,7 @@ class SimulationService:
             import os as python_os
 
             import mlflow
+
             python_os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 
             if self.settings.mlflow_tracking_uri:
@@ -745,40 +747,61 @@ class SimulationService:
             run = mlflow.start_run(run_name=f"sim-{simulation_id[:8]}")
 
             # Log params
-            mlflow.log_params({
-                "simulation_id": simulation_id,
-                "num_rounds": config.num_rounds,
-                "local_epochs": config.local_epochs,
-                "learning_rate": config.learning_rate,
-                "batch_size": config.batch_size,
-                "min_clients_per_round": config.min_clients_per_round,
-                "aggregation_method": getattr(config, "aggregation_method", "fed_avg_weighted"),
-                "enable_differential_privacy": getattr(config, "enable_differential_privacy", False),
-                "dp_epsilon": getattr(config, "dp_epsilon", 0.0),
-                "dp_delta": getattr(config, "dp_delta", 0.0),
-                "enable_secure_aggregation": getattr(config, "enable_secure_aggregation", False),
-                "enable_poisoning_simulation": getattr(config, "enable_poisoning_simulation", False),
-            })
+            mlflow.log_params(
+                {
+                    "simulation_id": simulation_id,
+                    "num_rounds": config.num_rounds,
+                    "local_epochs": config.local_epochs,
+                    "learning_rate": config.learning_rate,
+                    "batch_size": config.batch_size,
+                    "min_clients_per_round": config.min_clients_per_round,
+                    "aggregation_method": getattr(config, "aggregation_method", "fed_avg_weighted"),
+                    "enable_differential_privacy": getattr(
+                        config, "enable_differential_privacy", False
+                    ),
+                    "dp_epsilon": getattr(config, "dp_epsilon", 0.0),
+                    "dp_delta": getattr(config, "dp_delta", 0.0),
+                    "enable_secure_aggregation": getattr(
+                        config, "enable_secure_aggregation", False
+                    ),
+                    "enable_poisoning_simulation": getattr(
+                        config, "enable_poisoning_simulation", False
+                    ),
+                }
+            )
             return run
         except Exception as e:
             logger.warning("Failed to initialize MLflow tracking: %s", e)
             return None
 
-    def _log_mlflow_round(self, run: Any, round_num: int, round_loss: float, active_participants: int, privacy_budget: float) -> None:
+    def _log_mlflow_round(
+        self,
+        run: Any,
+        round_num: int,
+        round_loss: float,
+        active_participants: int,
+        privacy_budget: float,
+    ) -> None:
         """Log round metrics to MLflow."""
         if not run:
             return
         try:
             import mlflow
-            mlflow.log_metrics({
-                "round_global_loss": round_loss,
-                "active_participants": active_participants,
-                "privacy_budget_spent": privacy_budget,
-            }, step=round_num)
+
+            mlflow.log_metrics(
+                {
+                    "round_global_loss": round_loss,
+                    "active_participants": active_participants,
+                    "privacy_budget_spent": privacy_budget,
+                },
+                step=round_num,
+            )
         except Exception as e:
             logger.warning("Failed to log round metrics to MLflow: %s", e)
 
-    def _finalize_mlflow(self, run: Any, banks: list[Any], status: str, error_message: str | None = None) -> None:
+    def _finalize_mlflow(
+        self, run: Any, banks: list[Any], status: str, error_message: str | None = None
+    ) -> None:
         """Log final metrics and close MLflow run."""
         if not run:
             return
@@ -793,29 +816,41 @@ class SimulationService:
             # Log average metrics across all banks
             valid_banks = [b for b in banks if getattr(b, "federated_metrics", None) is not None]
             if valid_banks:
-                avg_accuracy = sum(b.federated_metrics.accuracy for b in valid_banks) / len(valid_banks)
-                avg_precision = sum(b.federated_metrics.precision for b in valid_banks) / len(valid_banks)
+                avg_accuracy = sum(b.federated_metrics.accuracy for b in valid_banks) / len(
+                    valid_banks
+                )
+                avg_precision = sum(b.federated_metrics.precision for b in valid_banks) / len(
+                    valid_banks
+                )
                 avg_recall = sum(b.federated_metrics.recall for b in valid_banks) / len(valid_banks)
-                avg_f1_score = sum(b.federated_metrics.f1_score for b in valid_banks) / len(valid_banks)
-                avg_auc_roc = sum(b.federated_metrics.auc_roc for b in valid_banks) / len(valid_banks)
+                avg_f1_score = sum(b.federated_metrics.f1_score for b in valid_banks) / len(
+                    valid_banks
+                )
+                avg_auc_roc = sum(b.federated_metrics.auc_roc for b in valid_banks) / len(
+                    valid_banks
+                )
 
-                mlflow.log_metrics({
-                    "final_avg_accuracy": avg_accuracy,
-                    "final_avg_precision": avg_precision,
-                    "final_avg_recall": avg_recall,
-                    "final_avg_f1_score": avg_f1_score,
-                    "final_avg_auc_roc": avg_auc_roc,
-                })
+                mlflow.log_metrics(
+                    {
+                        "final_avg_accuracy": avg_accuracy,
+                        "final_avg_precision": avg_precision,
+                        "final_avg_recall": avg_recall,
+                        "final_avg_f1_score": avg_f1_score,
+                        "final_avg_auc_roc": avg_auc_roc,
+                    }
+                )
 
                 # Log metrics per bank
                 for b in valid_banks:
-                    mlflow.log_metrics({
-                        f"{b.id}_accuracy": b.federated_metrics.accuracy,
-                        f"{b.id}_precision": b.federated_metrics.precision,
-                        f"{b.id}_recall": b.federated_metrics.recall,
-                        f"{b.id}_f1_score": b.federated_metrics.f1_score,
-                        f"{b.id}_auc_roc": b.federated_metrics.auc_roc,
-                    })
+                    mlflow.log_metrics(
+                        {
+                            f"{b.id}_accuracy": b.federated_metrics.accuracy,
+                            f"{b.id}_precision": b.federated_metrics.precision,
+                            f"{b.id}_recall": b.federated_metrics.recall,
+                            f"{b.id}_f1_score": b.federated_metrics.f1_score,
+                            f"{b.id}_auc_roc": b.federated_metrics.auc_roc,
+                        }
+                    )
 
             mlflow.end_run()
         except Exception as e:
