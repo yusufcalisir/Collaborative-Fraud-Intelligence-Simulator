@@ -491,8 +491,8 @@ class SimulationService:
                         X_val_global,
                         y_val_global,
                     )
-                    round_loss = candidate_eval["loss"]
-                    candidate_auc = candidate_eval["auc_roc"]
+                    round_loss = cast(float, candidate_eval["loss"])
+                    candidate_auc = cast(float, candidate_eval["auc_roc"])
 
                     # Canary Evaluation: compare candidate against currently promoted model
                     canary_tolerance = 0.005  # 0.5% AUC-ROC tolerance
@@ -511,7 +511,7 @@ class SimulationService:
                             promoted_eval = self.model_service.evaluate(
                                 promoted_model, X_val_global, y_val_global
                             )
-                            promoted_auc = promoted_eval["auc_roc"]
+                            promoted_auc = cast(float, promoted_eval["auc_roc"])
                         except Exception as canary_exc:
                             logger.warning(
                                 "Canary evaluation could not load/evaluate active version: %s",
@@ -529,9 +529,10 @@ class SimulationService:
                         else:
                             reason = f"Initial version promoted (AUC: {candidate_auc:.4f})."
                     else:
+                        prev_ver = active_meta["version"] if active_meta else "N/A"
                         reason = (
                             f"Rejected: Candidate AUC ({candidate_auc:.4f}) did not meet quality gate "
-                            f"relative to v{active_meta['version']} ({promoted_auc:.4f}, tolerance: {canary_tolerance})."
+                            f"relative to v{prev_ver} ({promoted_auc:.4f}, tolerance: {canary_tolerance})."
                         )
 
                     # Save version in the registry
@@ -540,10 +541,10 @@ class SimulationService:
                             simulation_id=simulation.id,
                             state_dict=global_model.state_dict(),
                             metrics={
-                                "accuracy": candidate_eval["accuracy"],
-                                "precision": candidate_eval["precision"],
-                                "recall": candidate_eval["recall"],
-                                "f1_score": candidate_eval["f1_score"],
+                                "accuracy": cast(float, candidate_eval["accuracy"]),
+                                "precision": cast(float, candidate_eval["precision"]),
+                                "recall": cast(float, candidate_eval["recall"]),
+                                "f1_score": cast(float, candidate_eval["f1_score"]),
                                 "auc_roc": candidate_auc,
                                 "loss": round_loss,
                             },
@@ -623,7 +624,7 @@ class SimulationService:
                     self._log_mlflow_round(
                         mlflow_run,
                         round_num=round_num,
-                        round_loss=float(round_loss),
+                        round_loss=round_loss,
                         active_participants=len(participating),
                         privacy_budget=budget.total_epsilon if enable_dp else 0.0,
                     )

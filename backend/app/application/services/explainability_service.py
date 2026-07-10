@@ -15,7 +15,7 @@ and investigator trust.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.domain.value_objects_phase2 import ExplainabilityReport, RiskSignal
 
@@ -175,7 +175,7 @@ class ExplainabilityService:
     def compute_shap_values(
         self,
         txn_dict: dict,
-    ) -> list[dict[str, float]]:
+    ) -> list[dict[str, Any]]:
         """Compute SHAP values for a single transaction using the trained global model.
 
         If no model is trained yet, falls back to an analytical local explanation.
