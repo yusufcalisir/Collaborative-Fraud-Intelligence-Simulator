@@ -491,8 +491,8 @@ class SimulationService:
                         X_val_global,
                         y_val_global,
                     )
-                    round_loss = cast(float, candidate_eval["loss"])
-                    candidate_auc = cast(float, candidate_eval["auc_roc"])
+                    round_loss = cast("float", candidate_eval["loss"])
+                    candidate_auc = cast("float", candidate_eval["auc_roc"])
 
                     # Canary Evaluation: compare candidate against currently promoted model
                     canary_tolerance = 0.005  # 0.5% AUC-ROC tolerance
@@ -511,7 +511,7 @@ class SimulationService:
                             promoted_eval = self.model_service.evaluate(
                                 promoted_model, X_val_global, y_val_global
                             )
-                            promoted_auc = cast(float, promoted_eval["auc_roc"])
+                            promoted_auc = cast("float", promoted_eval["auc_roc"])
                         except Exception as canary_exc:
                             logger.warning(
                                 "Canary evaluation could not load/evaluate active version: %s",
@@ -541,10 +541,10 @@ class SimulationService:
                             simulation_id=simulation.id,
                             state_dict=global_model.state_dict(),
                             metrics={
-                                "accuracy": cast(float, candidate_eval["accuracy"]),
-                                "precision": cast(float, candidate_eval["precision"]),
-                                "recall": cast(float, candidate_eval["recall"]),
-                                "f1_score": cast(float, candidate_eval["f1_score"]),
+                                "accuracy": cast("float", candidate_eval["accuracy"]),
+                                "precision": cast("float", candidate_eval["precision"]),
+                                "recall": cast("float", candidate_eval["recall"]),
+                                "f1_score": cast("float", candidate_eval["f1_score"]),
                                 "auc_roc": candidate_auc,
                                 "loss": round_loss,
                             },
