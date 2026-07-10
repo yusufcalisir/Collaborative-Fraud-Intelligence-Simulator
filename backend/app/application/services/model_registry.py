@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import torch
@@ -51,7 +51,7 @@ class ModelRegistry:
         if not os.path.exists(manifest_path):
             return []
         try:
-            with open(manifest_path, "r", encoding="utf-8") as f:
+            with open(manifest_path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return data
@@ -112,7 +112,7 @@ class ModelRegistry:
             "filename": filename,
             "metrics": metrics,
             "is_active": is_promoted,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         manifest.append(entry)
         self._save_manifest(simulation_id, manifest)

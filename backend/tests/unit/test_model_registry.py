@@ -3,11 +3,9 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
 import unittest
-from typing import Any
 
 from app.application.services.model_registry import ModelRegistry
 

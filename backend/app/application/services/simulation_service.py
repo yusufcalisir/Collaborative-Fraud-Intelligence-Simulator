@@ -20,12 +20,14 @@ the database.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
+import torch
 from sklearn.model_selection import train_test_split
 
 from app.application.services.data_generator import DataGenerator
@@ -666,8 +668,6 @@ class SimulationService:
 
             # Save the final global model for explainability
             try:
-                import torch
-                import os
                 storage_dir = os.path.join(
                     os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "storage"
                 )

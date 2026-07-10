@@ -28,10 +28,10 @@ from app.presentation.routers import (
     entities,
     graph,
     health,
+    model_registry,
     scenarios,
     simulation,
     training,
-    model_registry,
 )
 from app.presentation.websockets import streaming_ws, training_ws
 

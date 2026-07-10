@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
 from app.domain.enums import BankTier, ClientStatus, SimulationStatus
 from app.domain.value_objects import BankDataProfile, EvaluationMetrics, SimulationConfig
