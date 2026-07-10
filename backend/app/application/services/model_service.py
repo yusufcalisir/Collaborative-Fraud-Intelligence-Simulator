@@ -68,11 +68,6 @@ class ModelService:
         self.settings = settings
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info("ModelService using device: %s", self.device)
-        try:
-            torch.set_num_threads(2)
-            torch.set_num_interop_threads(2)
-        except Exception as e:
-            logger.warning("Could not set PyTorch threading limits: %s", e)
 
     def create_model(self, dp_compatible: bool = False) -> FraudDetectionModel:
         """Create a fresh model instance with random initialization."""

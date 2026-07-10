@@ -98,3 +98,4 @@ class TrainingRound:
     round_duration_ms: float = 0.0
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
+    canary_info: dict[str, Any] = field(default_factory=dict)

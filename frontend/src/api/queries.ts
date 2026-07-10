@@ -22,6 +22,7 @@ import type {
   SimulationDetail,
   SimulationSummary,
   TrainingRound,
+  ModelVersion,
 } from './types';
 
 // ── Phase 1: Simulations ───────────────────
@@ -335,5 +336,40 @@ export function useAlertsByBank() {
       return data;
     },
     refetchInterval: 10000,
+  });
+}
+
+// ── Model Registry & Rollback ──────────────
+
+export function useModelVersions(simulationId: string | undefined) {
+  return useQuery<ModelVersion[]>({
+    queryKey: ['model-versions', simulationId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/registry/${simulationId}/versions`);
+      return data;
+    },
+    enabled: !!simulationId,
+    refetchInterval: 3000,
+  });
+}
+
+export function useRollbackModel() {
+  return useMutation<ModelVersion, Error, { simulationId: string; version: number }>({
+    mutationFn: async ({ simulationId, version }) => {
+      const { data } = await apiClient.post(`/api/v1/registry/${simulationId}/rollback/${version}`);
+      return data;
+    },
+  });
+}
+
+export function useCanaryHistory(simulationId: string | undefined) {
+  return useQuery<any[]>({
+    queryKey: ['canary-history', simulationId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/registry/${simulationId}/canary`);
+      return data;
+    },
+    enabled: !!simulationId,
+    refetchInterval: 3000,
   });
 }

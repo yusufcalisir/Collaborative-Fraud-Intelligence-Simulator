@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ── PostgreSQL ──────────────────────────────
   postgres:
@@ -66,6 +64,8 @@ services:
         condition: service_started
       jaeger:
         condition: service_started
+    volumes:
+      - model_storage:/app/app/storage
     restart: unless-stopped
 
   # ── Federated Learning Coordinator ──────────
@@ -93,6 +93,8 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_started
+    volumes:
+      - model_storage:/app/app/storage
     restart: unless-stopped
 
   # ── Identity & Graph Resolver ───────────────
@@ -120,6 +122,8 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_started
+    volumes:
+      - model_storage:/app/app/storage
     restart: unless-stopped
 
   # ── Fraud & Alert Engine ────────────────────
@@ -147,6 +151,8 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_started
+    volumes:
+      - model_storage:/app/app/storage
     restart: unless-stopped
 
   # ── Celery Worker ───────────────────────────
@@ -166,6 +172,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - model_storage:/app/app/storage
     restart: unless-stopped
 
   # ── Celery Flower (Monitoring) ──────────────
@@ -216,7 +224,7 @@ services:
 
   # ── Prometheus (Metrics) ────────────────────
   prometheus:
-    image: prom/prometheus:v3.4.2
+    image: prom/prometheus:latest
     ports:
       - "9090:9090"
     extra_hosts:
@@ -253,8 +261,21 @@ services:
       - jaeger
     restart: unless-stopped
 
+  # ── MLflow Tracking Server ──────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_ALLOW_FILE_STORE=true
+    volumes:
+      - ./backend/mlruns:/app/mlruns
+    entrypoint: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns --default-artifact-root /app/mlruns
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   prometheus_data:
   grafana_data:
+  model_storage:

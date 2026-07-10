@@ -76,6 +76,8 @@ class SimulationService:
         self.fl_engine = fl_engine
         self.metrics_service = metrics_service
         self.model_service = model_service
+        from app.application.services.model_registry import ModelRegistry
+        self.model_registry = ModelRegistry()
 
     def run_simulation(
         self,
@@ -98,6 +100,9 @@ class SimulationService:
         simulation.started_at = _now()
         rng = np.random.default_rng(42)
         active_simulations.add(1)
+
+        # Initialize MLflow experiment run
+        mlflow_run = self._init_mlflow(simulation.id, config)
 
         try:
             # Phase 1: Generate data
@@ -174,6 +179,10 @@ class SimulationService:
                     "y_train": y_train,
                     "y_test": y_test,
                 }
+
+            # Create a global validation/test set by concatenating all bank test sets
+            X_val_global = np.concatenate([data["X_test"] for data in bank_data.values()], axis=0)
+            y_val_global = np.concatenate([data["y_test"] for data in bank_data.values()], axis=0)
 
             # Phase 2: Train local models (baseline)
             simulation.status = SimulationStatus.TRAINING_LOCAL
@@ -473,18 +482,86 @@ class SimulationService:
                     # Update global model
                     global_model = self.model_service.set_parameters(global_model, global_weights)
 
-                    # Evaluate global model for this round's loss
-                    # Use the first participating bank's test set as a proxy
-                    first_bank_data = bank_data[participating[0].id]
-                    round_eval = self.model_service.evaluate(
+                    # Evaluate global model on the global validation test set
+                    candidate_eval = self.model_service.evaluate(
                         global_model,
-                        first_bank_data["X_test"],
-                        first_bank_data["y_test"],
+                        X_val_global,
+                        y_val_global,
                     )
-                    round_loss = round_eval["loss"]
+                    round_loss = candidate_eval["loss"]
+                    candidate_auc = candidate_eval["auc_roc"]
+
+                    # Canary Evaluation: compare candidate against currently promoted model
+                    canary_tolerance = 0.005  # 0.5% AUC-ROC tolerance
+                    active_meta = self.model_registry.get_active_version(simulation.id)
+                    promoted_auc = 0.0
+
+                    if active_meta:
+                        try:
+                            prev_state_dict = self.model_registry.load_version(
+                                simulation.id, active_meta["version"]
+                            )
+                            promoted_model = self.model_service.create_model(
+                                dp_compatible=use_opacus_dp
+                            )
+                            promoted_model.load_state_dict(prev_state_dict)
+                            promoted_eval = self.model_service.evaluate(
+                                promoted_model, X_val_global, y_val_global
+                            )
+                            promoted_auc = promoted_eval["auc_roc"]
+                        except Exception as canary_exc:
+                            logger.warning(
+                                "Canary evaluation could not load/evaluate active version: %s",
+                                canary_exc,
+                            )
+
+                    # Quality gate comparison
+                    is_promoted = (candidate_auc >= promoted_auc - canary_tolerance)
+                    if is_promoted:
+                        if active_meta:
+                            reason = (
+                                f"Candidate AUC ({candidate_auc:.4f}) meets quality gate "
+                                f"relative to v{active_meta['version']} ({promoted_auc:.4f}, tolerance: {canary_tolerance})."
+                            )
+                        else:
+                            reason = f"Initial version promoted (AUC: {candidate_auc:.4f})."
+                    else:
+                        reason = (
+                            f"Rejected: Candidate AUC ({candidate_auc:.4f}) did not meet quality gate "
+                            f"relative to v{active_meta['version']} ({promoted_auc:.4f}, tolerance: {canary_tolerance})."
+                        )
+
+                    # Save version in the registry
+                    try:
+                        reg_entry = self.model_registry.save_version(
+                            simulation_id=simulation.id,
+                            state_dict=global_model.state_dict(),
+                            metrics={
+                                "accuracy": candidate_eval["accuracy"],
+                                "precision": candidate_eval["precision"],
+                                "recall": candidate_eval["recall"],
+                                "f1_score": candidate_eval["f1_score"],
+                                "auc_roc": candidate_auc,
+                                "loss": round_loss,
+                            },
+                            is_promoted=is_promoted,
+                        )
+                        version_num = reg_entry["version"]
+                    except Exception as reg_exc:
+                        logger.error("Failed to save model version to registry: %s", reg_exc)
+                        version_num = round_num
+
+                    canary_info = {
+                        "version": version_num,
+                        "candidate_auc": candidate_auc,
+                        "promoted_auc": promoted_auc,
+                        "is_promoted": is_promoted,
+                        "reason": reason,
+                    }
 
                     # Calculate feature importance for the global model at this round
                     # using the first participating bank's training data as reference
+                    first_bank_data = bank_data[participating[0].id]
                     ref_X = first_bank_data["X_train"]
                     round_feature_importance = self.model_service.get_feature_importance(
                         global_model, ref_X
@@ -504,6 +581,7 @@ class SimulationService:
                         },
                         aggregation_time_ms=agg_time,
                         round_duration_ms=round_duration,
+                        canary_info=canary_info,
                     )
                     rounds.append(training_round)
 
@@ -534,7 +612,17 @@ class SimulationService:
                             "duration_ms": round_duration,
                             "privacy_budget": budget.total_epsilon if enable_dp else 0.0,
                             "feature_importance": round_feature_importance,
+                            "canary_info": canary_info,
                         },
+                    )
+
+                    # Log metrics for this round to MLflow
+                    self._log_mlflow_round(
+                        mlflow_run,
+                        round_num=round_num,
+                        round_loss=float(round_loss),
+                        active_participants=len(participating),
+                        privacy_budget=budget.total_epsilon if enable_dp else 0.0,
                     )
 
             # Phase 4: Evaluate federated model at each bank
@@ -576,6 +664,23 @@ class SimulationService:
             simulation.status = SimulationStatus.COMPLETED
             simulation.completed_at = _now()
 
+            # Save the final global model for explainability
+            try:
+                import torch
+                import os
+                storage_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "storage"
+                )
+                os.makedirs(storage_dir, exist_ok=True)
+                model_path = os.path.join(storage_dir, "global_model.pt")
+                torch.save(global_model.state_dict(), model_path)
+                logger.info("Saved global model for explainability to %s", model_path)
+            except Exception as e:
+                logger.warning("Failed to save global model for explainability: %s", e)
+
+            # Log final parameters/metrics and complete MLflow run
+            self._finalize_mlflow(mlflow_run, banks, "completed")
+
             self._notify(
                 progress_callback,
                 simulation.id,
@@ -602,6 +707,14 @@ class SimulationService:
             simulation.completed_at = _now()
             logger.exception("Simulation %s failed: %s", simulation.id, e)
 
+            # Log final parameters/metrics and mark MLflow run as failed
+            self._finalize_mlflow(
+                mlflow_run if 'mlflow_run' in locals() else None,
+                banks if 'banks' in locals() else [],
+                "failed",
+                error_message=str(e),
+            )
+
             self._notify(
                 progress_callback,
                 simulation.id,
@@ -612,6 +725,101 @@ class SimulationService:
             )
 
             return simulation
+
+    def _init_mlflow(self, simulation_id: str, config: Any) -> Any:
+        """Initialize MLflow run and log parameters."""
+        if not self.settings.mlflow_enabled:
+            return None
+
+        try:
+            # Opt out of MLflow 3.0's filestore deprecation error to allow local tracking
+            import os as python_os
+
+            import mlflow
+            python_os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
+
+            if self.settings.mlflow_tracking_uri:
+                mlflow.set_tracking_uri(self.settings.mlflow_tracking_uri)
+            mlflow.set_experiment(self.settings.mlflow_experiment_name)
+
+            run = mlflow.start_run(run_name=f"sim-{simulation_id[:8]}")
+
+            # Log params
+            mlflow.log_params({
+                "simulation_id": simulation_id,
+                "num_rounds": config.num_rounds,
+                "local_epochs": config.local_epochs,
+                "learning_rate": config.learning_rate,
+                "batch_size": config.batch_size,
+                "min_clients_per_round": config.min_clients_per_round,
+                "aggregation_method": getattr(config, "aggregation_method", "fed_avg_weighted"),
+                "enable_differential_privacy": getattr(config, "enable_differential_privacy", False),
+                "dp_epsilon": getattr(config, "dp_epsilon", 0.0),
+                "dp_delta": getattr(config, "dp_delta", 0.0),
+                "enable_secure_aggregation": getattr(config, "enable_secure_aggregation", False),
+                "enable_poisoning_simulation": getattr(config, "enable_poisoning_simulation", False),
+            })
+            return run
+        except Exception as e:
+            logger.warning("Failed to initialize MLflow tracking: %s", e)
+            return None
+
+    def _log_mlflow_round(self, run: Any, round_num: int, round_loss: float, active_participants: int, privacy_budget: float) -> None:
+        """Log round metrics to MLflow."""
+        if not run:
+            return
+        try:
+            import mlflow
+            mlflow.log_metrics({
+                "round_global_loss": round_loss,
+                "active_participants": active_participants,
+                "privacy_budget_spent": privacy_budget,
+            }, step=round_num)
+        except Exception as e:
+            logger.warning("Failed to log round metrics to MLflow: %s", e)
+
+    def _finalize_mlflow(self, run: Any, banks: list[Any], status: str, error_message: str | None = None) -> None:
+        """Log final metrics and close MLflow run."""
+        if not run:
+            return
+        try:
+            import mlflow
+
+            # Log final status
+            mlflow.set_tag("simulation_status", status)
+            if error_message:
+                mlflow.set_tag("error", error_message)
+
+            # Log average metrics across all banks
+            valid_banks = [b for b in banks if getattr(b, "federated_metrics", None) is not None]
+            if valid_banks:
+                avg_accuracy = sum(b.federated_metrics.accuracy for b in valid_banks) / len(valid_banks)
+                avg_precision = sum(b.federated_metrics.precision for b in valid_banks) / len(valid_banks)
+                avg_recall = sum(b.federated_metrics.recall for b in valid_banks) / len(valid_banks)
+                avg_f1_score = sum(b.federated_metrics.f1_score for b in valid_banks) / len(valid_banks)
+                avg_auc_roc = sum(b.federated_metrics.auc_roc for b in valid_banks) / len(valid_banks)
+
+                mlflow.log_metrics({
+                    "final_avg_accuracy": avg_accuracy,
+                    "final_avg_precision": avg_precision,
+                    "final_avg_recall": avg_recall,
+                    "final_avg_f1_score": avg_f1_score,
+                    "final_avg_auc_roc": avg_auc_roc,
+                })
+
+                # Log metrics per bank
+                for b in valid_banks:
+                    mlflow.log_metrics({
+                        f"{b.id}_accuracy": b.federated_metrics.accuracy,
+                        f"{b.id}_precision": b.federated_metrics.precision,
+                        f"{b.id}_recall": b.federated_metrics.recall,
+                        f"{b.id}_f1_score": b.federated_metrics.f1_score,
+                        f"{b.id}_auc_roc": b.federated_metrics.auc_roc,
+                    })
+
+            mlflow.end_run()
+        except Exception as e:
+            logger.warning("Failed to finalize MLflow run: %s", e)
 
     @staticmethod
     def _notify(

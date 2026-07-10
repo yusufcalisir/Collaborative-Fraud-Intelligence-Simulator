@@ -345,27 +345,46 @@ class AlertIntelligenceService:
 
     @staticmethod
     def _get_top_features(txn: dict, score: float) -> list[dict[str, float | str]]:
-        """Estimate feature contributions for explainability."""
-        features: list[dict[str, float | str]] = []
-        feature_weights = {
-            "transaction_amount": 0.20,
-            "velocity": 0.18,
-            "merchant_risk_score": 0.15,
-            "customer_history_score": 0.12,
-            "country_code": 0.10,
-            "hour_of_day": 0.08,
-            "account_age_days": 0.07,
-            "chargeback_count": 0.05,
-            "device_type": 0.03,
-            "merchant_category": 0.02,
-        }
-        for feat, base_weight in feature_weights.items():
-            val = txn.get(feat, 0)
-            if isinstance(val, str):
-                val = hash(val) % 100 / 100  # Normalize categorical
-            contribution = base_weight * score * (0.5 + 0.5 * min(1.0, float(val) / 100))
-            features.append({"feature": feat, "contribution": round(contribution, 4)})
-        return sorted(features, key=lambda f: float(f["contribution"]), reverse=True)
+        """Estimate feature contributions for explainability using SHAP."""
+        try:
+            from app.application.services.explainability_service import ExplainabilityService
+
+            explainer = ExplainabilityService()
+            shap_features = explainer.compute_shap_values(txn)
+            return [
+                {
+                    "feature": f["feature"],
+                    "contribution": round(f["contribution"], 4),
+                    "value": round(f["contribution"], 4),
+                }
+                for f in shap_features
+            ]
+        except Exception as e:
+            logger.warning("SHAP explainability computation failed: %s. Falling back to heuristic.", e)
+            features: list[dict[str, float | str]] = []
+            feature_weights = {
+                "transaction_amount": 0.20,
+                "velocity": 0.18,
+                "merchant_risk_score": 0.15,
+                "customer_history_score": 0.12,
+                "country_code": 0.10,
+                "hour_of_day": 0.08,
+                "account_age_days": 0.07,
+                "chargeback_count": 0.05,
+                "device_type": 0.03,
+                "merchant_category": 0.02,
+            }
+            for feat, base_weight in feature_weights.items():
+                val = txn.get(feat, 0)
+                if isinstance(val, str):
+                    val = hash(val) % 100 / 100  # Normalize categorical
+                contribution = base_weight * score * (0.5 + 0.5 * min(1.0, float(val) / 100))
+                features.append({
+                    "feature": feat,
+                    "contribution": round(contribution, 4),
+                    "value": round(contribution, 4),
+                })
+            return sorted(features, key=lambda f: float(f["contribution"]), reverse=True)
 
     @staticmethod
     def _get_risk_factors(txn: dict, score: float) -> list[str]:

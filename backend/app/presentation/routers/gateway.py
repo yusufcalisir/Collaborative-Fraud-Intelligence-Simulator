@@ -54,6 +54,7 @@ PATH_ROUTING = {
     "/api/v1/simulations": "fl-coordinator",
     "/api/v1/banks": "fl-coordinator",
     "/api/v1/training": "fl-coordinator",
+    "/api/v1/registry": "fl-coordinator",
     "/api/v1/entities": "identity-graph",
     "/api/v1/graph": "identity-graph",
     "/api/v1/alerts": "fraud-alert",

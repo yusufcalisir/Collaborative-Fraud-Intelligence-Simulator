@@ -84,6 +84,15 @@ logs/
 *.pth
 *.onnx
 
+# MLflow experiment tracking data
+mlruns/
+
+# Model registry & storage (runtime data)
+backend/app/storage/
+
+# Ruff
+.ruff_cache/
+
 # Agent / Simulator metadata & Batch Scripts
 .agents/
 .gemini/
@@ -91,6 +100,4 @@ implementation_plan.md
 task.md
 walkthrough.md
 run_local.bat
-
-
 deploy_hf.bat

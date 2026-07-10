@@ -31,6 +31,7 @@ from app.presentation.routers import (
     scenarios,
     simulation,
     training,
+    model_registry,
 )
 from app.presentation.websockets import streaming_ws, training_ws
 
@@ -205,6 +206,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown hooks."""
     logger.info("Environment: %s", settings.app_env)
 
+    # Configure PyTorch runtime threads for 2 cores
+    try:
+        import torch
+
+        torch.set_num_threads(2)
+        torch.set_num_interop_threads(2)
+    except Exception as e:
+        logger.warning("Could not set PyTorch threading limits: %s", e)
+
     # Seed mock data
     try:
         seed_mock_data()
@@ -276,6 +286,7 @@ elif service_name == "fl-coordinator":
     app.include_router(simulation.router)
     app.include_router(banks.router)
     app.include_router(training.router)
+    app.include_router(model_registry.router)
     app.include_router(training_ws.router)
 
 elif service_name == "identity-graph":
@@ -303,6 +314,7 @@ else:
     app.include_router(simulation.router)
     app.include_router(banks.router)
     app.include_router(training.router)
+    app.include_router(model_registry.router)
     app.include_router(training_ws.router)
     app.include_router(alerts.router)
     app.include_router(cases.router)

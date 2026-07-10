@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: str = "http://jaeger:4317"
     otel_service_name: str = "cfi-backend"
 
+    # ── MLflow Experiment Tracking ────────────
+    mlflow_enabled: bool = True
+    mlflow_tracking_uri: str = "mlruns"
+    mlflow_experiment_name: str = "Collaborative-Fraud-Intelligence"
+
     @property
     def database_url(self) -> str:
         """Async PostgreSQL connection URL."""

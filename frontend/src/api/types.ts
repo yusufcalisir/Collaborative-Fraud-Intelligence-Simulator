@@ -79,9 +79,31 @@ export interface BankDistributionData {
   merchant_risk: MerchantRisk;
 }
 
+export interface DriftMetric {
+  psi: number;
+  js_divergence: number;
+  ks?: number;
+  status: 'stable' | 'moderate' | 'drifted';
+}
+
+export interface FeatureDriftInfo {
+  overall_psi: number;
+  overall_js: number;
+  features: Record<string, DriftMetric>;
+}
+
+export interface ConceptDriftInfo {
+  overall_psi: number;
+  overall_js: number;
+  model_prediction_drift: DriftMetric;
+  conditional_drifts: Record<string, number>;
+}
+
 export interface DivergenceSummary {
   amount_ks_statistic: Record<string, number>;
   overall_non_iid_score: number;
+  feature_drift?: Record<string, FeatureDriftInfo>;
+  concept_drift?: Record<string, ConceptDriftInfo>;
 }
 
 export interface BankDistributions {
@@ -102,6 +124,29 @@ export interface BankResult {
   data_profile: DataProfile | null;
 }
 
+export interface CanaryEvaluation {
+  version: number;
+  candidate_auc: number;
+  promoted_auc: number;
+  is_promoted: boolean;
+  reason: string;
+}
+
+export interface ModelVersion {
+  version: number;
+  filename: string;
+  metrics: {
+    accuracy: number;
+    precision: number;
+    recall: number;
+    f1_score: number;
+    auc_roc: number;
+    loss: number;
+  };
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface TrainingRound {
   round_number: number;
   total_rounds: number;
@@ -111,6 +156,7 @@ export interface TrainingRound {
   duration_ms: number;
   privacy_budget: number;
   feature_importance?: Record<string, number>;
+  canary_info?: CanaryEvaluation;
 }
 
 export interface SimulationSummary {

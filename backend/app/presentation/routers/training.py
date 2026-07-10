@@ -40,6 +40,7 @@ async def get_training_rounds(simulation_id: str) -> list[dict]:
                     "duration_ms": data.get("duration_ms", 0),
                     "privacy_budget": data.get("privacy_budget", 0),
                     "feature_importance": data.get("feature_importance", {}),
+                    "canary_info": data.get("canary_info", {}),
                 }
             )
 

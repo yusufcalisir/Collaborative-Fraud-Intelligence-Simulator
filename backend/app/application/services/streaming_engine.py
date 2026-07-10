@@ -260,33 +260,44 @@ class StreamingEngine:
             reason_codes = payload.get("reason_codes", ["SUSP-PATTERN"])
             confidence = payload.get("confidence", 0.5)
 
-            top_features = []
+            # Reconstruct a dummy transaction to run through SHAP
+            txn_dummy = {
+                "transaction_amount": 1000.0,
+                "velocity": 1.0,
+                "merchant_risk_score": 0.1,
+                "customer_history_score": 0.9,
+                "country_code": "US",
+                "device_type": "web",
+                "hour_of_day": 12,
+                "chargeback_count": 0,
+                "account_age_days": 365,
+            }
             risk_factors = []
 
-            # Map of reason codes to features, base values, and descriptions
+            # Map of reason codes to features, values, and descriptions
             code_feature_map = {
-                "VEL-001": ("velocity", 0.85, "Rapid transaction frequency (velocity anomaly)"),
-                "DEV-ANOM": ("device_type", 0.80, "New device registration (device type mismatch)"),
+                "VEL-001": ("velocity", 15.0, "Rapid transaction frequency (velocity anomaly)"),
+                "DEV-ANOM": ("device_type", "other", "New device registration (device type mismatch)"),
                 "AMT-ANOM": (
                     "transaction_amount",
-                    0.90,
+                    8500.0,
                     "Transaction amount significantly exceeds normal average",
                 ),
                 "HIGH-AMT": (
                     "transaction_amount",
-                    0.92,
+                    9500.0,
                     "High transaction amount threshold exceeded",
                 ),
-                "GEO-RISK": ("country_code", 0.75, "Out-of-pattern geographic destination"),
-                "MERCH-RISK": ("merchant_risk_score", 0.78, "High-risk merchant category"),
+                "GEO-RISK": ("country_code", "NG", "Out-of-pattern geographic destination"),
+                "MERCH-RISK": ("merchant_risk_score", 0.9, "High-risk merchant category"),
                 "NEW-ACCT": (
                     "account_age_days",
-                    0.70,
+                    5,
                     "Transaction initiated from a recently opened account",
                 ),
                 "CB-HIST": (
                     "chargeback_count",
-                    0.82,
+                    8,
                     "Associated entity has prior history of dispute or chargebacks",
                 ),
             }
@@ -294,45 +305,27 @@ class StreamingEngine:
             for code in reason_codes:
                 if code in code_feature_map:
                     feat, val, desc = code_feature_map[code]
-                    top_features.append({"feature": feat, "value": val * confidence})
+                    txn_dummy[feat] = val
                     risk_factors.append(desc)
 
-            # If no features matched, add some standard ones based on description
-            if not top_features:
+            # Fallback if no risk factors mapped
+            if not risk_factors:
                 desc_lower = payload.get("description", "").lower()
                 if "velocity" in desc_lower or "rapid" in desc_lower:
-                    top_features.append({"feature": "velocity", "value": 0.88 * confidence})
+                    txn_dummy["velocity"] = 15.0
                     risk_factors.append("Rapid sequence of transactions detected")
                 elif "device" in desc_lower or "phone" in desc_lower:
-                    top_features.append({"feature": "device_type", "value": 0.85 * confidence})
+                    txn_dummy["device_type"] = "other"
                     risk_factors.append("Device profile change mismatch")
                 elif "wire" in desc_lower or "amount" in desc_lower:
-                    top_features.append(
-                        {"feature": "transaction_amount", "value": 0.90 * confidence}
-                    )
+                    txn_dummy["transaction_amount"] = 9000.0
                     risk_factors.append("High amount transaction anomaly")
                 else:
-                    top_features.append(
-                        {"feature": "transaction_amount", "value": 0.75 * confidence}
-                    )
+                    txn_dummy["transaction_amount"] = 7500.0
                     risk_factors.append("Statistical deviation from historical behavior")
 
-            # Always ensure we have at least 3 distinct features for realism
-            all_features = [
-                ("transaction_amount", 0.45),
-                ("velocity", 0.40),
-                ("merchant_risk_score", 0.35),
-                ("customer_history_score", 0.30),
-                ("hour_of_day", 0.25),
-            ]
-            for feat, base_val in all_features:
-                if len(top_features) >= 4:
-                    break
-                if not any(tf["feature"] == feat for tf in top_features):
-                    top_features.append({"feature": feat, "value": base_val * confidence})
-
-            # Sort top features by value descending
-            top_features = sorted(top_features, key=lambda tf: tf["value"], reverse=True)
+            # Get features through SHAP (using the alert_svc._get_top_features method)
+            top_features = alert_svc._get_top_features(txn_dummy, confidence)
 
             # Combine risk factors with description
             combined_risk_factors = []

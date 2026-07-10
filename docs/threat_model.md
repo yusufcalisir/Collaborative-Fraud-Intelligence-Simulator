@@ -129,3 +129,63 @@ With default settings (ε=1.0, δ=1e-5) over 10 rounds:
 | Key management | None | HSM-backed key infrastructure |
 
 This gap analysis is intentional — the simulator demonstrates the concepts. Production deployment requires hardening each layer.
+
+---
+
+## 7. STRIDE Threat Classification
+
+The system architecture and interfaces are mapped against the **STRIDE** security threat taxonomy (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) to catalog security coverage:
+
+| Threat Category | Specific Threat Description | Affected Components | Active Mitigations | Production Gap / Residual Risk |
+|:---|:---|:---|:---|:---|
+| **Spoofing** | A compromised or malicious node masquerades as a verified participating bank to send false parameters or steal global weights. | FL Aggregation Coordinator, WebSockets | salted HMAC entity identification in entity resolution | Absence of TLS Client Certificates (mTLS) in local loop. |
+| **Tampering** | A participant alters local parameters to degrade model performance (Model Poisoning) or inject backdoors. | Pytorch Training, FedAvg Engine | Byzantine-Robust aggregation (Krum, Coordinate-wise Median) | Attack scale threshold limits. If $>50\%$ of nodes are compromised, median fails. |
+| **Repudiation** | An attacker performs malicious actions (e.g., model poisoning) and denies execution due to lack of non-repudiation logs. | Microservices Gateway | Audit trail logs, event streaming logs | Logging records are not cryptographically signed or sealed. |
+| **Information Disclosure** | Passive intercept of model weights allows gradient inversion, reconstructing raw transaction features or identity fields. | Network Gateway, Aggregation Engine | Differential Privacy (L2 clipping + noise), Secure Aggregation masking | Basic composition limits budget tracking. Requires advanced accounting. |
+| **Denial of Service** | A client drops offline or sends malformed weights, stalling coordinator aggregation routines. | flower_engine, Celery Workers | Quorum checks ($\ge$ Min Clients), timeout intervals, fallback state | Distributed denial of service on gateway endpoints. |
+| **Elevation of Privilege** | An unauthorized client gains access to case management records or starts scenarios via gateway. | gateway API router | Gateway rate limiting, endpoint prefix checks, role-based checks | Weak API keys validation, lack of JWT/OAuth2 integration. |
+
+---
+
+## 8. OWASP ASVS (Application Security Verification Standard) v4.0 Mapping
+
+The security configuration maps against the following **ASVS Level 2** controls, identifying compliance status:
+
+*   **V1 Architecture, Design and Threat Modeling:**
+    *   *1.1.1 (Secure Software Development Lifecycle):* **Secure.** Simulator implements automated unit verification checks (`pytest`) and code formatting quality gates (`ruff`).
+    *   *1.1.2 (Threat Modeling):* **Secure.** Detailed trust boundaries and data flow assets defined within this threat model document.
+*   **V2 Authentication Verification Requirements:**
+    *   *2.10.1 (API Key Management):* **Partial.** API Gateway supports salted token checks but relies on environment configurations rather than dynamic vault storage.
+*   **V3 Session Management Verification Requirements:**
+    *   *3.4.1 (State Isolation):* **Secure.** Replicated stateless tasks and Redis session layers prevent cross-tenant memory leakage.
+*   **V5 Input Validation, Security Gate, and Parameter Handling:**
+    *   *5.1.1 (Sanitization):* **Secure.** Deep FastAPI Pydantic type constraints enforce strict schemas on all simulation configs, alerts, and cases endpoints.
+*   **V8 Data Protection Verification Requirements:**
+    *   *8.1.1 (Sensitive Data Storage):* **Secure.** Bank data remains entirely localized on memory frames during iterations. No transaction databases are shared.
+*   **V9 Communication Security Verification Requirements:**
+    *   *9.1.1 (Transport Security):* **Gap.** Simulator operates on HTTP/WS localhost channels. Production target requires TLS 1.3 mutual auth.
+*   **V11 Business Logic Verification Requirements:**
+    *   *11.1.1 (Canary Gate Promotion):* **Secure.** Newly trained aggregated models are evaluated on a holdout validation set and compared with the active model. Models are only promoted if they pass the gate.
+
+---
+
+## 9. MITRE ATLAS (Adversarial ML) Taxonomy Mapping
+
+Adversarial ML risks are audited against the **MITRE ATLAS** (Adversarial Threat Landscape for Artificial-Intelligence Systems) matrix:
+
+*   **AML.TA0001 — Reconnaissance (Active/Passive):**
+    *   *Technique:* AML.T0002 (Identify Sensitive Data). An attacker attempts to discover transaction fields by intercepting weights.
+    *   *Mitigation:* Salted one-way HMAC entity masking prevents reverse lookup of raw PII elements.
+*   **AML.TA0002 — Initial Access:**
+    *   *Technique:* AML.T0006 (Compromise Client Node). Adversary compromises Bank C's local trainer process.
+    *   *Mitigation:* Aggregation coordinator operates outside the trust boundaries of individual clients, utilizing sandboxed PyTorch execution threads.
+*   **AML.TA0003 — Execution:**
+    *   *Technique:* AML.T0009 (User Execution of Malicious Model). Promoting a compromised global model to downstream banks.
+    *   *Mitigation:* **Canary Evaluation** blocks promotion of poisoned weight updates if validation performance drops.
+*   **AML.TA0005 — Defense Evasion:**
+    *   *Technique:* AML.T0015 (Poisoning Attack). Scaling adversarial gradient weights to bypass FedAvg averages.
+    *   *Mitigation:* **Krum** Byzantine-robust aggregation isolates the outlier updates, neutralizing poisoning attempts.
+*   **AML.TA0009 — Exfiltration:**
+    *   *Technique:* AML.T0024 (Model Inversion). Reconstructing training distribution records.
+    *   *Mitigation:* **Differential Privacy** adds calibrated Gaussian noise, mathematically bounding reconstruction success probability.
+

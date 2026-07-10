@@ -8,6 +8,7 @@ import TrainingTimeline from '../components/dashboard/TrainingTimeline';
 import FederatedTrainingAnimation from '../components/dashboard/FederatedTrainingAnimation';
 import PrivacyMonitor from '../components/dashboard/PrivacyMonitor';
 import FeatureImportanceTimeline from '../components/dashboard/FeatureImportanceTimeline';
+import ModelRegistryPanel from '../components/dashboard/ModelRegistryPanel';
 import LossChart from '../components/charts/LossChart';
 import ROCCurve from '../components/charts/ROCCurve';
 import ConfusionMatrix from '../components/charts/ConfusionMatrix';
@@ -200,6 +201,9 @@ export default function SimulationView() {
             </div>
           )}
         </motion.div>
+
+        {/* Model Registry & Canary Gating */}
+        <ModelRegistryPanel simulationId={simulation.id} />
 
         {/* Detailed Metrics Comparison Charts (visible when complete) */}
         {isComplete && banks.length > 0 && banks[0]?.local_metrics && (
