@@ -183,3 +183,125 @@ Use Tailwind CSS v4 with `@theme` directive for custom design tokens, plus a sma
 ### Tradeoff
 
 Larger initial learning curve for Tailwind v4 vs v3. The `@theme` API is relatively new. Custom CSS is still needed for glassmorphism effects.
+
+---
+
+## ED-008: Microservices Decomposition & API Gateway
+
+**Date**: 2026-07-04
+**Status**: Accepted
+
+### Context
+
+To deploy the framework as a distributed system, we need autonomous services representing independent components: control control gateway, federated aggregator, entity-graph manager, and risk processing engine.
+
+### Decision
+
+Decompose the monolithic backend into 4 microservices (`gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert`) orchestrated via Docker Compose and routed through a central API gateway.
+
+### Rationale
+
+1. **Scalability & Isolation**: Independent services prevent failure propagation (e.g., heavy PyTorch training in `fl-coordinator` doesn't block transaction screening in `fraud-alert`).
+2. **Central Routing**: The gateway handles authorization, rate-limiting, and request logging uniformly.
+3. **Graceful Fallback**: Dynamic path loading in `main.py` allows the codebase to run either as a monolith or as microservices.
+
+### Tradeoff
+
+Decomposition increases operation overhead (4 independent FastAPI processes, routing tables, and service network configs) and introduces latency overhead over internal function calls.
+
+---
+
+## ED-009: SHAP explainability with analytical fallback
+
+**Date**: 2026-07-06
+**Status**: Accepted
+
+### Context
+
+Generating explanations for composite risk scores requires attributions for PyTorch MLP predictions. Real SHAP computation is CPU-heavy and package-dependent.
+
+### Decision
+
+Implement model explainability using `shap.KernelExplainer` with a pre-selected baseline of normal transactions, and compile a fallback analytical heuristic if execution fails.
+
+### Rationale
+
+1. **Mathematical Rigor**: SHAP values provide Shapley-based game-theoretic attributions.
+2. **Robustness**: If package loading fails or inference times out, the system degrades gracefully to the analytical fallback without throwing API errors.
+
+### Tradeoff
+
+`KernelExplainer` is slow (requires multiple model evaluations per transaction). The analytical fallback is not game-theoretically optimal, but preserves system liveness.
+
+---
+
+## ED-010: Drift detection metrics
+
+**Date**: 2026-07-06
+**Status**: Accepted
+
+### Context
+
+We need to track data drift (feature shift) and concept drift (relationship shifts $P(Y \mid X)$) across independent banks.
+
+### Decision
+
+Implement binned frequency JS Divergence (bounded $[0, 1]$), dynamic percentile Population Stability Index (PSI), Kolmogorov-Smirnov (KS) tests, and model-based concept drift.
+
+### Rationale
+
+1. **Feature Shift**: PSI bucketed dynamically by the reference distribution's quantiles isolates shifts accurately.
+2. **Concept Shift**: Training a simple classifier on Reference Bank A and evaluating it on Bank B maps changes in predictions ($P(Y \mid X)$) effectively.
+
+### Tradeoff
+
+Percentile-based binning ignores actual distribution values that fall completely outside the bin boundaries. Epsilon padding is needed to avoid zero division.
+
+---
+
+## ED-011: Model registry and versioning with Canary Promotion Gate
+
+**Date**: 2026-07-08
+**Status**: Accepted
+
+### Context
+
+Aggregated models can degrade due to data drift, malicious clients (Byzantine poisoning), or convergence failure. We need to prevent poor models from going live.
+
+### Decision
+
+Build a versioned `ModelRegistry` with file-backed storage, and implement an automated **Canary Promotion Gate** checking if candidate models degrade performance.
+
+### Rationale
+
+1. **Canary Gate**: A newly aggregated candidate is promoted to active (`global_model.pt`) *only* if its validation AUC-ROC matches or exceeds the current active model's AUC-ROC minus a tolerance (`0.005`).
+2. **Rollback Ability**: Historical model states can be restored atomically via `/rollback/{version}`, updating symlinks instantly.
+
+### Tradeoff
+
+Requires storing previous state binaries on disk and running model evaluations at the end of each round, slightly increasing round duration.
+
+---
+
+## ED-012: Property-Based Verification (Hypothesis) and Scientific Benchmarking
+
+**Date**: 2026-07-10
+**Status**: Accepted
+
+### Context
+
+Validating mathematical correctness and resilience requires verifying general code invariants and testing models empirically on public datasets.
+
+### Decision
+
+Implement property-based tests using `hypothesis` to check mathematical invariants, and build a standalone `benchmark.py` running on the European cardholders dataset.
+
+### Rationale
+
+1. **Invariant Testing**: Hypothesis generates edge cases to falsify code assumptions (such as secure aggregation mask cancellation under float errors).
+2. **Empirical Validation**: Running the model on real data validates Krum and Median robustness under poisoning.
+
+### Tradeoff
+
+Property-based testing is slower than simple unit tests. The real dataset benchmark is heavy and requires downloading a ~150MB CSV.
+

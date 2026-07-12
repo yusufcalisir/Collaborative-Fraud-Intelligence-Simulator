@@ -1,150 +1,132 @@
-# Architecture
+# Clean Architecture & System Design
 
-## Overview
+## 1. Architectural Overview
 
-The Collaborative Fraud Intelligence Simulator follows **Clean Architecture** (Ports & Adapters), enforcing strict separation between business logic, application orchestration, infrastructure concerns, and API presentation.
+The Collaborative Fraud Intelligence (CFI) Simulator is designed around **Clean Architecture** (Ports & Adapters / Hexagonal Architecture) principles. It isolates core domain logic from framework, presentation, database, and telemetry concerns. Dependencies flow strictly **inward** toward the Domain layer.
 
-```
-Presentation → Application → Domain
-                   ↑
-            Infrastructure
-```
-
-Dependencies flow **inward**. The Domain layer has zero external dependencies. The Application layer defines interfaces (ports) that the Infrastructure layer implements (adapters).
-
----
-
-## Layer Responsibilities
-
-### 1. Domain Layer (`app/domain/`)
-
-The innermost layer. Contains pure business concepts with no framework imports.
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| **Entities** | `entities.py` | `Bank`, `SimulationRun`, `TrainingRound` — core business objects with identity |
-| **Value Objects** | `value_objects.py` | `ModelWeights`, `EvaluationMetrics`, `SimulationConfig`, `BankDataProfile` — immutable data carriers |
-| **Enums** | `enums.py` | `SimulationStatus`, `BankTier`, `ClientStatus`, `PrivacyMechanism`, `AggregationMethod` |
-
-**Key constraint**: No SQLAlchemy, no Pydantic, no FastAPI imports. Only Python stdlib + `dataclasses`.
-
-### 2. Application Layer (`app/application/`)
-
-Contains business logic orchestration and service definitions.
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| **SimulationService** | `services/simulation_service.py` | Orchestrates the full FL pipeline: data generation → local training → federated training → evaluation |
-| **FederatedLearningEngine** | `services/fl_engine.py` | FedAvg aggregation, client availability simulation, secure aggregation masks |
-| **ModelService** | `services/model_service.py` | PyTorch model lifecycle: create, train, evaluate, parameter exchange |
-| **PrivacyService** | `services/privacy_service.py` | Differential privacy noise, gradient clipping, budget tracking |
-| **DataGenerator** | `services/data_generator.py` | Non-IID synthetic transaction data with 3 distinct bank profiles |
-| **MetricsService** | `services/metrics_service.py` | Converts eval dicts to domain value objects, computes aggregate comparisons |
-| **Schemas** | `schemas/simulation.py` | Pydantic models for API request/response validation |
-| **Interfaces** | `interfaces/repositories.py` | Abstract repository contracts (ports) |
-
-### 3. Infrastructure Layer (`app/infrastructure/`)
-
-Implements application interfaces with concrete technologies.
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| **Database** | `database.py` | SQLAlchemy 2.0 async engine, session factory |
-| **ORM Models** | `models.py` | `SimulationRunModel`, `BankConfigModel`, `TrainingRoundModel` |
-| **Repositories** | `repositories/*.py` | Concrete implementations of repository interfaces |
-| **Cache** | `cache.py` | Redis client for progress caching and pub/sub |
-| **Celery App** | `celery_app.py` | Celery configuration with Redis broker |
-
-### 4. Presentation Layer (`app/presentation/`)
-
-HTTP/WebSocket interface.
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| **Simulation Router** | `routers/simulation.py` | CRUD endpoints + Celery task dispatch |
-| **Banks Router** | `routers/banks.py` | Bank reference data |
-| **Training Router** | `routers/training.py` | Per-round training data from Redis |
-| **Health Router** | `routers/health.py` | Liveness + readiness probes |
-| **WebSocket** | `websockets/training_ws.py` | Real-time training progress via Redis pub/sub |
-
----
-
-## Data Flow
-
-### Simulation Lifecycle
+The platform operates in two deployment modes dynamically configured by the `microservice_mode` configuration setting:
+1.  **Monolithic Mode:** Services run inside a single FastAPI control plane, communicating via direct in-process function calls.
+2.  **Microservices Mode:** The system is decomposed into 4 independent, stateless processes orchestrated via Docker Compose:
+    *   **`gateway`:** API entry point implementing rate-limiting, authentication, logging, and down-stream routing.
+    *   **`fl-coordinator`:** Manages the federated learning loops, client drops, secure aggregation, and Ray/Flower integrations.
+    *   **`identity-graph`:** Performs deterministic HMAC-SHA256 entity resolution and builds React Flow-compatible network maps.
+    *   **`fraud-alert`:** Executes the 9-Signal Risk Scoring Engine and handles case management flows.
 
 ```
-User → POST /api/v1/simulations
-         │
-         ▼
-    SimulationRouter
-         │ dispatch
-         ▼
-    Celery Task (run_simulation_task)
-         │
-         ▼
-    SimulationService.run_simulation()
-         │
-         ├── Phase 1: DataGenerator.generate_bank_datasets()
-         │     └── 3 Non-IID datasets (different fraud profiles)
-         │
-         ├── Phase 2: ModelService.train_local() × 3 banks
-         │     └── Local-only baselines for comparison
-         │
-         ├── Phase 3: FederatedLearningEngine (N rounds)
-         │     ├── For each round:
-         │     │   ├── simulate_client_availability()
-         │     │   ├── ModelService.train_local() per client
-         │     │   ├── PrivacyService.clip + add_noise (if DP)
-         │     │   ├── apply_secure_aggregation_masks (if SA)
-         │     │   └── aggregate_parameters (FedAvg)
-         │     └── Progress → Redis pub/sub → WebSocket → UI
-         │
-         └── Phase 4: ModelService.evaluate() × 3 banks
-               └── Federated model tested on each bank's data
-```
-
-### Real-time Progress Flow
-
-```
-Celery Worker                Redis                WebSocket               React UI
-     │                         │                      │                      │
-     │── publish event ──────▶│                      │                      │
-     │                         │── channel msg ─────▶│                      │
-     │                         │                      │── send_text ───────▶│
-     │                         │                      │                      │── update state
-     │                         │                      │                      │── re-render
+       [ Presentation Layer ] (FastAPI Routers, WebSockets, React UI)
+                 │
+                 ▼
+       [ Application Layer ] (Services, Orchestrators, Use Cases)
+                 │
+        ┌────────┴────────┐
+        ▼                 ▼
+  [ Domain Layer ]  [ Infrastructure Layer ] (ORM, Redis, Celery, Telemetry)
 ```
 
 ---
 
-## Concurrency Model
+## 2. Layer Responsibilities
 
-| Concern | Solution |
-|---------|----------|
-| API request handling | FastAPI (async, uvicorn) |
-| Heavy ML training | Celery workers (sync, separate process) |
-| Progress notifications | Redis pub/sub → async WebSocket |
-| Database I/O | SQLAlchemy 2.0 async (asyncpg) |
-| Cache reads | redis.asyncio |
+### 2.1 Domain Layer (`backend/app/domain/`)
+The core domain model, written in pure Python. It contains business definitions, structures, and value objects. It remains completely independent of FastAPI, Pydantic, SQLAlchemy, or PyTorch.
 
-The API process **never blocks** on training. Celery workers run synchronously (PyTorch doesn't benefit from async) and push progress updates through Redis.
+*   `enums.py`: Enumerations for FL Engine types, Privacy mechanisms, Client status, and Bank tiers.
+*   `entities.py` & `entities_phase2.py`: Entities with active identity (`Bank`, `SimulationRun`, `TrainingRound`, `Alert`, `Case`, `ResolvedEntity`).
+*   `value_objects.py` & `value_objects_phase2.py`: Immutable data structures (`ModelWeights`, `EvaluationMetrics`, `RiskSignal`, `GraphNode`, `GraphEdge`).
+
+### 2.2 Application Layer (`backend/app/application/`)
+Contains business logic orchestration. Defines ports (interfaces) for data access, which are implemented by the infrastructure layer.
+
+*   `services/fl_engine.py`: Implements parameter aggregation (FedAvg, coordinate median, Krum) and secure aggregation masking.
+*   `services/model_service.py`: Lifecycle of the PyTorch MLP model (training, CPU/GPU evaluation, Integrated Gradients attributions).
+*   `services/privacy_service.py`: Bounded L2 gradient clipping and Gaussian mechanism noise addition.
+*   `services/risk_engine.py`: Combines 9 independent heuristic and ML signals into a single score ($0 \text{ to } 1000$).
+*   `services/entity_resolution.py`: Computes deterministic one-way HMAC-SHA256 privacy hashes for account and device identifiers.
+*   `services/explainability_service.py`: Computes SHAP attributions using `shap.KernelExplainer` with analytical fallbacks.
+*   `services/model_registry.py`: Manifest-backed model repository managing versioning, active symlinks, and Canary Gates.
+
+### 2.3 Infrastructure Layer (`backend/app/infrastructure/`)
+Concrete implementation of dependencies. Adapts foreign libraries and databases.
+
+*   `database.py` & `models.py`: SQLAlchemy 2.0 async engine and relational database tables.
+*   `redis_store.py`: A fault-tolerant state manager. It synchronizes simulation configurations and round metrics to Redis. If Redis is unreachable, it falls back to a thread-safe, in-memory cache to maintain liveness.
+*   `telemetry.py`: Bypasses metrics or mounts a `/metrics` ASGI app for Prometheus based on configurations.
+*   `celery_app.py`: Background worker queue for handling long-running PyTorch training loops without blocking FastAPI.
+
+### 2.4 Presentation Layer (`backend/app/presentation/`)
+Interactions with clients.
+*   `routers/*.py`: FastAPI REST API endpoints verifying request formats via Pydantic schemas.
+*   `websockets/*.py`: Persistent WebSocket connections sending training round progress and scenario replay events.
 
 ---
 
-## Frontend Architecture
+## 3. Data Flow & Mechanics
+
+### 3.1 Federated Training Cycle
+```
+[React UI] ──(Start)──► [Gateway] ──► [Simulation Tasks (Celery)]
+                                             │
+   ┌─────────────────────────────────────────┘
+   ▼
+[fl-coordinator]
+   ├── 1. Generate Non-IID bank datasets
+   ├── 2. For round r = 1..R:
+   │     ├── Apply client availability (dropout probability)
+   │     ├── Client local SGD training (ModelService.train_local)
+   │     ├── If DP: PrivacyService.clip_model_update + add_noise_to_weights
+   │     ├── If SecAgg: apply_secure_aggregation_masks
+   │     └── Aggregate parameters (FedAvg, Median, or Krum)
+   ├── 3. Evaluate candidate model on holdout validation data
+   └── 4. Promote candidate if AUC >= Active AUC - 0.005 (Canary Gate)
+```
+
+### 3.2 Real-Time Collaborative AML Screening
+```
+[Transaction Event] ──► [fraud-alert Service]
+                                │
+                                ▼
+                    [Risk Scoring Engine] (9 Signals)
+                                │
+                                ▼ (If Score >= 600)
+                     [Alert Generated] ──(HMAC-SHA256)──► [identity-graph]
+                                                                │
+                                                                ▼
+                                                      [Entity Resolution]
+                                                                │
+                                                                ▼
+                                                        [React Flow Map]
+```
+
+---
+
+## 4. Analytical Drift Detection Suite
+
+We implement dynamic, multi-pair statistical checks inside `presentation/routers/banks.py`:
+
+1.  **Jensen-Shannon (JS) Divergence:** Measures categorical and continuous feature probability divergence:
+    $$D_{\text{JS}}(P \parallel Q) = \frac{1}{2} D_{\text{KL}}(P \parallel M) + \frac{1}{2} D_{\text{KL}}(Q \parallel M)$$
+    where $M = \frac{1}{2}(P + Q)$, using base-2 logarithm to bound outcomes in $[0, 1]$.
+2.  **Population Stability Index (PSI):** Measures feature shifts across dynamic decile bins:
+    $$\text{PSI} = \sum_{b=1}^{B} (A_b - E_b) \times \ln\left(\frac{A_b}{E_b}\right)$$
+3.  **Concept Drift:** Evaluates $P(Y \mid X)$ stability by training a logistic regression model on Bank A and calculating the prediction shift on Bank B, paired with segment-specific conditional JS drifts.
+
+---
+
+## 5. Technology Stack & Directory Structure
 
 ```
-src/
-├── api/             # API client, React Query hooks, TypeScript types
-├── components/
-│   ├── layout/      # Layout, Sidebar, Header
-│   ├── dashboard/   # BankCard, SimulationControls, TrainingTimeline, MetricsComparison
-│   └── charts/      # LossChart, ROCCurve, ConfusionMatrix, FeatureImportance, MetricsRadar
-├── pages/           # Dashboard, SimulationView
-└── utils/           # Formatters, constants
+├── backend/
+│   ├── app/
+│   │   ├── domain/               # Domain Value Objects & Entities
+│   │   ├── application/          # Service Layer (Business Logic)
+│   │   ├── infrastructure/       # Database, Redis, Celery, Telemetry
+│   │   └── presentation/         # API Controllers & WebSocket handlers
+│   └── tests/                    # Unit, Integration, & Property-Based suites
+├── frontend/
+│   ├── src/
+│   │   ├── api/                  # REST client and Query hooks
+│   │   ├── components/           # Reusable Layouts, Dashboards, Charts
+│   │   └── pages/                # Views (Dashboard, Alerts, Registry, Graph)
+│   └── package.json
+└── docs/                         # Security & System Design documentation
 ```
-
-**State management**: React Query for server state (auto-refetch, caching). No client-side state management needed beyond local component state.
-
-**Chart library**: Recharts — composable, React-native, supports responsive containers.

@@ -1,192 +1,85 @@
-# System Design
+# Collaborative Fraud Intelligence Platform - System Design
 
-> This document presents the system design as if answering a system design interview question: *"Design a privacy-preserving fraud detection system where multiple banks collaborate without sharing data."*
+## 1. System Requirements & Goals
 
----
+### 1.1 Functional Requirements
+*   **Decentralized Collaboration:** Multiple banks train a collaborative ML model for credit card fraud detection without sharing raw transactions.
+*   **Privacy Guarantees:** Support Local Differential Privacy (LDP) with budget composition and Secure Aggregation pairwise masking.
+*   **Byzantine Fault Tolerance:** Protect server aggregation from malicious node model/weight poisoning attacks.
+*   **Real-time Collaborative AML:** Generate alerts on suspicious activity, hash identity values using HMAC-SHA256, resolve entities across banks, and build network graphs dynamically.
+*   **Canary Quality Gate:** Validate newly trained global models on holdout validation data before promoting them to active production.
+*   **Drift Monitoring:** Measure and alert on Feature Drift (data shift) and Concept Drift (relationship changes) across bank populations.
 
-## 1. Requirements
-
-### Functional
-
-- Three independent banks want to improve fraud detection
-- Banks cannot share raw transaction data (regulatory constraint)
-- System should demonstrate measurable improvement from collaboration
-- Real-time visibility into training progress
-- Support for privacy-enhancing technologies (DP, secure aggregation)
-- Resilience to client failures during training
-
-### Non-Functional
-
-- **Privacy**: No raw data leaves the bank boundary. Only model updates (gradients) are shared.
-- **Correctness**: FedAvg aggregation produces a valid global model.
-- **Observability**: Every round's metrics are tracked and visualized.
-- **Reproducibility**: Deterministic with fixed random seeds.
-- **Extensibility**: Adding new aggregation methods, privacy mechanisms, or banks should require minimal changes.
+### 1.2 Non-Functional Requirements
+*   **Stateless Scaling:** All API, graph resolution, and training orchestration services must remain stateless, delegating state to PostgreSQL/Redis.
+*   **Fault Tolerance:** Active simulations must handle Celery worker restarts, DB connection drops, and Redis failures gracefully.
+*   **Low Latency API Gateway:** Screen transactions with attributions (SHAP) under low latency constraints.
 
 ---
 
-## 2. High-Level Design
+## 2. High-Level Architecture
+
+CFI Simulator utilizes 4 decoupled microservices coordinated via Docker Compose:
 
 ```
-                    ┌─────────────────────┐
-                    │   Central Server    │
-                    │   (Aggregator)      │
-                    │                     │
-                    │  ┌───────────────┐  │
-                    │  │ Global Model  │  │
-                    │  └───────┬───────┘  │
-                    │          │          │
-                    └──────────┼──────────┘
-                   ┌───────────┼───────────┐
-                   │           │           │
-            ┌──────▼──┐  ┌────▼─────┐  ┌──▼───────┐
-            │ Bank A  │  │  Bank B  │  │  Bank C  │
-            │         │  │          │  │          │
-            │ Local   │  │ Local    │  │ Local    │
-            │ Data +  │  │ Data +   │  │ Data +   │
-            │ Model   │  │ Model    │  │ Model    │
-            └─────────┘  └──────────┘  └──────────┘
-
-    Round Protocol:
-    1. Server sends global model weights → each bank
-    2. Each bank trains locally on its own data
-    3. Each bank sends updated weights → server
-    4. Server aggregates weights (FedAvg)
-    5. Repeat for N rounds
+                          [ Client Browser / UI ]
+                                    │
+                                    ▼ (HTTPS / WSS)
+                           [ Gateway Service ]
+                                    │
+         ┌──────────────────────────┼─────────────────────────┐
+         ▼ (Routing)                ▼ (Routing)               ▼ (Routing)
+  [ fl-coordinator ]         [ identity-graph ]         [ fraud-alert ]
+   (Training & FL)            (Entity & React Flow)      (Risk & Cases)
+         │                          │                         │
+         └──────────────────────────┼─────────────────────────┘
+                                    ▼
+                     [ Redis Cache & Event Broker ]
+                                    ▼
+                      [ PostgreSQL Relational DB ]
 ```
 
-In production, each "bank" would be a separate machine. In this simulator, all three are logical partitions running in the same process, which lets us:
-
-- Control data generation with Non-IID profiles
-- Inject failures deterministically
-- Compare local vs federated models with the same test data
+### 2.1 Microservice Descriptions
+1.  **`gateway` (Port 8000):** Acts as the reverse proxy. It implements token rate-limiting, request logs, and path prefix routing to downstream services.
+2.  **`fl-coordinator` (Port 8001):** Houses PyTorch training loops, secure aggregation, client dropouts, and the Flower/Ray adapters.
+3.  **`identity-graph` (Port 8002):** Manages HMAC hash resolution and parses resolved entities into dynamic React Flow elements.
+4.  **`fraud-alert` (Port 8003):** Houses the 9-Signal Risk Scoring Engine, explainability (SHAP), and case resolution.
 
 ---
 
-## 3. Core Components
+## 3. Core Component Design
 
-### 3.1 Data Generation (Non-IID)
-
-Real banks have **non-identically distributed** data. We simulate three distinct fraud profiles:
-
-| Bank | Size | Fraud Rate | Pattern |
-|------|------|-----------|---------|
-| Meridian National (Large) | 50K txns | 0.8% | Velocity spikes, late-night hours |
-| Nexus Digital (Medium) | 30K txns | 2.5% | New accounts, international transfers |
-| Heritage Regional (Small) | 20K txns | 1.2% | Card testing, small-then-large amounts |
-
-This Non-IID distribution is critical — it's what makes federated learning interesting. If all banks had identical data distributions, there'd be no collaborative advantage.
-
-### 3.2 Model Architecture
-
-**Fraud Detection MLP** (Multi-Layer Perceptron):
-
+### 3.1 Data Flow: Streaming Screening & Explanation
 ```
-Input (10 features)
-    │
-    ▼
-Linear(10, 64) → BatchNorm → ReLU → Dropout(0.3)
-    │
-    ▼
-Linear(64, 32) → BatchNorm → ReLU → Dropout(0.2)
-    │
-    ▼
-Linear(32, 1) → Sigmoid
-    │
-    ▼
-Output (fraud probability)
+[Transaction JSON] ──► [fraud-alert] ──► [Risk Engine] (9 Signals)
+                                               │
+               ┌───────────────────────────────┴───────────────┐
+               ▼ (Risk Score >= 600)                           ▼ (Attributions)
+      [Generate Alert]                               [Integrated Gradients]
+               │                                               │
+               ▼ (HMAC-SHA256)                                 ▼
+      [Send Hash Entity]                                [SHAP Attributions]
+               │                                               │
+               ▼                                               ▼
+      [identity-graph] ──► [React Flow Chart]        [Explainability Chart]
 ```
 
-10 input features: `amount`, `hour`, `day_of_week`, `merchant_category`, `channel`, `country`, `account_age_days`, `is_international`, `velocity_1h`, `amount_to_mean_ratio`.
+### 3.2 State Management & Cache Resilience
+Services write states to `RedisStore`. If Redis goes offline, `RedisStore` catches the exception and routes reads/writes to a thread-safe, in-memory Python dictionary backend. This ensures the demo interface and local test suites remain stable under transient failures.
 
-### 3.3 Federated Averaging (FedAvg)
-
-```
-                     n_k
-    w_global = Σ  ───── · w_k
-               k    N
-
-    where:
-    - w_k = weights from bank k
-    - n_k = number of training samples at bank k
-    - N   = total training samples across all banks
-```
-
-Weighted averaging ensures banks with more data have proportionally more influence — appropriate because more data generally means more representative gradients.
-
-### 3.4 Privacy Mechanisms
-
-**Differential Privacy**:
-- Gradient clipping: `||Δw|| ≤ C` (L2 norm bound)
-- Gaussian noise: `N(0, σ²)` where `σ = C · √(2 ln(1.25/δ)) / ε`
-- Budget tracking: cumulative ε across rounds
-
-**Secure Aggregation** (simulated):
-- Pairwise random masks `r_{ij}` generated between each client pair
-- Bank i adds `r_{ij}`, Bank j subtracts `r_{ij}` → masks cancel during summation
-- Server sees only the aggregate, not individual updates
-
-### 3.5 Failure Injection
-
-- **Client dropout**: Banks randomly go offline with configurable probability
-- **Reconnection**: Previously dropped banks can rejoin (~70% probability)
-- **Minimum quorum**: Training round requires minimum N clients (default 2/3)
-- **Graceful degradation**: Rounds with insufficient clients are skipped, not failed
+### 3.3 Dynamic Model Registry & Canary Gates
+*   **Active Symlinking:** Active models (`global_model.pt`) are symlinked on disk. A rollback requests updates the symlink to the targeted historical manifest version atomically.
+*   **Canary Quality Gate:**
+    $$\text{Candidate AUC-ROC} \ge \text{Active AUC-ROC} - 0.005$$
+    If a candidate fails this check, it remains registered but is rejected for promotion, preventing poisoned models from being deployed.
 
 ---
 
-## 4. Scale Considerations
+## 4. Telemetry & Observability
 
-This is a simulator, but the design anticipates production scaling:
-
-| Concern | Simulator | Production |
-|---------|-----------|------------|
-| Training execution | Single Celery worker | Multiple GPU workers |
-| Client communication | In-process function calls | gRPC (Flower/flwr framework) |
-| Aggregation | NumPy in-memory | Distributed parameter server |
-| Model size | ~5K parameters (MLP) | Millions (transformer-based) |
-| Data volume | 100K synthetic txns | Billions of real txns |
-| Rounds | 10-100 | 100-1000 |
-| Secure aggregation | Pairwise mask simulation | SMPC protocols (SPDZ, ABY3) |
-
----
-
-## 5. Data Model
-
-```
-SimulationRun
-  ├── id (UUID)
-  ├── status (enum)
-  ├── config (JSON)
-  ├── banks_data (JSON — denormalized)
-  └── rounds_data (JSON)
-
-BankConfig
-  ├── simulation_id (FK)
-  ├── name, tier, fraud_ratio
-  ├── local_metrics (JSON)
-  └── federated_metrics (JSON)
-
-TrainingRound
-  ├── simulation_id (FK)
-  ├── round_number
-  ├── global_loss
-  ├── participating_bank_ids
-  ├── dropped_bank_ids
-  └── timing data
-```
-
-Metrics are stored as JSON columns for flexibility. In a production system with millions of simulations, these would be normalized into separate metric tables with proper indexing.
-
----
-
-## 6. API Design
-
-RESTful API with WebSocket for real-time updates:
-
-- `POST /simulations` → 202 Accepted (returns task ID)
-- `GET /simulations/{id}` → Full simulation state
-- `GET /simulations/{id}/comparison` → Local vs federated metrics
-- `WS /ws/training/{id}` → Real-time round events
-
-The 202 pattern is important — training can take minutes. The client polls or connects via WebSocket for progress.
+CFI includes a complete observability stack:
+*   **OpenTelemetry:** Instruments FastAPI handlers, injecting span contexts into requests.
+*   **Jaeger:** Traces transactions and training queries.
+*   **Prometheus:** Scrapes `/metrics` from all microservices, tracking API latency, active Celery tasks, and memory budgets.
+*   **MLflow:** Logs learning metrics (accuracy, precision, recall, loss, AUC-ROC) to a local server at `http://localhost:5000` for deep comparison.
+*   **Grafana:** Pre-built CFI Overview dashboard visualizing platform metrics in real time.
