@@ -64,6 +64,8 @@ class SimulationRun:
     current_round: int = 0
     total_rounds: int = 10
     error_message: str | None = None
+    rounds: list[TrainingRound] = field(default_factory=list)
+    rounds_run: int = 0
 
     @property
     def duration_seconds(self) -> float | None:

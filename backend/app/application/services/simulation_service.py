@@ -261,6 +261,10 @@ class SimulationService:
             fl_engine_type = getattr(config, "fl_engine_type", "custom")
 
             rounds: list[TrainingRound] = []
+            dropped_banks: set[str] = set()
+            client_weights: list[ModelWeights] = []
+            client_samples: list[int] = []
+            per_bank_loss: dict[str, float] = {}
 
             if fl_engine_type == "flower":
                 # ── Flower Framework Branch ────────────────────────
@@ -420,9 +424,9 @@ class SimulationService:
                         continue
 
                     # Local training at each participating bank container over HTTP
-                    client_weights: list[ModelWeights] = []
-                    client_samples: list[int] = []
-                    per_bank_loss: dict[str, float] = {}
+                    client_weights = []
+                    client_samples = []
+                    per_bank_loss = {}
 
                     # Serialize current global weights to Pydantic-compatible dict format
                     schema_weights = {
@@ -700,7 +704,7 @@ class SimulationService:
 
             else:
                 # ── Custom Engine Branch (default) ─────────────────
-                dropped_banks: set[str] = set()
+                dropped_banks = set()
 
                 if enable_dp:
                     budget = privacy_service.get_or_create_budget(
@@ -772,9 +776,9 @@ class SimulationService:
                         continue
 
                     # Local training at each participating bank
-                    client_weights: list[ModelWeights] = []
-                    client_samples: list[int] = []
-                    per_bank_loss: dict[str, float] = {}
+                    client_weights = []
+                    client_samples = []
+                    per_bank_loss = {}
 
                     for bank in participating:
                         data = bank_data[bank.id]
