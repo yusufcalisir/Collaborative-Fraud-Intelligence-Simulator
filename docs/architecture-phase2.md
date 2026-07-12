@@ -172,3 +172,47 @@ sequenceDiagram
         BC-->>Coord: 200 OK (Local Test Metrics)
     end
 ```
+
+## Event-Driven Federated Learning Engine (Redis Pub/Sub Engine)
+
+When the federated learning engine is configured as `event_driven` (e.g., `fl_engine_type = "event_driven"`), communication shifts from synchronous HTTP/REST to asynchronous event exchanges using a **Redis Pub/Sub Event Broker**.
+
+### Security & Networking Advantages
+* **Zero Inbound Port Exposure**: Bank client nodes (`bank-a`, `bank-b`, `bank-c`) do not open any inbound HTTP ports to the network. They connect to the Redis broker as outbound clients. This reflects enterprise financial networks where inbound HTTP traffic is restricted.
+* **Loose Coupling**: The central coordinator and client nodes do not require IP/port routing tables or DNS mapping of participants.
+* **Robust Correlation**: Transactions across rounds are tracked using unique message identifiers (`correlation_id`).
+
+### Messaging Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Coord as FL Coordinator
+    participant Broker as Redis Event Broker
+    participant BA as Bank Client A (Outbound Consumer)
+
+    Note over Coord, BA: 1. Initialization Phase
+    Coord->>Broker: Publish: bank_client_bank_a_init (CorrelationID: init_123)
+    Broker->>BA: Deliver event
+    Note over BA: Generate Local Partition Dataset
+    BA->>Broker: Publish: bank_client_bank_a_init_response (CorrelationID: init_123)
+    Broker-->>Coord: Deliver event (Init Complete)
+
+    loop Training Rounds (1 to N)
+        Note over Coord, BA: 2. Local Training Phase
+        Coord->>Broker: Publish: bank_client_bank_a_train (Global Weights, CorrelationID: train_1)
+        Broker->>BA: Deliver event
+        Note over BA: Train on Local Partition (SGD/DP)
+        BA->>Broker: Publish: bank_client_bank_a_train_response (Updated Weights, CorrelationID: train_1)
+        Broker-->>Coord: Deliver event
+
+        Note over Coord: 3. Secure Aggregation & Weight Update
+
+        Note over Coord, BA: 4. Evaluation Phase
+        Coord->>Broker: Publish: bank_client_bank_a_evaluate (Aggregated Weights, CorrelationID: eval_1)
+        Broker->>BA: Deliver event
+        Note over BA: Evaluate on Local Test Data
+        BA->>Broker: Publish: bank_client_bank_a_evaluate_response (Metrics, CorrelationID: eval_1)
+        Broker-->>Coord: Deliver event
+    end
+```

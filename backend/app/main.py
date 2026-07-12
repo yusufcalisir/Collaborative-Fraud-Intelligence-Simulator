@@ -223,7 +223,41 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as exc:
         logger.error("Failed to seed mock data: %s", exc, exc_info=True)
 
+    # Start Redis Bank Client Listeners
+    redis_listeners = []
+    if service_name.startswith("bank-"):
+        try:
+            from app.presentation.messaging.redis_listener import RedisBankClientListener
+
+            redis_url = settings.redis_url
+            if redis_url:
+                listener = RedisBankClientListener(redis_url=redis_url, bank_id=service_name)
+                await listener.start()
+                redis_listeners.append(listener)
+        except Exception as exc:
+            logger.error("Failed to start Redis Bank Client Listener: %s", exc)
+    elif not service_name:
+        try:
+            from app.presentation.messaging.redis_listener import RedisBankClientListener
+
+            redis_url = settings.redis_url
+            if redis_url:
+                for b_id in ["bank-a", "bank-b", "bank-c"]:
+                    listener = RedisBankClientListener(redis_url=redis_url, bank_id=b_id)
+                    await listener.start()
+                    redis_listeners.append(listener)
+        except Exception as exc:
+            logger.error("Failed to start monolith Redis Bank Client Listeners: %s", exc)
+
     yield
+
+    # Shutdown Redis Bank Client Listeners
+    for listener in redis_listeners:
+        try:
+            await listener.stop()
+        except Exception as exc:
+            logger.error("Failed to stop Redis Bank Client Listener cleanly: %s", exc)
+
     logger.info("Shutting down")
 
 

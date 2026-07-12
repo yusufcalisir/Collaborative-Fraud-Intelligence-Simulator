@@ -254,6 +254,8 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │   │   │   ├── predict.py    # Real-time serving transaction inference, risk evaluations, and alert management
 │   │   │   │   ├── simulation.py # Handles creation, retrieval, and comparison of FL runs
 │   │   │   │   └── training.py   # Yields progress data on communication rounds (incl. canary_info)
+│   │   │   ├── messaging/
+│   │   │   │   └── redis_listener.py # Background Redis Pub/Sub command event consumer worker
 │   │   │   └── websockets/
 │   │   │       ├── streaming_ws.py # Manages live WebSocket streams for scenario replays
 │   │   │       └── training_ws.py # Manages persistent WebSocket feeds for training rounds progress
@@ -267,6 +269,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │       ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
 │   │       ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
 │   │       ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks
+│   │       ├── test_event_driven_fl.py # Asserts event-driven Redis pub/sub training rounds
 │   │       ├── test_explainability_service.py # Verifies SHAP kernel value estimation and fallback heuristic rules
 │   │       ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
 │   │       ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes

@@ -106,8 +106,6 @@ services:
       uvicorn app.main:app
       --host 0.0.0.0
       --port 8011
-    ports:
-      - "8011:8011"
     environment:
       - SERVICE_NAME=bank-a
       - OTEL_ENABLED=true
@@ -135,8 +133,6 @@ services:
       uvicorn app.main:app
       --host 0.0.0.0
       --port 8012
-    ports:
-      - "8012:8012"
     environment:
       - SERVICE_NAME=bank-b
       - OTEL_ENABLED=true
@@ -164,8 +160,6 @@ services:
       uvicorn app.main:app
       --host 0.0.0.0
       --port 8013
-    ports:
-      - "8013:8013"
     environment:
       - SERVICE_NAME=bank-c
       - OTEL_ENABLED=true

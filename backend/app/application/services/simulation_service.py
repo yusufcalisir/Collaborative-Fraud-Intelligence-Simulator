@@ -307,6 +307,446 @@ class SimulationService:
                     for r in flower_result.get("rounds", [])
                 ]
 
+            elif fl_engine_type == "event_driven":
+                # ── Event-Driven Redis Pub/Sub Engine Branch ────────
+                import json
+
+                import redis
+
+                self._notify(
+                    progress_callback,
+                    simulation.id,
+                    "status",
+                    {
+                        "status": simulation.status,
+                        "message": "Initializing event-driven bank client nodes via Redis Pub/Sub",
+                    },
+                )
+
+                # Initialize local bank clients over Redis Pub/Sub
+                r_client = redis.Redis.from_url(self.settings.redis_url, decode_responses=True)
+                pubsub = r_client.pubsub()
+
+                # Subscribe to response channels
+                pubsub.subscribe(
+                    *[f"bank_client_{bank.id}_init_response" for bank in banks]
+                    + [f"bank_client_{bank.id}_train_response" for bank in banks]
+                    + [f"bank_client_{bank.id}_evaluate_response" for bank in banks]
+                )
+
+                for bank in banks:
+                    num_txns = max(500, getattr(config, f"{bank.id}_transactions", 1000) // 10)
+                    logger.info("Publishing init event for bank %s with %d txns", bank.id, num_txns)
+
+                    correlation_id = f"init_{simulation.id}_{bank.id}"
+                    r_client.publish(
+                        f"bank_client_{bank.id}_init",
+                        json.dumps(
+                            {
+                                "bank_id": bank.id,
+                                "num_transactions": num_txns,
+                                "seed": 42,
+                                "correlation_id": correlation_id,
+                            }
+                        ),
+                    )
+
+                    # Wait for initialization response
+                    resp_received = False
+                    start_time = time.perf_counter()
+                    while (time.perf_counter() - start_time) < 20.0:
+                        msg = pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
+                        if msg and msg["channel"] == f"bank_client_{bank.id}_init_response":
+                            resp_data = json.loads(msg["data"])
+                            if resp_data.get("correlation_id") == correlation_id:
+                                if resp_data.get("status") == "initialized":
+                                    resp_received = True
+                                else:
+                                    logger.error(
+                                        "Bank %s initialization failed: %s",
+                                        bank.id,
+                                        resp_data.get("error"),
+                                    )
+                                break
+                    if not resp_received:
+                        raise RuntimeError(
+                            f"Event-driven FL failed to initialize bank {bank.id} via Redis: timeout"
+                        )
+
+                dropped_banks = set()
+                rounds = []
+
+                if enable_dp:
+                    budget = privacy_service.get_or_create_budget(
+                        simulation.id,
+                        config.dp_epsilon,
+                        config.dp_delta,
+                    )
+
+                for round_num in range(1, config.num_rounds + 1):
+                    round_start = time.perf_counter()
+                    simulation.current_round = round_num
+
+                    self._notify(
+                        progress_callback,
+                        simulation.id,
+                        "round_start",
+                        {
+                            "round": round_num,
+                            "total": config.num_rounds,
+                        },
+                    )
+
+                    # Determine client availability
+                    if config.enable_dropout_simulation:
+                        client_statuses = self.fl_engine.simulate_client_availability(
+                            bank_ids=[b.id for b in banks],
+                            dropout_probability=config.dropout_probability,
+                            previously_dropped=dropped_banks,
+                            enable_reconnect=config.enable_reconnect_simulation,
+                            rng=rng,
+                        )
+                    else:
+                        client_statuses = {b.id: ClientStatus.ACTIVE for b in banks}
+
+                    # Update bank statuses
+                    for bank in banks:
+                        bank.status = client_statuses.get(bank.id, ClientStatus.ACTIVE)
+
+                    participating = [
+                        b
+                        for b in banks
+                        if client_statuses[b.id] in (ClientStatus.ACTIVE, ClientStatus.RECONNECTED)
+                    ]
+                    dropped_this_round = [
+                        b.id
+                        for b in banks
+                        if client_statuses[b.id] in (ClientStatus.DROPPED, ClientStatus.OFFLINE)
+                    ]
+                    dropped_banks = set(dropped_this_round)
+
+                    # Skip round if too few participants
+                    if len(participating) < config.min_clients_per_round:
+                        logger.warning(
+                            "Round %d: only %d participants (min: %d), skipping",
+                            round_num,
+                            len(participating),
+                            config.min_clients_per_round,
+                        )
+                        training_round = TrainingRound(
+                            round_number=round_num,
+                            simulation_id=simulation.id,
+                            participating_bank_ids=[],
+                            dropped_bank_ids=dropped_this_round,
+                            global_loss=0.0,
+                        )
+                        rounds.append(training_round)
+                        continue
+
+                    # Local training at each participating bank container over Redis Pub/Sub
+                    client_weights = []
+                    client_samples = []
+                    per_bank_loss = {}
+
+                    # Serialize current global weights to dict format
+                    schema_weights = {
+                        "layer_shapes": [list(shape) for shape in global_weights.layer_shapes],
+                        "flat_weights": global_weights.flat_weights,
+                    }
+
+                    for bank in participating:
+                        correlation_id = f"train_{simulation.id}_{round_num}_{bank.id}"
+                        logger.info("Publishing training command for bank: %s", bank.id)
+
+                        r_client.publish(
+                            f"bank_client_{bank.id}_train",
+                            json.dumps(
+                                {
+                                    "weights": schema_weights,
+                                    "learning_rate": config.learning_rate,
+                                    "batch_size": config.batch_size,
+                                    "epochs": config.local_epochs,
+                                    "enable_dp": enable_dp,
+                                    "dp_epsilon": config.dp_epsilon,
+                                    "dp_delta": config.dp_delta,
+                                    "dp_max_grad_norm": config.dp_max_grad_norm,
+                                    "correlation_id": correlation_id,
+                                }
+                            ),
+                        )
+
+                        # Wait for training response
+                        train_res = None
+                        start_time = time.perf_counter()
+                        while (time.perf_counter() - start_time) < 120.0:
+                            msg = pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
+                            if msg and msg["channel"] == f"bank_client_{bank.id}_train_response":
+                                resp_data = json.loads(msg["data"])
+                                if resp_data.get("correlation_id") == correlation_id:
+                                    train_res = resp_data
+                                    break
+
+                        if train_res is None or "error" in train_res:
+                            logger.error("Event training failed/timed out for bank %s", bank.id)
+                            continue
+
+                        # Extract result weights
+                        res_shapes = [
+                            tuple(shape) for shape in train_res["weights"]["layer_shapes"]
+                        ]
+                        res_w = ModelWeights(
+                            layer_shapes=res_shapes,
+                            flat_weights=train_res["weights"]["flat_weights"],
+                        )
+
+                        # Apply model poisoning if this bank is the attacker
+                        if (
+                            config.enable_poisoning_simulation
+                            and bank.id == config.poisoning_bank_id
+                        ):
+                            res_w = self.fl_engine.apply_model_poisoning(
+                                res_w,
+                                scale=config.poisoning_scale,
+                                rng=rng,
+                            )
+                            logger.warning(
+                                "Round %d: Bank %s weights POISONED in event-driven mode",
+                                round_num,
+                                bank.name,
+                            )
+
+                        # Apply post-hoc DP if enabled and not using Opacus
+                        if enable_dp and dp_mode != "opacus":
+                            res_w = privacy_service.clip_model_update(
+                                global_weights,
+                                res_w,
+                                config.dp_max_grad_norm,
+                            )
+                            res_w = privacy_service.add_noise_to_weights(
+                                res_w,
+                                config.dp_epsilon,
+                                config.dp_delta,
+                                config.dp_max_grad_norm,
+                                rng=rng,
+                            )
+                            budget.spend(config.dp_epsilon)
+
+                        if train_res.get("actual_epsilon"):
+                            privacy_service.record_opacus_epsilon(
+                                simulation.id, train_res["actual_epsilon"]
+                            )
+
+                        client_weights.append(res_w)
+                        client_samples.append(train_res["num_samples"])
+                        per_bank_loss[bank.id] = train_res["loss"]
+
+                    # Apply secure aggregation masks
+                    if enable_sa and len(client_weights) > 1:
+                        client_weights = self.fl_engine.apply_secure_aggregation_masks(
+                            client_weights,
+                            client_samples=client_samples,
+                            rng=rng,
+                        )
+
+                    # Aggregate using the strategy
+                    agg_method = AggregationMethod(
+                        getattr(config, "aggregation_method", "fed_avg_weighted")
+                    )
+                    agg_start = time.perf_counter()
+                    global_weights = self.fl_engine.aggregate_parameters(
+                        client_weights,
+                        client_samples,
+                        method=agg_method,
+                    )
+                    agg_time = (time.perf_counter() - agg_start) * 1000
+
+                    # Update global model
+                    global_model = self.model_service.set_parameters(global_model, global_weights)
+
+                    # Evaluate global model on participating distributed client nodes test partitions
+                    eval_losses = []
+                    for bank in participating:
+                        correlation_id = f"evaluate_{simulation.id}_{round_num}_{bank.id}"
+                        r_client.publish(
+                            f"bank_client_{bank.id}_evaluate",
+                            json.dumps(
+                                {
+                                    "weights": {
+                                        "layer_shapes": [
+                                            list(shape) for shape in global_weights.layer_shapes
+                                        ],
+                                        "flat_weights": global_weights.flat_weights,
+                                    },
+                                    "correlation_id": correlation_id,
+                                }
+                            ),
+                        )
+
+                        # Wait for evaluation response
+                        eval_res = None
+                        start_time = time.perf_counter()
+                        while (time.perf_counter() - start_time) < 60.0:
+                            msg = pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
+                            if msg and msg["channel"] == f"bank_client_{bank.id}_evaluate_response":
+                                resp_data = json.loads(msg["data"])
+                                if resp_data.get("correlation_id") == correlation_id:
+                                    eval_res = resp_data
+                                    break
+
+                        if eval_res and "error" not in eval_res:
+                            eval_losses.append(eval_res["loss"])
+                        else:
+                            logger.error("Event evaluation failed/timed out for bank %s", bank.id)
+
+                    round_loss = sum(eval_losses) / len(eval_losses) if eval_losses else 0.0
+
+                    # Evaluate on holdout global validation set for Canary Gate metric continuity
+                    candidate_eval = self.model_service.evaluate(
+                        global_model,
+                        X_val_global,
+                        y_val_global,
+                    )
+                    candidate_auc = cast("float", candidate_eval["auc_roc"])
+
+                    # Canary Evaluation: compare candidate against currently promoted model
+                    canary_tolerance = 0.005  # 0.5% AUC-ROC tolerance
+                    active_meta = self.model_registry.get_active_version(simulation.id)
+                    promoted_auc = 0.0
+
+                    if active_meta:
+                        try:
+                            prev_state_dict = self.model_registry.load_version(
+                                simulation.id, active_meta["version"]
+                            )
+                            promoted_model = self.model_service.create_model(
+                                dp_compatible=use_opacus_dp
+                            )
+                            promoted_model.load_state_dict(prev_state_dict)
+                            promoted_eval = self.model_service.evaluate(
+                                promoted_model, X_val_global, y_val_global
+                            )
+                            promoted_auc = cast("float", promoted_eval["auc_roc"])
+                        except Exception as canary_exc:
+                            logger.warning(
+                                "Canary evaluation could not load/evaluate active version: %s",
+                                canary_exc,
+                            )
+
+                    # Quality gate comparison
+                    is_promoted = candidate_auc >= promoted_auc - canary_tolerance
+                    if is_promoted:
+                        if active_meta:
+                            reason = (
+                                f"Candidate AUC ({candidate_auc:.4f}) meets quality gate "
+                                f"relative to v{active_meta['version']} ({promoted_auc:.4f}, tolerance: {canary_tolerance})."
+                            )
+                        else:
+                            reason = f"Initial version promoted (AUC: {candidate_auc:.4f})."
+                    else:
+                        prev_ver = active_meta["version"] if active_meta else "N/A"
+                        reason = (
+                            f"Rejected: Candidate AUC ({candidate_auc:.4f}) did not meet quality gate "
+                            f"relative to v{prev_ver} ({promoted_auc:.4f}, tolerance: {canary_tolerance})."
+                        )
+
+                    # Save version in the registry
+                    try:
+                        reg_entry = self.model_registry.save_version(
+                            simulation_id=simulation.id,
+                            state_dict=global_model.state_dict(),
+                            metrics={
+                                "accuracy": cast("float", candidate_eval["accuracy"]),
+                                "precision": cast("float", candidate_eval["precision"]),
+                                "recall": cast("float", candidate_eval["recall"]),
+                                "f1_score": cast("float", candidate_eval["f1_score"]),
+                                "auc_roc": candidate_auc,
+                                "loss": round_loss,
+                            },
+                            is_promoted=is_promoted,
+                        )
+                        version_num = reg_entry["version"]
+                    except Exception as reg_exc:
+                        logger.error("Failed to save model version to registry: %s", reg_exc)
+                        version_num = round_num
+
+                    canary_info = {
+                        "version": version_num,
+                        "candidate_auc": candidate_auc,
+                        "promoted_auc": promoted_auc,
+                        "is_promoted": is_promoted,
+                        "reason": reason,
+                    }
+
+                    # Calculate feature importance
+                    first_bank_data = bank_data[participating[0].id]
+                    ref_X = first_bank_data["X_train"]
+                    round_feature_importance = self.model_service.get_feature_importance(
+                        global_model, ref_X
+                    )
+
+                    round_duration = (time.perf_counter() - round_start) * 1000
+
+                    training_round = TrainingRound(
+                        round_number=round_num,
+                        simulation_id=simulation.id,
+                        participating_bank_ids=[b.id for b in participating],
+                        dropped_bank_ids=list(dropped_banks),
+                        global_loss=round_loss,
+                        per_bank_loss=per_bank_loss,
+                        per_bank_samples={
+                            b.id: train_res["num_samples"]
+                            for b in participating
+                            if train_res is not None
+                        },
+                        aggregation_time_ms=agg_time,
+                        round_duration_ms=round_duration,
+                        canary_info=canary_info,
+                    )
+                    rounds.append(training_round)
+                    simulation.rounds_run = round_num
+                    simulation.rounds = rounds
+
+                    logger.info(
+                        "[Event-Driven FL] Round %d/%d — loss: %.4f, participants: %d, dropped: %d, duration: %.0fms",
+                        round_num,
+                        config.num_rounds,
+                        round_loss,
+                        len(participating),
+                        len(dropped_banks),
+                        round_duration,
+                    )
+
+                    simulation_rounds_total.add(1)
+                    simulation_duration_seconds.record(round_duration / 1000)
+
+                    self._notify(
+                        progress_callback,
+                        simulation.id,
+                        "round_complete",
+                        {
+                            "round": round_num,
+                            "total": config.num_rounds,
+                            "loss": round_loss,
+                            "participants": [b.id for b in participating],
+                            "dropped": list(dropped_banks),
+                            "duration_ms": round_duration,
+                            "privacy_budget": budget.total_epsilon if enable_dp else 0.0,
+                            "feature_importance": round_feature_importance,
+                            "canary_info": canary_info,
+                        },
+                    )
+
+                    self._log_mlflow_round(
+                        mlflow_run,
+                        round_num=round_num,
+                        round_loss=round_loss,
+                        active_participants=len(participating),
+                        privacy_budget=budget.total_epsilon if enable_dp else 0.0,
+                    )
+
+                pubsub.unsubscribe()
+                r_client.close()
+
             elif fl_engine_type == "distributed":
                 # ── Distributed HTTP Engine Branch ─────────────────
                 import httpx
@@ -1038,8 +1478,69 @@ class SimulationService:
                 },
             )
 
+            # Set up event-driven subscriber for evaluation if needed
+            r_client_eval = None
+            pubsub_eval = None
+            if fl_engine_type == "event_driven":
+                import json
+
+                import redis
+
+                r_client_eval = redis.Redis.from_url(self.settings.redis_url, decode_responses=True)
+                pubsub_eval = r_client_eval.pubsub()
+                pubsub_eval.subscribe(*[f"bank_client_{b.id}_evaluate_response" for b in banks])
+
             for bank in banks:
-                if fl_engine_type == "distributed":
+                if fl_engine_type == "event_driven" and r_client_eval and pubsub_eval:
+                    correlation_id = f"evaluate_final_{simulation.id}_{bank.id}"
+                    try:
+                        r_client_eval.publish(
+                            f"bank_client_{bank.id}_evaluate",
+                            json.dumps(
+                                {
+                                    "weights": {
+                                        "layer_shapes": [
+                                            list(shape) for shape in global_weights.layer_shapes
+                                        ],
+                                        "flat_weights": global_weights.flat_weights,
+                                    },
+                                    "correlation_id": correlation_id,
+                                }
+                            ),
+                        )
+
+                        # Wait for evaluation response
+                        eval_res = None
+                        start_time = time.perf_counter()
+                        while (time.perf_counter() - start_time) < 60.0:
+                            msg = pubsub_eval.get_message(
+                                ignore_subscribe_messages=True, timeout=0.1
+                            )
+                            if msg and msg["channel"] == f"bank_client_{bank.id}_evaluate_response":
+                                resp_data = json.loads(msg["data"])
+                                if resp_data.get("correlation_id") == correlation_id:
+                                    eval_res = resp_data
+                                    break
+
+                        if eval_res and "error" not in eval_res:
+                            fed_feat_imp = self.model_service.get_feature_importance(
+                                global_model, X_val_global
+                            )
+                            bank.federated_metrics = self.metrics_service.from_eval_dict(
+                                eval_res,
+                                fed_feat_imp,
+                            )
+                            continue
+                        else:
+                            logger.error(
+                                "Event final evaluation failed/timed out for bank %s", bank.id
+                            )
+                    except Exception as exc:
+                        logger.error(
+                            "Event-driven evaluation fallback locally for bank %s: %s", bank.id, exc
+                        )
+
+                elif fl_engine_type == "distributed":
                     url = active_urls.get(bank.id)
                     if url:
                         try:
