@@ -21,6 +21,7 @@ graph TD
         GraphR[Graph Router]
         ScenariosR[Scenarios Router]
         DashboardR[Dashboard Router]
+        PredictR[Prediction Router]
     end
 
     subgraph Application & Business Logic
@@ -38,10 +39,11 @@ graph TD
     end
 
     UI --> FastAPI
-    FastAPI --> AlertsR & CasesR & EntitiesR & GraphR & ScenariosR & DashboardR
+    FastAPI --> AlertsR & CasesR & EntitiesR & GraphR & ScenariosR & DashboardR & PredictR
     WS --> StreamEng
     
     AlertsR --> AlertSvc
+    PredictR --> AlertSvc
     CasesR --> CaseSvc
     EntitiesR --> EntitySvc
     GraphR --> GraphEng

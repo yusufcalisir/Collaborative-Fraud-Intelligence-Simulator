@@ -250,6 +250,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │   │   │   ├── health.py     # System service health checking
 │   │   │   │   ├── model_registry.py # Model versioning, rollback, and canary history endpoints
 │   │   │   │   ├── scenarios.py  # Controls AML scenario simulation streams
+│   │   │   │   ├── predict.py    # Real-time serving transaction inference, risk evaluations, and alert management
 │   │   │   │   ├── simulation.py # Handles creation, retrieval, and comparison of FL runs
 │   │   │   │   └── training.py   # Yields progress data on communication rounds (incl. canary_info)
 │   │   │   └── websockets/
@@ -271,6 +272,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │       ├── test_model_registry.py # Validates model saving, manifest versions list, promotion status updates, and canary evaluations
 │   │       ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
 │   │       ├── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
+│   │       ├── test_predict.py        # Validates real-time serving inference, risk mapping, and alerts creation
 │   │       ├── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
 │   │       └── test_property_based.py # Property-based tests verifying core mathematical invariants
 │   ├── Dockerfile
@@ -491,11 +493,12 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 *   `WS /ws/streaming/{scenario_id}` - Stream scenario event data in real time.
 *   `GET /docs/{service_name}` - Gateway Swagger UI aggregator (e.g. `/docs/fl-coordinator`, `/docs/identity-graph`, `/docs/fraud-alert`).
 
-### Phase 4: MLOps & Model Governance
+### Phase 4: MLOps & Model Serving
 
 *   `GET /api/v1/registry/{sim_id}/versions` - Lists all versioned global models with metrics, promotion status, and timestamps.
 *   `POST /api/v1/registry/{sim_id}/rollback/{version}` - Atomically rolls back the active global model to a specified version.
 *   `GET /api/v1/registry/{sim_id}/canary` - Returns the full canary evaluation log (candidate vs. active AUC-ROC comparisons) for all completed rounds.
+*   `POST /api/v1/predict` - Real-time serving endpoint to evaluate a transaction payload, compute a composite risk score and SHAP attributions, generate alerts, and link cross-bank entities on the network graph.
 
 ***
 
