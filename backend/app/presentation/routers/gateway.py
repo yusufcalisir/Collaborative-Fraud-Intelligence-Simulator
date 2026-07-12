@@ -61,6 +61,7 @@ PATH_ROUTING = {
     "/api/v1/cases": "fraud-alert",
     "/api/v1/scenarios": "fraud-alert",
     "/api/v1/dashboard": "fraud-alert",
+    "/api/v1/predict": "fraud-alert",
 }
 
 # ── Gateway Helpers ───────────────────────────────────────────

@@ -29,6 +29,7 @@ from app.presentation.routers import (
     graph,
     health,
     model_registry,
+    predict,
     scenarios,
     simulation,
     training,
@@ -298,6 +299,7 @@ elif service_name == "fraud-alert":
     app.include_router(health.router)
     app.include_router(alerts.router)
     app.include_router(cases.router)
+    app.include_router(predict.router)
     app.include_router(
         entities.router
     )  # Mounted for read access of entities within streaming engine if queried directly
@@ -318,6 +320,7 @@ else:
     app.include_router(training_ws.router)
     app.include_router(alerts.router)
     app.include_router(cases.router)
+    app.include_router(predict.router)
     app.include_router(entities.router)
     app.include_router(graph.router)
     app.include_router(scenarios.router)
