@@ -119,3 +119,56 @@ To satisfy strict data protection regulations (e.g., GDPR, CCPA, bank secrecy ac
   * **Application Layer** (services in `app/application/services`) handles core AML algorithms.
   * **Presentation Layer** (routers in `app/presentation/routers` and schemas in `app/application/schemas`) manages network endpoints and payloads.
 * **Pub/Sub Scenario Replay**: Using Redis pub/sub decouples the simulation thread from FastAPI and WebSockets, ensuring smooth, low-latency UI updates during high-speed scenario runs.
+
+---
+
+## Distributed Federated Learning Engine (HTTP Engine)
+
+When the federated learning engine is configured as `distributed` (e.g., `fl_engine_type = "distributed"`), the system transitions from an in-memory simulation to a realistic, distributed system design.
+
+### Node Layout and Networking
+* **Coordinator Node**: The central `fl-coordinator` container coordinates training rounds. It maintains global model parameters, schedules execution rounds, and triggers tasks.
+* **Bank Client Nodes**: Bank clients (`bank-a`, `bank-b`, `bank-c`) run in their own container environments. They listen on designated HTTP ports (`8011`, `8012`, `8013`) and expose a dedicated client-serving API.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Coord as FL Coordinator
+    participant BA as Bank Client A (bank-a:8011)
+    participant BB as Bank Client B (bank-b:8012)
+    participant BC as Bank Client C (bank-c:8013)
+
+    Note over Coord, BC: 1. Initialization Phase
+    Coord->>BA: POST /api/v1/bank-client/initialize
+    BA-->>Coord: 200 OK (Dataset Initialized)
+    Coord->>BB: POST /api/v1/bank-client/initialize
+    BB-->>Coord: 200 OK
+    Coord->>BC: POST /api/v1/bank-client/initialize
+    BC-->>Coord: 200 OK
+
+    loop Training Rounds (1 to N)
+        Note over Coord, BC: 2. Local Training Phase
+        Coord->>BA: POST /api/v1/bank-client/train (Global Model Weights)
+        Coord->>BB: POST /api/v1/bank-client/train (Global Model Weights)
+        Coord->>BC: POST /api/v1/bank-client/train (Global Model Weights)
+        
+        Note over BA: Train on Local Partition (SGD/DP)
+        Note over BB: Train on Local Partition (SGD/DP)
+        Note over BC: Train on Local Partition (SGD/DP)
+
+        BA-->>Coord: 200 OK (Updated Weights + Samples Count + Local Loss)
+        BB-->>Coord: 200 OK (Updated Weights + Samples Count + Local Loss)
+        BC-->>Coord: 200 OK (Updated Weights + Samples Count + Local Loss)
+
+        Note over Coord: 3. Secure Aggregation & Weight Update
+
+        Note over Coord, BC: 4. Evaluation Phase
+        Coord->>BA: POST /api/v1/bank-client/evaluate (Aggregated Weights)
+        Coord->>BB: POST /api/v1/bank-client/evaluate (Aggregated Weights)
+        Coord->>BC: POST /api/v1/bank-client/evaluate (Aggregated Weights)
+
+        BA-->>Coord: 200 OK (Local Test Metrics)
+        BB-->>Coord: 200 OK (Local Test Metrics)
+        BC-->>Coord: 200 OK (Local Test Metrics)
+    end
+```

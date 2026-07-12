@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.presentation.routers import (
     alerts,
+    bank_client,
     banks,
     cases,
     dashboard,
@@ -310,6 +311,10 @@ elif service_name == "fraud-alert":
     app.include_router(dashboard.router)
     app.include_router(streaming_ws.router)
 
+elif service_name.startswith("bank-"):
+    app.include_router(health.router)
+    app.include_router(bank_client.router)
+
 else:
     # Default/Monolith Mode: mount all routers
     app.include_router(health.router)
@@ -321,6 +326,7 @@ else:
     app.include_router(alerts.router)
     app.include_router(cases.router)
     app.include_router(predict.router)
+    app.include_router(bank_client.router)
     app.include_router(entities.router)
     app.include_router(graph.router)
     app.include_router(scenarios.router)

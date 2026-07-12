@@ -241,6 +241,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │   ├── presentation/         # API Controllers and endpoints
 │   │   │   ├── routers/
 │   │   │   │   ├── alerts.py     # Transaction alerts query, resolution, and explanations
+│   │   │   │   ├── bank_client.py # Local training & evaluation endpoints on bank clients
 │   │   │   │   ├── banks.py      # Bank profiles, distributions, feature drift & concept drift endpoints
 │   │   │   │   ├── cases.py      # Collaboratively managed AML investigation cases
 │   │   │   │   ├── dashboard.py  # High-level overview aggregation metrics
@@ -264,6 +265,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   ├── tests/                    # Integration and unit test suite
 │   │   └── unit/
 │   │       ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
+│   │       ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
 │   │       ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks
 │   │       ├── test_explainability_service.py # Verifies SHAP kernel value estimation and fallback heuristic rules
 │   │       ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
@@ -499,6 +501,9 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 *   `POST /api/v1/registry/{sim_id}/rollback/{version}` - Atomically rolls back the active global model to a specified version.
 *   `GET /api/v1/registry/{sim_id}/canary` - Returns the full canary evaluation log (candidate vs. active AUC-ROC comparisons) for all completed rounds.
 *   `POST /api/v1/predict` - Real-time serving endpoint to evaluate a transaction payload, compute a composite risk score and SHAP attributions, generate alerts, and link cross-bank entities on the network graph.
+*   `POST /api/v1/bank-client/initialize` - Initialize and cache partition dataset (used in distributed HTTP simulations).
+*   `POST /api/v1/bank-client/train` - Trigger local training for a given round using model weights payload.
+*   `POST /api/v1/bank-client/evaluate` - Evaluate global weights on local bank client test partition.
 
 ***
 

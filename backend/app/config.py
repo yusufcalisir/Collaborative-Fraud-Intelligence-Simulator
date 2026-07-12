@@ -92,6 +92,21 @@ class Settings(BaseSettings):
             return None
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
+    @property
+    def bank_urls(self) -> dict[str, str]:
+        """HTTP endpoints for the distributed bank containers."""
+        if self.app_env != "development":
+            return {
+                "bank_a": "http://bank-a:8011",
+                "bank_b": "http://bank-b:8012",
+                "bank_c": "http://bank-c:8013",
+            }
+        return {
+            "bank_a": "http://localhost:8011",
+            "bank_b": "http://localhost:8012",
+            "bank_c": "http://localhost:8013",
+        }
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
