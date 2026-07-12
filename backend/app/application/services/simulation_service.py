@@ -33,23 +33,20 @@ from sklearn.model_selection import train_test_split
 from app.application.services.data_generator import DataGenerator
 from app.application.services.privacy_service import PrivacyService
 from app.domain.entities import SimulationRun, TrainingRound
-from app.domain.value_objects import ModelWeights
 from app.domain.enums import (
     AggregationMethod,
     ClientStatus,
     PrivacyMechanism,
     SimulationStatus,
 )
+from app.domain.value_objects import ModelWeights
 
 if TYPE_CHECKING:
     from app.application.services.fl_engine import FederatedLearningEngine
     from app.application.services.metrics_service import MetricsService
     from app.application.services.model_service import ModelService
     from app.config import Settings
-    from app.domain.value_objects import (
-        ModelWeights,
-        SimulationConfig,
-    )
+    from app.domain.value_objects import SimulationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -333,7 +330,9 @@ class SimulationService:
                     # Call initialize endpoint
                     try:
                         num_txns = max(500, getattr(config, f"{bank.id}_transactions", 1000) // 10)
-                        logger.info("Initializing bank %s at %s with %d txns", bank.id, url, num_txns)
+                        logger.info(
+                            "Initializing bank %s at %s with %d txns", bank.id, url, num_txns
+                        )
                         resp = httpx.post(
                             f"{url}/api/v1/bank-client/initialize",
                             json={
@@ -346,7 +345,9 @@ class SimulationService:
                         resp.raise_for_status()
                     except Exception as exc:
                         logger.error("Failed to initialize bank client %s: %s", bank.id, exc)
-                        raise RuntimeError(f"Distributed FL failed to initialize bank {bank.id}: {exc}")
+                        raise RuntimeError(
+                            f"Distributed FL failed to initialize bank {bank.id}: {exc}"
+                        )
 
                 dropped_banks = set()
                 rounds = []
@@ -431,7 +432,9 @@ class SimulationService:
 
                     for bank in participating:
                         url = active_urls[bank.id]
-                        logger.info("Triggering training on distributed bank node: %s at %s", bank.id, url)
+                        logger.info(
+                            "Triggering training on distributed bank node: %s at %s", bank.id, url
+                        )
                         try:
                             resp = httpx.post(
                                 f"{url}/api/v1/bank-client/train",
@@ -450,11 +453,15 @@ class SimulationService:
                             resp.raise_for_status()
                             train_res = resp.json()
                         except Exception as exc:
-                            logger.error("Distributed training failed for bank %s: %s", bank.id, exc)
+                            logger.error(
+                                "Distributed training failed for bank %s: %s", bank.id, exc
+                            )
                             continue
 
                         # Extract result weights
-                        res_shapes = [tuple(shape) for shape in train_res["weights"]["layer_shapes"]]
+                        res_shapes = [
+                            tuple(shape) for shape in train_res["weights"]["layer_shapes"]
+                        ]
                         res_w = ModelWeights(
                             layer_shapes=res_shapes,
                             flat_weights=train_res["weights"]["flat_weights"],
@@ -493,7 +500,9 @@ class SimulationService:
                             budget.spend(config.dp_epsilon)
 
                         if train_res.get("actual_epsilon"):
-                            privacy_service.record_opacus_epsilon(simulation.id, train_res["actual_epsilon"])
+                            privacy_service.record_opacus_epsilon(
+                                simulation.id, train_res["actual_epsilon"]
+                            )
 
                         client_weights.append(res_w)
                         client_samples.append(train_res["num_samples"])
@@ -531,7 +540,9 @@ class SimulationService:
                                 f"{url}/api/v1/bank-client/evaluate",
                                 json={
                                     "weights": {
-                                        "layer_shapes": [list(shape) for shape in global_weights.layer_shapes],
+                                        "layer_shapes": [
+                                            list(shape) for shape in global_weights.layer_shapes
+                                        ],
                                         "flat_weights": global_weights.flat_weights,
                                     }
                                 },
@@ -541,7 +552,9 @@ class SimulationService:
                             eval_res = resp.json()
                             eval_losses.append(eval_res["loss"])
                         except Exception as exc:
-                            logger.error("Distributed evaluate failed for bank %s: %s", bank.id, exc)
+                            logger.error(
+                                "Distributed evaluate failed for bank %s: %s", bank.id, exc
+                            )
 
                     round_loss = sum(eval_losses) / len(eval_losses) if eval_losses else 0.0
 
@@ -638,9 +651,7 @@ class SimulationService:
                         dropped_bank_ids=list(dropped_banks),
                         global_loss=round_loss,
                         per_bank_loss=per_bank_loss,
-                        per_bank_samples={
-                            b.id: train_res["num_samples"] for b in participating
-                        },
+                        per_bank_samples={b.id: train_res["num_samples"] for b in participating},
                         aggregation_time_ms=agg_time,
                         round_duration_ms=round_duration,
                         canary_info=canary_info,
@@ -1032,7 +1043,9 @@ class SimulationService:
                                 f"{url}/api/v1/bank-client/evaluate",
                                 json={
                                     "weights": {
-                                        "layer_shapes": [list(shape) for shape in global_weights.layer_shapes],
+                                        "layer_shapes": [
+                                            list(shape) for shape in global_weights.layer_shapes
+                                        ],
                                         "flat_weights": global_weights.flat_weights,
                                     }
                                 },
@@ -1040,14 +1053,20 @@ class SimulationService:
                             )
                             resp.raise_for_status()
                             eval_res = resp.json()
-                            fed_feat_imp = self.model_service.get_feature_importance(global_model, X_val_global)
+                            fed_feat_imp = self.model_service.get_feature_importance(
+                                global_model, X_val_global
+                            )
                             bank.federated_metrics = self.metrics_service.from_eval_dict(
                                 eval_res,
                                 fed_feat_imp,
                             )
                             continue
                         except Exception as exc:
-                            logger.error("Distributed evaluation fallback locally for bank %s: %s", bank.id, exc)
+                            logger.error(
+                                "Distributed evaluation fallback locally for bank %s: %s",
+                                bank.id,
+                                exc,
+                            )
 
                 data = bank_data[bank.id]
                 fed_eval = self.model_service.evaluate(
