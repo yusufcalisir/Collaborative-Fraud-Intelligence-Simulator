@@ -127,11 +127,14 @@ def preprocess_transaction(txn: dict[str, Any]) -> torch.Tensor:
 
         # Encode categorical variables using constant list indexes
         if name == "merchant_category":
-            val = float(MERCHANT_CATEGORIES.index(val) if val in MERCHANT_CATEGORIES else 0)
+            val_str = val if isinstance(val, str) else str(val)
+            val = float(MERCHANT_CATEGORIES.index(val_str) if val_str in MERCHANT_CATEGORIES else 0)
         elif name == "country_code":
-            val = float(COUNTRIES.index(val) if val in COUNTRIES else 0)
+            val_str = val if isinstance(val, str) else str(val)
+            val = float(COUNTRIES.index(val_str) if val_str in COUNTRIES else 0)
         elif name == "device_type":
-            val = float(DEVICES.index(val) if val in DEVICES else 0)
+            val_str = val if isinstance(val, str) else str(val)
+            val = float(DEVICES.index(val_str) if val_str in DEVICES else 0)
         else:
             val = float(val)
 
