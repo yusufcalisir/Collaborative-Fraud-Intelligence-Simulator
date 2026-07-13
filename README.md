@@ -8,7 +8,61 @@ A production-grade, enterprise-ready simulation framework demonstrating privacy-
 [![AI-Assisted](https://img.shields.io/badge/AI--Assisted-Gemini-blueviolet.svg)](#project-development-methodology)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-  
+```
+                     ┌────────────────────────────────────────┐
+                     │   3 Participating Client Institutions  │
+                     │  (Bank A, Bank B, and Bank C Nodes)    │
+                     └────────┬───────────┬───────────┬───────┘
+                              │           │           │
+                              ▼           ▼           ▼
+                     ┌────────────────────────────────────────┐
+                     │        Local PyTorch MLP Training      │
+                     │    (Stratified Private Holdout Split)  │
+                     └────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                     ┌────────────────────────────────────────┐
+                     │   Differential Privacy (Post-Hoc/Opacus)│
+                     │   - L2 Gradient Clipping & Noise       │
+                     └────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                     ┌────────────────────────────────────────┐
+                     │   Outbound Outlier Defense (SecAgg)    │
+                     │   - Pairwise Cryptographic Masks       │
+                     └────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                     ┌────────────────────────────────────────┐
+                     │    Byzantine-Robust Server Aggregation │
+                     │  (FedAvg / Krum / Coordinate Median)   │
+                     └────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                     ┌────────────────────────────────────────┐
+                     │     Evaluated & Promoted Global Model  │
+                     │     (Canary Test Gate: AUC-ROC Check)  │
+                     └────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                     ┌────────────────────────────────────────┐
+                     │  Composite Risk & Heuristic Scoring    │
+                     │  - 9-Signal Pipeline (Composite 0-1000)│
+                     └────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                     ┌────────────────────────────────────────┐
+                     │   Kernel SHAP Model Explainability     │
+                     │   - Feature Contribution Attribution   │
+                     └────────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                     ┌────────────────────────────────────────┐
+                     │    MLOps Logging & Telemetry Suite     │
+                     │ (MLflow, Prometheus, Grafana, Jaeger)  │
+                     └────────────────────────────────────────┘
+```
+
 ***
 
 > [!NOTE]
