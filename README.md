@@ -191,6 +191,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Concept Drift Detection** | Logistic regression on reference bank features/labels; evaluates $P(Y\|X)$ divergence on target bank distributions; segment-based conditional JS drift. | Detects when the relationship between features and fraud outcomes changes — a deeper signal than feature distribution shifts alone. | Conditional JS divergence per fraud/legit segment |
 | **Canary Evaluation Gate** | End-of-round evaluation of candidate global model vs. active model on combined cross-bank validation set; `CANARY_GATE_TOLERANCE=0.005`. | Prevents regressions from being silently promoted to production; mirrors real-world bank MLOps quality gates. | AUC-ROC gate: candidate must match active ± 0.5% |
 | **Model Registry & Rollback** | File-based versioned registry (`storage/registry/`); `registry.json` manifest with atomic rollback. Active `global_model.pt` updated to match rolled-back version, keeping SHAP transparent. | Enables full model versioning, audit history, and safe rollback to any previous global model without simulation restart. | Atomic file swap + manifest consistency |
+| **BankConnector Adapter Pattern** | Abstract `BankConnectorInterface` port; concrete adapters: `MockBankConnector` (in-process), `RESTBankConnector` (HTTP with OAuth2/mTLS/API Key), `RedisBankConnector` (pub/sub), `MQSkeletonBankConnector` (AMQP placeholder). `BankConnectorFactory` resolves per-bank adapter from config. | Decouples the FL platform from bank-specific integrations — swap a single config key to connect a real bank REST API without touching business logic. | Open/Closed principle; per-bank connector-type override |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
 
 ***
@@ -234,6 +235,12 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │   │   ├── event_bus.py      # Pub/sub channels for real-time WebSocket communication
 │   │   │   ├── models.py         # Relational tables for simulation logs, alerts, and runs
 │   │   │   ├── redis_store.py    # Redis state syncing client with automatic thread-safe memory fallback
+│   │   │   ├── connectors/       # Bank Connector adapter implementations (BankConnector port)
+│   │   │   │   ├── factory.py    # Configuration-driven connector resolver (mock/rest/redis/mq)
+│   │   │   │   ├── mock_connector.py  # In-process simulator connector (default)
+│   │   │   │   ├── rest_connector.py  # HTTP REST connector with OAuth2, mTLS, API Key auth
+│   │   │   │   ├── redis_connector.py # Event-driven Redis pub/sub connector
+│   │   │   │   └── mq_skeleton_connector.py # AMQP/RabbitMQ skeleton connector (placeholder)
 │   │   │   └── repositories/     # Data access layer implementing repository pattern
 │   │   │       ├── bank_repository.py # Performs DB operations for bank details
 │   │   │       ├── metrics_repository.py # Saves and fetches training round metrics
@@ -469,6 +476,7 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 | **Max Gradient Norm** | Float (0.1 - 5.0) | 1.0 | Clips local model updates. Lower bounds restrict outlier samples. |
 | **Dropout Probability** | Float (0.0 - 0.9) | 0.2 | Probability of a bank going offline during aggregation rounds. |
 | **Model Poisoning Attack** | Boolean | `False` | Simulates a malicious bank sending corrupted weights to sabotage the model. |
+| **Byzantine Defense** | Selection (`none`, `krum`, `coordinate_wise_median`) | `none` | Activates a robust aggregation filter to reject poisoned client updates before FedAvg. |
 
 ***
 
@@ -559,7 +567,7 @@ npm run dev
 The framework includes comprehensive test suites (unit, integration, and property-based tests) to verify domain metrics, model parameter aggregation, secure masking, and API endpoints:
 
 ```bash
-# Run the standard unit and integration test suite
+# Run the standard unit and integration test suite (160 tests)
 cd backend
 .venv/Scripts/pytest tests/unit/ tests/integration/ -v
 
@@ -569,6 +577,9 @@ cd backend
 # Run linting and style checks (Ruff)
 .venv/Scripts/ruff check app/ tests/
 .venv/Scripts/ruff format --check app/ tests/
+
+# Run static type checking (mypy)
+.venv/Scripts/mypy app/ --ignore-missing-imports
 ```
 
 ### 🧬 Mathematical Property-Based Testing
@@ -722,6 +733,11 @@ graph TD
 *   **Context:** Adding JWT/API Key authentication, rate-limiting, and RBAC to the API Gateway is essential for enterprise security but risks breaking local workflows and zero-config public demos (like Vercel).
 *   **Decision:** Implement Gateway auth middleware checking headers (`X-API-Key`) with a configurable bypass (`gateway_require_auth = False`). When bypassed, the Gateway assigns a default `analyst` role, keeping public demos fully functional without credentials while retaining logging and rate-limiting.
 *   **Trade-off:** Simplifies demo onboarding and user experience, but requires explicit environment variable activation in production to secure endpoints.
+
+### ADR 05: BankConnector Adapter Pattern for Real-Bank Integration
+*   **Context:** The simulation engine was tightly coupled to in-process `MockBankConnector` logic. As the platform evolves toward real-bank pilots, each institution may use a different integration protocol (REST API, message queue, or event bus).
+*   **Decision:** Extract a clean `BankConnectorInterface` port with four concrete adapters: `MockBankConnector` (in-process, for simulation), `RESTBankConnector` (HTTP with OAuth2, mTLS, and API Key auth placeholders), `RedisBankConnector` (event-driven pub/sub), and `MQSkeletonBankConnector` (AMQP/RabbitMQ skeleton). A `BankConnectorFactory` resolves the correct adapter from per-bank configuration keys at runtime.
+*   **Trade-off:** Adds a small dependency-inversion layer but ensures zero business logic changes are required when switching a simulated bank to a real institution's REST or MQ endpoint.
 
 ***
 

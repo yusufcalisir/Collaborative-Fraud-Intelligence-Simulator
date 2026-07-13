@@ -11,6 +11,7 @@ class SimulationStatus(StrEnum):
     """Lifecycle states of a simulation run."""
 
     PENDING = "pending"
+    INITIALIZING_CLIENTS = "initializing_clients"
     GENERATING_DATA = "generating_data"
     TRAINING_LOCAL = "training_local"
     TRAINING_FEDERATED = "training_federated"

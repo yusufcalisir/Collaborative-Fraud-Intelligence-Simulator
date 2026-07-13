@@ -78,18 +78,10 @@ def test_bank_client_endpoints_lifecycle() -> None:
     assert eval_data["num_samples"] == init_data["test_samples"]
 
 
-def mock_httpx_post(url: str, json: dict[str, Any] = None, **kwargs: Any) -> Any:
-    """Mock HTTP POST requests inside simulation_service.py to redirect to FastAPI TestClient."""
+def mock_get_client(*args: Any, **kwargs: Any) -> Any:
+    """Mock get_client inside RESTBankConnector to redirect to FastAPI TestClient."""
     import httpx
 
-    # Resolve URL path mapping
-    # e.g., 'http://localhost:8011/api/v1/bank-client/train' -> '/api/v1/bank-client/train'
-    path_parts = url.split("api/v1/")
-    path = "/api/v1/" + path_parts[1] if len(path_parts) > 1 else "/api/v1/bank-client/initialize"
-
-    resp = client.post(path, json=json)
-
-    # Wrap the TestClient response to look like an httpx response
     class MockResponse:
         def __init__(self, r: Any) -> None:
             self._r = r
@@ -102,11 +94,25 @@ def mock_httpx_post(url: str, json: dict[str, Any] = None, **kwargs: Any) -> Any
             if self.status_code >= 400:
                 raise httpx.HTTPStatusError("Error", request=None, response=self)
 
-    return MockResponse(resp)
+    class MockClient:
+        def __enter__(self) -> MockClient:
+            return self
+
+        def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+            pass
+
+        def post(self, url: str, json: Any = None, headers: Any = None, timeout: Any = None) -> MockResponse:
+            # Resolve URL path mapping
+            path_parts = url.split("api/v1/")
+            path = "/api/v1/" + path_parts[1] if len(path_parts) > 1 else "/api/v1/bank-client/initialize"
+            resp = client.post(path, json=json)
+            return MockResponse(resp)
+
+    return MockClient()
 
 
-@patch("httpx.post", side_effect=mock_httpx_post)
-def test_distributed_simulation_orchestration(mock_post: Any) -> None:
+@patch("app.infrastructure.connectors.rest_connector.RESTBankConnector._get_client", side_effect=mock_get_client)
+def test_distributed_simulation_orchestration(mock_get_client_patch: Any) -> None:
     """Verify that a full distributed federated training run aggregates weights correctly."""
     settings = get_settings()
     model_service = ModelService(settings)

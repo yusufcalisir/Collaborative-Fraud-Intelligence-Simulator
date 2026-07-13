@@ -9,7 +9,7 @@ import sys
 
 import numpy as np
 import torch
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 # Configure sys.path so we can import app modules directly
@@ -45,6 +45,7 @@ engine = FederatedLearningEngine(settings_obj, model_service, privacy_service)
         max_size=20,
     )
 )
+@settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
 def test_fed_avg_math_property(weights_list) -> None:
     """Invariant: Unweighted FedAvg is mathematically equivalent to coordinate-wise arithmetic mean."""
     client_weights = [

@@ -59,6 +59,10 @@ class SimulationConfigRequest(BaseModel):
     poisoning_scale: float = Field(
         default=5.0, ge=1.0, le=20.0, description="Poisoning noise magnitude"
     )
+    byzantine_defense: str = Field(
+        default="none",
+        description="Byzantine defense strategy: none, krum, coordinate_wise_median",
+    )
 
 
 class SimulationSummaryResponse(BaseModel):

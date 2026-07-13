@@ -125,3 +125,4 @@ class SimulationConfig:
     enable_poisoning_simulation: bool = False
     poisoning_bank_id: str = "bank_c"
     poisoning_scale: float = 5.0
+    byzantine_defense: str = "none"  # "none", "krum", "coordinate_wise_median"

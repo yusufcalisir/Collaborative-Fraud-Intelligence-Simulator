@@ -241,7 +241,7 @@ class DataGenerator:
             rng.uniform(0.6, 1.0, n_fraud).tolist(), index=fraud.index
         )
 
-        features = pd.concat([legit, fraud], ignore_index=True)
+        features = pd.concat([df for df in [legit, fraud] if not df.empty], ignore_index=True)
         labels = pd.Series(
             [0] * n_legit + [1] * n_fraud,
             name="is_fraud",
@@ -290,7 +290,7 @@ class DataGenerator:
             rng.integers(1, 8, n_fraud).tolist(), index=fraud.index
         )
 
-        features = pd.concat([legit, fraud], ignore_index=True)
+        features = pd.concat([df for df in [legit, fraud] if not df.empty], ignore_index=True)
         labels = pd.Series([0] * n_legit + [1] * n_fraud, name="is_fraud")
 
         idx = rng.permutation(len(features)).tolist()
@@ -329,7 +329,7 @@ class DataGenerator:
             rng.uniform(0.4, 0.9, n_fraud).tolist(), index=fraud.index
         )
 
-        features = pd.concat([legit, fraud], ignore_index=True)
+        features = pd.concat([df for df in [legit, fraud] if not df.empty], ignore_index=True)
         labels = pd.Series([0] * n_legit + [1] * n_fraud, name="is_fraud")
 
         idx = rng.permutation(len(features)).tolist()

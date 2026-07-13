@@ -69,6 +69,24 @@ class Settings(BaseSettings):
     mlflow_tracking_uri: str = "mlruns"
     mlflow_experiment_name: str = "Collaborative-Fraud-Intelligence"
 
+    # ── Bank Connector Configuration ──────────
+    bank_a_connector_type: str = "mock"
+    bank_b_connector_type: str = "mock"
+    bank_c_connector_type: str = "mock"
+
+    bank_a_auth_type: str = "none"
+    bank_b_auth_type: str = "none"
+    bank_c_auth_type: str = "none"
+
+    bank_a_api_key: str = ""
+    bank_b_api_key: str = ""
+    bank_c_api_key: str = ""
+
+    oauth_token_url: str = "http://localhost:8000/oauth/token"
+    client_cert_path: str = ""
+    client_key_path: str = ""
+    mq_broker_uri: str = "amqp://guest:guest@localhost:5672//"
+
     @property
     def database_url(self) -> str:
         """Async PostgreSQL connection URL."""

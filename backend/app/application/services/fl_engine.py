@@ -330,3 +330,54 @@ class FederatedLearningEngine:
             layer_shapes=honest_weights.layer_shapes,
             flat_weights=poisoned,
         )
+
+    def apply_byzantine_defense(
+        self,
+        client_weights: list[ModelWeights],
+        defense_type: str = "krum",
+    ) -> list[ModelWeights]:
+        """Filter client weight updates using a Byzantine-robust defense strategy.
+
+        Supported defense types:
+        - ``krum``: Keep only the single update closest to the cluster of honest clients.
+        - ``coordinate_wise_median``: Return a synthetic weight equal to the
+          element-wise median — already handled by the aggregation step, so this
+          path returns the full list unchanged to let aggregation do the work.
+        - Any other value: no filtering, all weights returned.
+
+        Args:
+            client_weights: Raw update list potentially containing poisoned entries.
+            defense_type: Name of the defense algorithm to apply.
+
+        Returns:
+            A filtered (or unchanged) list of ModelWeights.
+        """
+        if len(client_weights) <= 1:
+            return client_weights
+
+        if defense_type == "krum":
+            # Select the single update with the smallest sum of distances to
+            # its (n - f - 2) nearest neighbours, where f = 1 assumed Byzantine.
+            weights_array = np.array([w.flat_weights for w in client_weights])
+            n = len(weights_array)
+            f = 1
+            num_closest = max(1, n - f - 2)
+
+            scores = []
+            for i in range(n):
+                dists = sorted(
+                    float(np.sum((weights_array[i] - weights_array[j]) ** 2))
+                    for j in range(n)
+                    if i != j
+                )
+                scores.append(sum(dists[:num_closest]))
+
+            best_idx = int(np.argmin(scores))
+            logger.info(
+                "Byzantine defense (krum): selected client %d as representative", best_idx
+            )
+            return [client_weights[best_idx]]
+
+        # coordinate_wise_median and any unknown defense: return all weights
+        # unchanged — the aggregation method will apply robustness if configured.
+        return client_weights
