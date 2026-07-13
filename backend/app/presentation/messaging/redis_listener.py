@@ -99,18 +99,44 @@ class RedisBankClientListener:
             sizes[self.bank_id] = num_tx
 
             # Generate partition
-            bank_data = generator.generate_bank_dataset(self.bank_id, sizes)
+            datasets = generator.generate_bank_datasets(
+                bank_a_size=sizes["bank_a"],
+                bank_b_size=sizes["bank_b"],
+                bank_c_size=sizes["bank_c"],
+            )
+            df, labels = datasets[self.bank_id]
+            X = DataGenerator.encode_features(df)
+            y = labels.values
 
-            _client_state.X_train = bank_data["X_train"]
-            _client_state.y_train = bank_data["y_train"]
-            _client_state.X_test = bank_data["X_test"]
-            _client_state.y_test = bank_data["y_test"]
+            # Perform train-test split
+            from sklearn.model_selection import train_test_split
+
+            try:
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X,
+                    y,
+                    test_size=0.2,
+                    random_state=42,
+                    stratify=y,
+                )
+            except Exception:
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X,
+                    y,
+                    test_size=0.2,
+                    random_state=42,
+                )
+
+            _client_state.X_train = X_train
+            _client_state.y_train = y_train
+            _client_state.X_test = X_test
+            _client_state.y_test = y_test
 
             response = {
                 "status": "initialized",
                 "bank_id": self.bank_id,
-                "train_samples": len(bank_data["X_train"]),
-                "test_samples": len(bank_data["X_test"]),
+                "train_samples": len(X_train),
+                "test_samples": len(X_test),
                 "correlation_id": data.get("correlation_id"),
             }
         except Exception as exc:
@@ -138,22 +164,34 @@ class RedisBankClientListener:
                 flat_weights=weights_data["flat_weights"],
             )
 
+            use_opacus_dp = data.get("enable_dp", False)
+
             # Run local training
-            model = _model_service.create_model(dp_compatible=data.get("enable_dp", False))
+            model = _model_service.create_model(dp_compatible=use_opacus_dp)
             model = _model_service.set_parameters(model, input_weights)
 
-            trained_model, loss, actual_eps = _model_service.train(
-                model=model,
-                X_train=_client_state.X_train,
-                y_train=_client_state.y_train,
-                learning_rate=data.get("learning_rate", 0.01),
-                batch_size=data.get("batch_size", 32),
-                epochs=data.get("epochs", 1),
-                enable_dp=data.get("enable_dp", False),
-                dp_epsilon=data.get("dp_epsilon", 1.0),
-                dp_delta=data.get("dp_delta", 1e-5),
-                dp_max_grad_norm=data.get("dp_max_grad_norm", 1.0),
-            )
+            actual_eps = None
+            if use_opacus_dp:
+                trained_model, loss_hist, actual_eps = _model_service.train_local_with_opacus(
+                    model,
+                    _client_state.X_train,
+                    _client_state.y_train,
+                    target_epsilon=data.get("dp_epsilon", 1.0),
+                    target_delta=data.get("dp_delta", 1e-5),
+                    max_grad_norm=data.get("dp_max_grad_norm", 1.0),
+                    epochs=data.get("epochs", 1),
+                    learning_rate=data.get("learning_rate", 0.01),
+                    batch_size=data.get("batch_size", 32),
+                )
+            else:
+                trained_model, loss_hist = _model_service.train_local(
+                    model,
+                    _client_state.X_train,
+                    _client_state.y_train,
+                    epochs=data.get("epochs", 1),
+                    learning_rate=data.get("learning_rate", 0.01),
+                    batch_size=data.get("batch_size", 32),
+                )
 
             output_weights = _model_service.get_parameters(trained_model)
 
@@ -163,7 +201,7 @@ class RedisBankClientListener:
                     "flat_weights": output_weights.flat_weights,
                 },
                 "num_samples": len(_client_state.X_train),
-                "loss": float(loss),
+                "loss": float(loss_hist[-1] if loss_hist else 0.0),
                 "actual_epsilon": float(actual_eps) if actual_eps is not None else None,
                 "correlation_id": data.get("correlation_id"),
             }

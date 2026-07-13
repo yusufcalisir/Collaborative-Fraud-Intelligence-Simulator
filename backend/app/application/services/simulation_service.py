@@ -324,7 +324,8 @@ class SimulationService:
                 )
 
                 # Initialize local bank clients over Redis Pub/Sub
-                r_client = redis.Redis.from_url(self.settings.redis_url, decode_responses=True)
+                redis_url = self.settings.redis_url or "redis://localhost:6379/0"
+                r_client = redis.Redis.from_url(redis_url, decode_responses=True)
                 pubsub = r_client.pubsub()
 
                 # Subscribe to response channels
@@ -447,6 +448,7 @@ class SimulationService:
                     client_weights = []
                     client_samples = []
                     per_bank_loss = {}
+                    per_bank_samples = {}
 
                     # Serialize current global weights to dict format
                     schema_weights = {
@@ -539,6 +541,7 @@ class SimulationService:
                         client_weights.append(res_w)
                         client_samples.append(train_res["num_samples"])
                         per_bank_loss[bank.id] = train_res["loss"]
+                        per_bank_samples[bank.id] = train_res["num_samples"]
 
                     # Apply secure aggregation masks
                     if enable_sa and len(client_weights) > 1:
@@ -693,11 +696,7 @@ class SimulationService:
                         dropped_bank_ids=list(dropped_banks),
                         global_loss=round_loss,
                         per_bank_loss=per_bank_loss,
-                        per_bank_samples={
-                            b.id: train_res["num_samples"]
-                            for b in participating
-                            if train_res is not None
-                        },
+                        per_bank_samples=per_bank_samples,
                         aggregation_time_ms=agg_time,
                         round_duration_ms=round_duration,
                         canary_info=canary_info,
@@ -867,6 +866,7 @@ class SimulationService:
                     client_weights = []
                     client_samples = []
                     per_bank_loss = {}
+                    per_bank_samples = {}
 
                     # Serialize current global weights to Pydantic-compatible dict format
                     schema_weights = {
@@ -951,6 +951,7 @@ class SimulationService:
                         client_weights.append(res_w)
                         client_samples.append(train_res["num_samples"])
                         per_bank_loss[bank.id] = train_res["loss"]
+                        per_bank_samples[bank.id] = train_res["num_samples"]
 
                     # Apply secure aggregation masks
                     if enable_sa and len(client_weights) > 1:
@@ -1095,7 +1096,7 @@ class SimulationService:
                         dropped_bank_ids=list(dropped_banks),
                         global_loss=round_loss,
                         per_bank_loss=per_bank_loss,
-                        per_bank_samples={b.id: train_res["num_samples"] for b in participating},
+                        per_bank_samples=per_bank_samples,
                         aggregation_time_ms=agg_time,
                         round_duration_ms=round_duration,
                         canary_info=canary_info,
@@ -1486,7 +1487,8 @@ class SimulationService:
 
                 import redis
 
-                r_client_eval = redis.Redis.from_url(self.settings.redis_url, decode_responses=True)
+                redis_url_eval = self.settings.redis_url or "redis://localhost:6379/0"
+                r_client_eval = redis.Redis.from_url(redis_url_eval, decode_responses=True)
                 pubsub_eval = r_client_eval.pubsub()
                 pubsub_eval.subscribe(*[f"bank_client_{b.id}_evaluate_response" for b in banks])
 
