@@ -279,3 +279,64 @@ class DashboardStatsResponse(BaseModel):
     cross_institution_matches: int
     active_scenarios: int
     graph_clusters: int
+
+
+# ── Privacy-Preserving Entity Resolution (PSI) ──
+
+
+class PSIRequest(BaseModel):
+    bank_a_id: str
+    bank_b_id: str
+    entity_type: str | None = None
+
+
+class PSIMatch(BaseModel):
+    privacy_hash: str
+    entity_type: str
+    display_label_a: str
+    display_label_b: str
+    risk_level_a: str
+    risk_level_b: str
+
+
+class PSIProtocolStats(BaseModel):
+    computation_time_ms: float
+    data_exchanged_bytes: int
+    num_entities_a: int
+    num_entities_b: int
+    prime_bit_length: int
+
+
+class PSIResponse(BaseModel):
+    matches: list[PSIMatch]
+    stats: PSIProtocolStats
+
+
+# ── Graph-Based Fraud Detection ──
+
+
+class RiskPropagationRequest(BaseModel):
+    decay_factor: float = 0.85
+
+
+class RiskPropagationResponse(BaseModel):
+    updated_nodes_count: int
+    max_score: float
+    avg_score_change: float
+
+
+class CommunityAnalyticsResponse(BaseModel):
+    community_id: int
+    node_ids: list[str]
+    size: int
+    fraud_density: float
+    average_risk: float
+
+
+class TemporalAnomalyResponse(BaseModel):
+    subgraph_id: int
+    node_ids: list[str]
+    edges_count: int
+    velocity_score: float
+    time_window_start: str
+    time_window_end: str

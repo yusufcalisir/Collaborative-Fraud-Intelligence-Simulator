@@ -10,8 +10,11 @@ from app.application.schemas.phase2 import (
     EntityProfileResponse,
     EntityResolveRequest,
     EntityResponse,
+    PSIRequest,
+    PSIResponse,
 )
 from app.application.services.entity_resolution import EntityResolutionService
+from app.application.services.psi_service import PSIService
 from app.domain.enums import EntityType, RiskLevel
 
 logger = logging.getLogger(__name__)
@@ -113,3 +116,14 @@ async def resolve_entity(req: EntityResolveRequest) -> list[EntityResponse]:
         )
         for e in entities
     ]
+
+
+_psi_service = PSIService(_entity_service)
+
+
+@router.post("/psi", response_model=PSIResponse)
+async def run_entities_psi(req: PSIRequest) -> PSIResponse:
+    """Run simulated Private Set Intersection (PSI) protocol between two banks."""
+    et = EntityType(req.entity_type) if req.entity_type else None
+    result = _psi_service.run_psi(req.bank_a_id, req.bank_b_id, entity_type=et)
+    return PSIResponse(**result)
