@@ -247,6 +247,15 @@ class AlertIntelligenceService:
 
         return correlations
 
+    def get_alert_by_transaction_id(self, transaction_id: str) -> Alert | None:
+        """Find an alert by transaction ID."""
+        raw_vals = self._alert_store.list_values()
+        for v in raw_vals:
+            alert = _dict_to_alert(v)
+            if alert.transaction_id == transaction_id:
+                return alert
+        return None
+
     def get_alert(self, alert_id: str) -> Alert | None:
         val = self._alert_store.get(alert_id)
         return _dict_to_alert(val) if val else None

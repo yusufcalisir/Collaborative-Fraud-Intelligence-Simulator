@@ -125,6 +125,37 @@ async def explain_alert(alert_id: str) -> ExplainabilityResponse:
     )
 
 
+@router.get("/explanation/{transaction_id}", response_model=ExplainabilityResponse)
+async def explain_transaction(transaction_id: str) -> ExplainabilityResponse:
+    """Get explainability report for an alert by transaction ID."""
+    alert = _alert_service.get_alert_by_transaction_id(transaction_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found for this transaction ID")
+
+    report = _explainability_service.explain_alert(alert)
+    total_weighted = sum(s.weighted_score for s in report.risk_score_breakdown)
+
+    return ExplainabilityResponse(
+        alert_id=report.alert_id,
+        top_features=report.top_features,
+        risk_factors=report.risk_factors,
+        historical_evidence=report.historical_evidence,
+        model_confidence=report.model_confidence,
+        risk_score_breakdown=[
+            {
+                "signal_name": s.signal_name,
+                "weight": s.weight,
+                "raw_value": s.raw_value,
+                "normalized_score": s.normalized_score,
+                "explanation": s.explanation,
+                "contribution": s.weighted_score / total_weighted if total_weighted > 0 else 0.0,
+            }
+            for s in report.risk_score_breakdown
+        ],
+        explanation_text=report.explanation_text,
+    )
+
+
 @router.get("/intelligence", response_model=list[SharedIntelligenceResponse])
 async def list_intelligence(
     bank_id: str | None = Query(None, description="Filter intelligence NOT from this bank"),

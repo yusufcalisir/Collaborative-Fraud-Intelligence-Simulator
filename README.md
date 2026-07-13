@@ -501,6 +501,7 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 
 *   `GET /api/v1/alerts` - Query and filter generated transaction fraud alerts.
 *   `GET /api/v1/alerts/{id}/explain` - Explains risk factors (9-signals + SHAP values) contributing to an alert.
+*   `GET /api/v1/explanation/{transaction_id}` - Explains risk factors (9-signals + SHAP values) for an alert by its transaction ID.
 *   `GET /api/v1/intelligence` - Query cross-bank intelligence items.
 *   `GET/POST /api/v1/cases` - Create, view, or update AML investigation cases.
 *   `POST /api/v1/cases/{id}/notes` - Add investigator findings to a case.
