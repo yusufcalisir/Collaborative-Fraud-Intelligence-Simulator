@@ -60,5 +60,7 @@ class BankConnectorFactory:
             return MQSkeletonBankConnector(broker_uri=broker_uri)
         else:
             if model_service is None or data_generator is None:
-                raise ValueError("model_service and data_generator are required for mock connector.")
+                raise ValueError(
+                    "model_service and data_generator are required for mock connector."
+                )
             return MockBankConnector(model_service=model_service, data_generator=data_generator)

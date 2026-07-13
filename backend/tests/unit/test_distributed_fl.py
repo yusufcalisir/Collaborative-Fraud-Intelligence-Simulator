@@ -101,17 +101,26 @@ def mock_get_client(*args: Any, **kwargs: Any) -> Any:
         def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
             pass
 
-        def post(self, url: str, json: Any = None, headers: Any = None, timeout: Any = None) -> MockResponse:
+        def post(
+            self, url: str, json: Any = None, headers: Any = None, timeout: Any = None
+        ) -> MockResponse:
             # Resolve URL path mapping
             path_parts = url.split("api/v1/")
-            path = "/api/v1/" + path_parts[1] if len(path_parts) > 1 else "/api/v1/bank-client/initialize"
+            path = (
+                "/api/v1/" + path_parts[1]
+                if len(path_parts) > 1
+                else "/api/v1/bank-client/initialize"
+            )
             resp = client.post(path, json=json)
             return MockResponse(resp)
 
     return MockClient()
 
 
-@patch("app.infrastructure.connectors.rest_connector.RESTBankConnector._get_client", side_effect=mock_get_client)
+@patch(
+    "app.infrastructure.connectors.rest_connector.RESTBankConnector._get_client",
+    side_effect=mock_get_client,
+)
 def test_distributed_simulation_orchestration(mock_get_client_patch: Any) -> None:
     """Verify that a full distributed federated training run aggregates weights correctly."""
     settings = get_settings()

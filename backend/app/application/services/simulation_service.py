@@ -313,7 +313,9 @@ class SimulationService:
 
                 bank_connectors = {}
                 for bank in banks:
-                    conn_type = getattr(self.settings, f"{bank.id.replace('-', '_')}_connector_type", None)
+                    conn_type = getattr(
+                        self.settings, f"{bank.id.replace('-', '_')}_connector_type", None
+                    )
                     if conn_type == "mock" or not conn_type:
                         if fl_engine_type == "distributed":
                             conn_type = "rest"
@@ -323,7 +325,9 @@ class SimulationService:
                             conn_type = "mock"
 
                     local_settings = self.settings.model_copy()
-                    setattr(local_settings, f"{bank.id.replace('-', '_')}_connector_type", conn_type)
+                    setattr(
+                        local_settings, f"{bank.id.replace('-', '_')}_connector_type", conn_type
+                    )
 
                     connector = BankConnectorFactory.get_connector(
                         bank_id=bank.id,
@@ -345,10 +349,19 @@ class SimulationService:
                     },
                 )
                 for bank in banks:
-                    num_txns = max(500, getattr(config, f"{bank.id.replace('-', '_')}_transactions", 1000) // 10)
-                    init_res = bank_connectors[bank.id].initialize(bank.id, num_transactions=num_txns, seed=42)
+                    num_txns = max(
+                        500,
+                        getattr(config, f"{bank.id.replace('-', '_')}_transactions", 1000) // 10,
+                    )
+                    init_res = bank_connectors[bank.id].initialize(
+                        bank.id, num_transactions=num_txns, seed=42
+                    )
                     if init_res.get("status") == "failed" or "error" in init_res:
-                        logger.error("Failed to initialize bank %s via connector: %s", bank.id, init_res.get("error"))
+                        logger.error(
+                            "Failed to initialize bank %s via connector: %s",
+                            bank.id,
+                            init_res.get("error"),
+                        )
 
                 dropped_banks = set()
 
@@ -446,11 +459,15 @@ class SimulationService:
                         )
 
                         if "error" in train_res:
-                            logger.error("Training failed for bank %s: %s", bank.id, train_res["error"])
+                            logger.error(
+                                "Training failed for bank %s: %s", bank.id, train_res["error"]
+                            )
                             continue
 
                         # Extract result weights
-                        res_shapes = [tuple(shape) for shape in train_res["weights"]["layer_shapes"]]
+                        res_shapes = [
+                            tuple(shape) for shape in train_res["weights"]["layer_shapes"]
+                        ]
                         res_w = ModelWeights(
                             layer_shapes=res_shapes,
                             flat_weights=train_res["weights"]["flat_weights"],
@@ -489,7 +506,9 @@ class SimulationService:
                             budget.spend(config.dp_epsilon)
 
                         if train_res.get("actual_epsilon"):
-                            privacy_service.record_opacus_epsilon(simulation.id, train_res["actual_epsilon"])
+                            privacy_service.record_opacus_epsilon(
+                                simulation.id, train_res["actual_epsilon"]
+                            )
 
                         client_weights.append(res_w)
                         client_samples.append(train_res["num_samples"])
@@ -513,7 +532,10 @@ class SimulationService:
                         agg_start = time.perf_counter()
 
                         # If poisoning is detected/defended, filter weights
-                        if config.enable_poisoning_simulation and config.byzantine_defense != "none":
+                        if (
+                            config.enable_poisoning_simulation
+                            and config.byzantine_defense != "none"
+                        ):
                             client_weights = self.fl_engine.apply_byzantine_defense(
                                 client_weights,
                                 defense_type=config.byzantine_defense,

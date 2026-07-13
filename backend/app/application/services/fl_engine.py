@@ -373,9 +373,7 @@ class FederatedLearningEngine:
                 scores.append(sum(dists[:num_closest]))
 
             best_idx = int(np.argmin(scores))
-            logger.info(
-                "Byzantine defense (krum): selected client %d as representative", best_idx
-            )
+            logger.info("Byzantine defense (krum): selected client %d as representative", best_idx)
             return [client_weights[best_idx]]
 
         # coordinate_wise_median and any unknown defense: return all weights
