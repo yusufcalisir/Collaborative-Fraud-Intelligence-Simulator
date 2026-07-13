@@ -216,3 +216,49 @@ sequenceDiagram
         Broker-->>Coord: Deliver event
     end
 ```
+
+## Privacy-Preserving Graph Intelligence
+
+Phase 2 introduces **Privacy-Preserving Entity Resolution (PSI)** and **Graph-Based Fraud Detection (Graph Analytics)**. These components operate jointly to match entities securely across banks and propagate threat risks over the transaction graph.
+
+### 1. Diffie-Hellman Private Set Intersection (DH-PSI)
+
+To match customers, cards, or device IDs without disclosing raw identifiers of non-overlapping records, we implement a commutative modular exponentiation protocol (DH-PSI):
+
+1. **Parameters**: A shared 512-bit modular prime $p$ and a generator $g$.
+2. **Local Keys**: Bank A generates private scalar key $a$; Bank B generates private scalar key $b$.
+3. **Pass 1**:
+   - Bank A encrypts its set of hashes $X_A$: $Y_A = \{ x^a \pmod p \mid x \in X_A \}$.
+   - Bank B encrypts its set of hashes $X_B$: $Y_B = \{ x^b \pmod p \mid x \in X_B \}$.
+   - They exchange their encrypted sets.
+4. **Pass 2**:
+   - Bank A encrypts Bank B's set: $Z_B = \{ y^a \pmod p \mid y \in Y_B \} = \{ x^{ab} \pmod p \}$.
+   - Bank B encrypts Bank A's set: $Z_A = \{ y^b \pmod p \mid y \in Y_A \} = \{ x^{ba} \pmod p \}$.
+5. **Intersection**: Since modular exponentiation is commutative ($x^{ab} \equiv x^{ba} \pmod p$), matching elements in $Z_A$ and $Z_B$ reveal the shared entities without exposing any other values.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant BA as Bank Client A
+    participant BB as Bank Client B
+    Note over BA, BB: Pass 1: Local Encryption
+    Note over BA: Encrypts set with private key 'a'
+    Note over BB: Encrypts set with private key 'b'
+    BA->>BB: Send A's encrypted set
+    BB->>BA: Send B's encrypted set
+    Note over BA, BB: Pass 2: Commutative Cross-Encryption
+    Note over BA: Encrypts received set with key 'a'
+    Note over BB: Encrypts received set with key 'b'
+    BA->>BB: Send double-encrypted set (Z_B)
+    BB->>BA: Send double-encrypted set (Z_A)
+    Note over BA: Computes Z_A & Z_B intersection -> Matches
+```
+
+### 2. Graph Analytics & Risk Propagation
+
+Once matches are resolved, a multi-bank transaction graph is constructed. The engine executes three structural graph algorithms:
+
+* **PageRank-Like Risk Propagation**: Starting with known high-risk/critical alerts, risk scores are propagated to neighboring nodes using a decay factor ($\gamma = 0.85$) and weight adjustments based on relationship type (e.g. `SHARES_DEVICE` has higher weight than `SHARES_IP`).
+* **Community Analytics**: Connected components are grouped, and community-level statistics (size, average risk, and fraud density) are computed to isolate potential fraud rings.
+* **Temporal Velocity Anomalies**: Edges are grouped in sliding time windows (e.g., 5 minutes) to detect high-velocity relationship creation bursts that signal structuring or automated laundering networks.
+

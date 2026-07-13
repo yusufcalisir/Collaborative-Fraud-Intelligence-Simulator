@@ -191,6 +191,8 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Concept Drift Detection** | Logistic regression on reference bank features/labels; evaluates $P(Y\|X)$ divergence on target bank distributions; segment-based conditional JS drift. | Detects when the relationship between features and fraud outcomes changes — a deeper signal than feature distribution shifts alone. | Conditional JS divergence per fraud/legit segment |
 | **Canary Evaluation Gate** | End-of-round evaluation of candidate global model vs. active model on combined cross-bank validation set; `CANARY_GATE_TOLERANCE=0.005`. | Prevents regressions from being silently promoted to production; mirrors real-world bank MLOps quality gates. | AUC-ROC gate: candidate must match active ± 0.5% |
 | **Model Registry & Rollback** | File-based versioned registry (`storage/registry/`); `registry.json` manifest with atomic rollback. Active `global_model.pt` updated to match rolled-back version, keeping SHAP transparent. | Enables full model versioning, audit history, and safe rollback to any previous global model without simulation restart. | Atomic file swap + manifest consistency |
+| **Private Set Intersection (PSI)** | Simulated zero-knowledge Diffie-Hellman protocol (DH-PSI) using modular exponentiation over a 512-bit prime field ($p$) with commutative private keys. | Identifies common customers/devices between banks without disclosing any non-overlapping records. | Perfect Forward Secrecy; zero-knowledge set comparison |
+| **Graph-Based Fraud Detection** | Adjacency-list graph engine with PageRank-like risk propagation (decay $\gamma=0.85$), connected component community analytics (fraud density calculation), and temporal edge velocity sliding windows. | Identifies organized fraud rings (mule networks, layering) and propagates risk scores to connected accounts/devices. | Decoupled graph traversal; heuristic structural threat scoring |
 | **BankConnector Adapter Pattern** | Abstract `BankConnectorInterface` port; concrete adapters: `MockBankConnector` (in-process), `RESTBankConnector` (HTTP with OAuth2/mTLS/API Key), `RedisBankConnector` (pub/sub), `MQSkeletonBankConnector` (AMQP placeholder). `BankConnectorFactory` resolves per-bank adapter from config. | Decouples the FL platform from bank-specific integrations — swap a single config key to connect a real bank REST API without touching business logic. | Open/Closed principle; per-bank connector-type override |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
 
@@ -219,8 +221,10 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │   │       ├── explainability_service.py # Explains risk indicator contributions
 │   │   │       ├── fl_engine.py     # Custom FedAvg simulator (latent simulation, secure aggregation, client dropout)
 │   │   │       ├── flower_engine.py # Flower framework adapter service using Ray simulation backend
+│   │   │       ├── graph_analytics_service.py # PageRank risk propagation, community analytics, and temporal velocity metrics
 │   │   │       ├── graph_engine.py  # Assembles node-link data models for React Flow visualization
 │   │   │       ├── metrics_service.py # Calculations for F1, Accuracy, Precision, and Recall improvements
+│   │   │       ├── psi_service.py   # Zero-knowledge Diffie-Hellman Private Set Intersection (DH-PSI)
 │   │   │       ├── model_registry.py # Versioned model registry: save, list, rollback, manifest
 │   │   │       ├── model_service.py # PyTorch MLP creation, training loops, evaluation
 │   │   │       ├── privacy_service.py # Differential privacy noise, gradient clipping, budgets
@@ -501,7 +505,11 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 *   `GET/POST /api/v1/cases` - Create, view, or update AML investigation cases.
 *   `POST /api/v1/cases/{id}/notes` - Add investigator findings to a case.
 *   `POST /api/v1/entities/resolve` - Resolves overlap of device IDs and account hashes.
+*   `POST /api/v1/entities/psi` - Runs a simulated zero-knowledge Diffie-Hellman Private Set Intersection (DH-PSI) protocol.
 *   `GET /api/v1/graph/{id}` - Builds subgraphs for interactive network visualization.
+*   `POST /api/v1/graph/propagate-risk` - Runs PageRank-like risk propagation with customizable decay factor.
+*   `GET /api/v1/graph/communities/analytics` - Returns entity communities sorted by fraud and risk density.
+*   `GET /api/v1/graph/temporal-anomalies` - Lists subgraphs exhibiting abnormal edge creation velocity.
 *   `POST /api/v1/scenarios/start` - Launches a real-time replay of cross-bank fraud scenarios.
 *   `WS /ws/streaming/{scenario_id}` - Stream scenario event data in real time.
 *   `GET /docs/{service_name}` - Gateway Swagger UI aggregator (e.g. `/docs/fl-coordinator`, `/docs/identity-graph`, `/docs/fraud-alert`).
