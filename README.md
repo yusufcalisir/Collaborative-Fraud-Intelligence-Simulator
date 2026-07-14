@@ -330,21 +330,35 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 │   │   ├── dependencies.py       # FastAPI dependency injection providers
 │   │   └── main.py               # Application entrypoint and microservices gateways
 │   ├── tests/                    # Integration and unit test suite
-│   │   └── unit/
-│   │       ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
-│   │       ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
-│   │       ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks
-│   │       ├── test_event_driven_fl.py # Asserts event-driven Redis pub/sub training rounds
-│   │       ├── test_explainability_service.py # Verifies SHAP kernel value estimation and fallback heuristic rules
-│   │       ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
-│   │       ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes
-│   │       ├── test_metrics_service.py # Asserts correctness of evaluation metrics serialization
-│   │       ├── test_model_registry.py # Validates model saving, manifest versions list, promotion status updates, and canary evaluations
-│   │       ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
-│   │       ├── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
-│   │       ├── test_predict.py        # Validates real-time serving inference, risk mapping, and alerts creation
-│   │       ├── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
-│   │       └── test_property_based.py # Property-based tests verifying core mathematical invariants
+│   │   ├── integration/          # API endpoint integration and end-to-end flow tests
+│   │   │   ├── test_explainability_api.py # Verifies alert-id and transaction-id explain endpoints
+│   │   │   ├── test_graph_analytics_api.py # Asserts PSI, risk propagation, and temporal anomaly routes
+│   │   │   └── test_simulation_integration.py # Exercises multi-round federated training with DP
+│   │   ├── unit/                 # Domain, algorithm, and service unit tests
+│   │   │   ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
+│   │   │   ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
+│   │   │   ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks
+│   │   │   ├── test_event_driven_fl.py # Asserts event-driven Redis pub/sub training rounds
+│   │   │   ├── test_explainability_service.py # Verifies SHAP kernel value estimation and fallback heuristic rules
+│   │   │   ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
+│   │   │   ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes
+│   │   │   ├── test_graph_analytics.py # Asserts risk propagation decay and community metrics
+│   │   │   ├── test_metrics_service.py # Asserts correctness of evaluation metrics serialization
+│   │   │   ├── test_model_registry.py # Validates model saving, versioning, promotion, and canary
+│   │   │   ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
+│   │   │   ├── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
+│   │   │   ├── test_predict.py        # Validates real-time serving inference, risk mapping, and alerts creation
+│   │   │   ├── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
+│   │   │   ├── test_property_based.py # Property-based tests verifying core mathematical invariants
+│   │   │   └── test_psi_service.py    # Tests zero-knowledge DH-PSI commutative matching
+│   │   ├── test_alert_service.py  # Tests alert generation rules and severity classification
+│   │   ├── test_case_service.py   # Tests multi-bank case coordination and event logs
+│   │   ├── test_entity_resolution.py # Tests deterministic HMAC generation and resolution profiles
+│   │   ├── test_gateway.py        # Tests API Gateway rate-limiting and authorization policies
+│   │   ├── test_graph_engine.py   # Tests graph adjacency building and React Flow serializers
+│   │   ├── test_risk_engine.py    # Tests weighted multi-signal heuristic risk score combining
+│   │   └── test_simulation_router.py # Tests simulation creation and status check API routing
+│   │
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── benchmark.py                  # Scientific benchmark and experimental validation suite
