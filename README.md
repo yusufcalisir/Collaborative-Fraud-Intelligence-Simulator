@@ -80,6 +80,7 @@ A production-grade, enterprise-ready simulation framework demonstrating privacy-
   - [Track 4: MLOps, Explainability \& Advanced Drift Detection (Phase 4)](#track-4-mlops-explainability--advanced-drift-detection-phase-4)
 - [Model Validation \& Correctness Verification](#model-validation--correctness-verification)
 - [Feature Comparison Matrix](#feature-comparison-matrix)
+- [Threat Modeling Summary (STRIDE Matrix)](#threat-modeling-summary-stride-matrix)
 - [Clean Architecture Directory Structure](#clean-architecture-directory-structure)
 - [Configuration Options](#configuration-options)
 - [API Endpoint Blueprints](#api-endpoint-blueprints)
@@ -142,6 +143,34 @@ To provide real-time transaction screening and investigation capabilities:
 3.  **Interactive Relationship Graphs:** A full visual graph of entities, devices, cards, and accounts built using React Flow, mapping suspicious clusters in real time.
 4.  **Scenario Replay Engine:** Scripted simulation flows representing typologies like Account Takeover (ATO), Card Testing, and Layering networks.
 5.  **Model Explainability via SHAP (SHapley Additive exPlanations):** Replaces static mock heuristics with a mathematically rigorous SHAP Kernel Explainer. This analyzes individual transaction anomalies directly using the collaboratively trained global model weight files, listing contribution importances dynamically for risk analysis.
+
+#### 🧬 Diffie-Hellman Private Set Intersection (DH-PSI) Protocol
+
+To match shared entities without exposing non-overlapping customer databases, a zero-knowledge Diffie-Hellman Private Set Intersection (DH-PSI) simulation is used:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Bank A as Bank A Node (Alice)
+    participant Bank B as Bank B Node (Bob)
+    
+    Note over Bank A, Bank B: Step 1: Client-Side Initial Hashing & Encryption
+    Bank A->>Bank A: Hash identifiers to prime field elements: x_a = H(id_a)<br/>Encrypt with private key 'a': Y_A = (x_a)^a mod p
+    Bank B->>Bank B: Hash identifiers to prime field elements: x_b = H(id_b)<br/>Encrypt with private key 'b': Y_B = (x_b)^b mod p
+    
+    Note over Bank A, Bank B: Step 2: Swap Encrypted Sets
+    Bank A->>Bank B: Send Y_A
+    Bank B->>Bank A: Send Y_B
+    
+    Note over Bank A, Bank B: Step 3: Double Encryption (Commutative Property)
+    Bank A->>Bank A: Encrypt Bob's set with key 'a': Z_B = (Y_B)^a mod p = (x_b)^(b*a) mod p
+    Bank B->>Bank B: Encrypt Alice's set with key 'b': Z_A = (Y_A)^b mod p = (x_a)^(a*b) mod p
+    
+    Note over Bank A, Bank B: Step 4: Intersect Double-Encrypted Sets
+    Bank A->>Bank B: Send Z_A
+    Bank B->>Bank A: Send Z_B
+    Note over Bank A, Bank B: Since (x)^(a*b) == (x)^(b*a) mod p,<br/>match intersection Z_A ∩ Z_B to find common entities
+```
 
 ### Track 3: Production Microservices & Secure API Gateway (Phase 3)
 To transform the prototype into a production-oriented distributed system:
@@ -249,8 +278,23 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Graph-Based Fraud Detection** | Adjacency-list graph engine with PageRank-like risk propagation (decay $\gamma=0.85$), connected component community analytics (fraud density calculation), and temporal edge velocity sliding windows. | Identifies organized fraud rings (mule networks, layering) and propagates risk scores to connected accounts/devices. | Decoupled graph traversal; heuristic structural threat scoring |
 | **BankConnector Adapter Pattern** | Abstract `BankConnectorInterface` port; concrete adapters: `MockBankConnector` (in-process), `RESTBankConnector` (HTTP with OAuth2/mTLS/API Key), `RedisBankConnector` (pub/sub), `MQSkeletonBankConnector` (AMQP placeholder). `BankConnectorFactory` resolves per-bank adapter from config. | Decouples the FL platform from bank-specific integrations — swap a single config key to connect a real bank REST API without touching business logic. | Open/Closed principle; per-bank connector-type override |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
+***
+
+## Threat Modeling Summary (STRIDE Matrix)
+
+To establish robust security and regulatory readiness, the platform addresses potential security threats through design mitigations:
+
+| Threat Category (STRIDE) | Attack Vector / FL Risk | Platform Mitigation |
+| :--- | :--- | :--- |
+| **Spoofing** (Identity) | Rogue client node attempts to masquerade as Bank A and inject corrupted parameters. | Secure **API Gateway OAuth2/mTLS** validation + **BankConnector Factory** access tokens. |
+| **Tampering** (Data/Model) | Compromised client node performs **Model Poisoning** to degrade the global model. | Robust aggregation algorithms: **Krum Selection** & **Coordinate-wise Median** defense. |
+| **Repudiation** | Institution disputes a shared intelligence item or simulation configuration change. | Auditable **Model Registry Manifest** (`registry.json`) + PostgreSQL event logger. |
+| **Information Disclosure** | Adversary attempts to reverse-engineer gradients to reconstruct PII (Gradient Leakage). | **Differential Privacy** (Opacus/Post-Hoc Gaussian Noise) + **Secure Aggregation** masking. |
+| **Denial of Service** | Rogue agent floods client/coordinator training endpoints to crash Celery workers. | **Fixed-window Rate Limiting** middleware at Gateway + decoupled Async Worker architecture. |
+| **Elevation of Privilege** | Tenant bank attempts to read model metrics/data belonging to other peer institutions. | Strict **Role-Based Access Control (RBAC)** + multi-tenant isolation at database layer. |
 
 ***
+
 
 ## Clean Architecture Directory Structure
 
@@ -592,6 +636,77 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 *   `POST /api/v1/bank-client/initialize` - Initialize and cache partition dataset (used in distributed HTTP simulations).
 *   `POST /api/v1/bank-client/train` - Trigger local training for a given round using model weights payload.
 *   `POST /api/v1/bank-client/evaluate` - Evaluate global weights on local bank client test partition.
+
+### Sample API Payloads
+
+````carousel
+```json
+// POST /api/v1/entities/psi (DH-PSI Private Set Intersection Request)
+{
+  "client_id": "bank_a",
+  "peer_id": "bank_b",
+  "client_encrypted_elements": [
+    "9bf4d28c7b8d4e9ab10c85c8e23f0a51a823e4e93d8b742b08a9f1a238e83b4c",
+    "f29c8b74a3e210cd85b73e21f90a1823e4e98f7c6d5b4a3e2d1c0b9a8f7e6d5c"
+  ]
+}
+```
+<!-- slide -->
+```json
+// GET /api/v1/explanation/txn_explain_test_999 (Explainability Response)
+{
+  "alert_id": "alt_85bf2d8e-9d2c-4e1b-bf88-ef22a94f0612",
+  "top_features": ["transaction_amount", "chargeback_count", "velocity"],
+  "risk_factors": ["High transaction velocity (+2σ)", "High-risk merchant category (crypto)"],
+  "historical_evidence": "Entity associated with 3 previous high-risk alerts within 48h.",
+  "model_confidence": 0.942,
+  "risk_score_breakdown": [
+    {
+      "signal_name": "ml_prediction",
+      "weight": 0.4,
+      "raw_value": 0.95,
+      "normalized_score": 0.95,
+      "explanation": "Global PyTorch model calculated 95% likelihood of illicit fraud pattern.",
+      "contribution": 0.448
+    },
+    {
+      "signal_name": "velocity_rules",
+      "weight": 0.25,
+      "raw_value": 2.0,
+      "normalized_score": 0.5,
+      "explanation": "Transaction frequency (2 per window) is moderately elevated.",
+      "contribution": 0.147
+    }
+  ],
+  "explanation_text": "Kernel SHAP values indicate transaction amount and high-risk merchant category were the primary drivers, contributing 59.5% of total risk."
+}
+```
+<!-- slide -->
+```json
+// POST /api/v1/graph/propagate-risk (Risk Propagation Response)
+{
+  "propagation_rounds": 3,
+  "decay_factor": 0.85,
+  "updated_nodes": [
+    {
+      "node_id": "acc_bank_a_9918237",
+      "initial_risk_score": 0.9,
+      "final_risk_score": 0.9,
+      "risk_delta": 0.0,
+      "role": "originator"
+    },
+    {
+      "node_id": "acc_bank_b_4481923",
+      "initial_risk_score": 0.1,
+      "final_risk_score": 0.765,
+      "risk_delta": 0.665,
+      "role": "intermediary"
+    }
+  ],
+  "average_risk_shift": 0.3325
+}
+```
+````
 
 ***
 
