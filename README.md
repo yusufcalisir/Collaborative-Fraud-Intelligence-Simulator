@@ -406,18 +406,18 @@ The platform ships with a production-grade observability stack that provides **d
 │  │   Metrics ──→ /metrics endpoint                          │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
-                              │                    │
-                    ┌─────────┘                    └──────────┐
-                    ▼                                          ▼
-          ┌─────────────────┐                      ┌───────────────────┐
-          │   Jaeger UI     │                      │   Prometheus      │
-          │   :16686        │                      │   :9090           │
-          │                 │                      │   Scrapes /metrics│
-          │  Distributed    │                      │   every 15s       │
-          │  trace viewer   │                      │   7-day retention │
-          └─────────────────┘                      └─────────┬─────────┘
-                                                              │
-                                                              ▼
+                               │                   │
+                     ┌─────────┘                   └─────────┐
+                     ▼                                       ▼
+            ┌─────────────────┐                    ┌───────────────────┐
+            │   Jaeger UI     │                    │   Prometheus      │
+            │   :16686        │                    │   :9090           │
+            │                 │                    │   Scrapes /metrics│
+            │  Distributed    │                    │   every 15s       │
+            │  trace viewer   │                    │   7-day retention │
+            └─────────────────┘                    └─────────┬─────────┘
+                                                             │
+                                                             ▼
                                                    ┌───────────────────┐
                                                    │   Grafana         │
                                                    │   :3001           │
