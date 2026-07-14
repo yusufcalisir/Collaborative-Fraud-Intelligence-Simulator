@@ -151,25 +151,25 @@ To match shared entities without exposing non-overlapping customer databases, a 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Bank A as Bank A Node (Alice)
-    participant Bank B as Bank B Node (Bob)
+    participant A as Bank A Node (Alice)
+    participant B as Bank B Node (Bob)
     
-    Note over Bank A, Bank B: Step 1: Client-Side Initial Hashing & Encryption
-    Bank A->>Bank A: Hash identifiers to prime field elements: x_a = H(id_a)<br/>Encrypt with private key 'a': Y_A = (x_a)^a mod p
-    Bank B->>Bank B: Hash identifiers to prime field elements: x_b = H(id_b)<br/>Encrypt with private key 'b': Y_B = (x_b)^b mod p
+    Note over A, B: Step 1: Client-Side Initial Hashing & Encryption
+    A->>A: Hash identifiers to prime field elements: x_a = H(id_a)<br/>Encrypt with private key 'a': Y_A = (x_a)^a mod p
+    B->>B: Hash identifiers to prime field elements: x_b = H(id_b)<br/>Encrypt with private key 'b': Y_B = (x_b)^b mod p
     
-    Note over Bank A, Bank B: Step 2: Swap Encrypted Sets
-    Bank A->>Bank B: Send Y_A
-    Bank B->>Bank A: Send Y_B
+    Note over A, B: Step 2: Swap Encrypted Sets
+    A->>B: Send Y_A
+    B->>A: Send Y_B
     
-    Note over Bank A, Bank B: Step 3: Double Encryption (Commutative Property)
-    Bank A->>Bank A: Encrypt Bob's set with key 'a': Z_B = (Y_B)^a mod p = (x_b)^(b*a) mod p
-    Bank B->>Bank B: Encrypt Alice's set with key 'b': Z_A = (Y_A)^b mod p = (x_a)^(a*b) mod p
+    Note over A, B: Step 3: Double Encryption (Commutative Property)
+    A->>A: Encrypt Bob's set with key 'a': Z_B = (Y_B)^a mod p = (x_b)^(b*a) mod p
+    B->>B: Encrypt Alice's set with key 'b': Z_A = (Y_A)^b mod p = (x_a)^(a*b) mod p
     
-    Note over Bank A, Bank B: Step 4: Intersect Double-Encrypted Sets
-    Bank A->>Bank B: Send Z_A
-    Bank B->>Bank A: Send Z_B
-    Note over Bank A, Bank B: Since (x)^(a*b) == (x)^(b*a) mod p,<br/>match intersection Z_A ∩ Z_B to find common entities
+    Note over A, B: Step 4: Intersect Double-Encrypted Sets
+    A->>B: Send Z_A
+    B->>A: Send Z_B
+    Note over A, B: Since (x)^(a*b) == (x)^(b*a) mod p,<br/>match intersection Z_A ∩ Z_B to find common entities
 ```
 
 ### Track 3: Production Microservices & Secure API Gateway (Phase 3)
