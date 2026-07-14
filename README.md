@@ -22,7 +22,7 @@ A production-grade, enterprise-ready simulation framework demonstrating privacy-
                                           │
                                           ▼
                      ┌────────────────────────────────────────┐
-                     │   Differential Privacy (Post-Hoc/Opacus)│
+                     │  Differential Privacy (Post-Hoc/Opacus)│
                      │   - L2 Gradient Clipping & Noise       │
                      └────────────────────┬───────────────────┘
                                           │
