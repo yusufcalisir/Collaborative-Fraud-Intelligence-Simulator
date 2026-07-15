@@ -172,6 +172,14 @@ sequenceDiagram
     Note over A, B: Since (x)^(a*b) == (x)^(b*a) mod p,<br/>match intersection Z_A ∩ Z_B to find common entities
 ```
 
+#### 🕸️ Federated Graph Neural Network (FedGNN) & Node representation
+To complement heuristic-based graph analytics (PageRank risk propagation), the platform integrates a **Federated GraphSAGE (SAmple and aggreGatE)** framework:
+1. **Local Graph Construction**: Each bank constructs a local transaction subgraph (accounts, devices, cards) using in-memory adjacency list formats.
+2. **Structural Feature Extraction**: Node properties are mapped to a 12-dimensional feature vector encoding entity type, ordinal risk tier, alert counts, local degree centrality, and temporal activity patterns.
+3. **GraphSAGE Layer Message-Passing**: A 2-layer GNN aggregates local neighbor representations using mean-pooling, projects combined representations, and applies L2 normalization to project nodes onto a unit sphere.
+4. **Federated Parameter Aggregation**: Only model projection matrices ($W_{self}, W_{neigh}$) and classification head weights are shared with the coordinator for standard Byzantine-robust FedAvg or Krum aggregation. **Raw graph structures, customer PII, and computed embedding vectors never leave local bank boundaries.**
+5. **Similarity Search & Clustering**: The synchronized global model projects localized nodes into a shared 64-dimensional space, enabling cross-bank cosine similarity search and greedy community clustering to isolate distributed laundering rings.
+
 ### Track 3: Production Microservices & Secure API Gateway (Phase 3)
 To transform the prototype into a production-oriented distributed system:
 1.  **Microservices Decomposition**: Decoupled the backend into 4 autonomous, independent services: `gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert` (dynamically loaded in [main.py](file:///backend/app/main.py#L236-L300) and orchestrated in [docker-compose.yml](file:///docker-compose.yml)).
@@ -636,6 +644,15 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 *   `POST /api/v1/bank-client/initialize` - Initialize and cache partition dataset (used in distributed HTTP simulations).
 *   `POST /api/v1/bank-client/train` - Trigger local training for a given round using model weights payload.
 *   `POST /api/v1/bank-client/evaluate` - Evaluate global weights on local bank client test partition.
+
+### Phase 5: Federated Graph Embedding (FedGNN)
+
+*   `POST /api/v1/graph/embeddings/train` - Trains GraphSAGE locally on a bank's entity-relationship graph.
+*   `GET /api/v1/graph/embeddings/{entity_id}` - Retrieves the 64-dimensional embedding vector learned by GraphSAGE.
+*   `POST /api/v1/graph/embeddings/similar` - Finds structurally similar entities across banks via embedding cosine similarity.
+*   `POST /api/v1/graph/embeddings/propagate-risk` - Propagates risk along graph edges weighted by GNN embedding similarities.
+*   `POST /api/v1/graph/embeddings/clusters` - Clusters entities by GNN embedding similarity to identify unconnected fraud rings.
+*   `GET /api/v1/graph/embeddings/stats` - Returns statistics about the trained embedding space.
 
 ### Sample API Payloads
 

@@ -119,3 +119,171 @@ async def get_subgraph(
         center_entity_id=subgraph.center_entity_id,
         depth=subgraph.depth,
     )
+
+
+# ── Federated Graph Embedding (FedGNN) Endpoints ────────
+
+from pydantic import BaseModel, Field
+
+from app.application.services.graph_embedding_service import GraphEmbeddingService
+
+_graph_embedding_service = GraphEmbeddingService(graph_engine=_graph_engine)
+
+
+class GNNTrainRequest(BaseModel):
+    """Request body for GNN training."""
+
+    bank_id: str = Field(default="bank_a", description="Bank to train on")
+    epochs: int = Field(default=5, ge=1, le=50)
+    learning_rate: float = Field(default=0.01, gt=0.0, le=1.0)
+
+
+class GNNTrainResponse(BaseModel):
+    """Response from GNN training."""
+
+    bank_id: str
+    loss: float
+    num_nodes: int
+    num_edges: int
+    fraud_nodes: int
+    embedding_dim: int
+    model_parameters: int
+
+
+class GNNSimilarityRequest(BaseModel):
+    """Request body for embedding similarity search."""
+
+    entity_id: str
+    top_k: int = Field(default=10, ge=1, le=100)
+    threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+
+
+class GNNEmbeddingClusterRequest(BaseModel):
+    """Request body for embedding-based fraud clustering."""
+
+    similarity_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
+    min_cluster_size: int = Field(default=3, ge=2, le=50)
+
+
+@router.post("/embeddings/train")
+async def train_graph_embeddings(req: GNNTrainRequest) -> GNNTrainResponse:
+    """Train GraphSAGE model locally on a bank's entity graph.
+
+    Trains a 2-layer GraphSAGE model on the entity-relationship graph,
+    producing 64-dimensional node embeddings that capture structural
+    fraud patterns. Only model weights are federatable — raw graph
+    structure never leaves the bank.
+    """
+    weights, metrics = _graph_embedding_service.train_local_gnn(
+        bank_id=req.bank_id,
+        epochs=req.epochs,
+        learning_rate=req.learning_rate,
+    )
+    return GNNTrainResponse(
+        bank_id=req.bank_id,
+        loss=metrics["loss"],
+        num_nodes=metrics["num_nodes"],
+        num_edges=metrics["num_edges"],
+        fraud_nodes=metrics["fraud_nodes"],
+        embedding_dim=metrics["embedding_dim"],
+        model_parameters=weights.num_parameters,
+    )
+
+
+@router.get("/embeddings/{entity_id}")
+async def get_entity_embedding(entity_id: str) -> dict:
+    """Get the embedding vector for a specific entity.
+
+    Returns the 64-dimensional embedding vector learned by GraphSAGE.
+    The embedding encodes the entity's structural neighborhood patterns.
+    """
+    embedding = _graph_embedding_service.get_embedding(entity_id)
+    if embedding is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No embedding found for entity {entity_id}. Train the GNN first.",
+        )
+    return {
+        "entity_id": entity_id,
+        "embedding": embedding.tolist(),
+        "dimension": len(embedding),
+    }
+
+
+@router.post("/embeddings/similar")
+async def find_similar_entities(req: GNNSimilarityRequest) -> dict:
+    """Find structurally similar entities via embedding cosine similarity.
+
+    Identifies entities with similar neighborhood patterns in the fraud
+    graph, even if they are not directly connected. Useful for finding
+    fraud rings using the same modus operandi across banks.
+    """
+    results = _graph_embedding_service.find_similar_entities(
+        query_entity_id=req.entity_id,
+        top_k=req.top_k,
+        threshold=req.threshold,
+    )
+    return {
+        "query_entity_id": req.entity_id,
+        "similar_entities": results,
+        "count": len(results),
+    }
+
+
+@router.post("/embeddings/propagate-risk")
+async def embedding_risk_propagation(
+    decay_factor: float = Query(0.85, ge=0.0, le=1.0),
+) -> dict:
+    """Propagate risk using learned embeddings instead of heuristic multipliers.
+
+    Uses cosine similarity between GNN embeddings to weight risk transfer
+    between connected entities. More accurate than hardcoded relationship
+    multipliers because the weights are learned from labeled fraud data.
+    """
+    embeddings = _graph_embedding_service.get_all_embeddings()
+    if not embeddings:
+        raise HTTPException(
+            status_code=400,
+            detail="No embeddings available. Train the GNN first.",
+        )
+    result = _graph_analytics.embedding_enhanced_risk_propagation(
+        embeddings=embeddings,
+        decay_factor=decay_factor,
+    )
+    return result
+
+
+@router.post("/embeddings/clusters")
+async def embedding_fraud_clusters(req: GNNEmbeddingClusterRequest) -> dict:
+    """Cluster entities by embedding similarity for fraud ring detection.
+
+    Finds groups of entities with similar structural patterns, even if
+    they are in different connected components of the graph. Detects
+    fraud rings using the same techniques across different banks.
+    """
+    embeddings = _graph_embedding_service.get_all_embeddings()
+    if not embeddings:
+        raise HTTPException(
+            status_code=400,
+            detail="No embeddings available. Train the GNN first.",
+        )
+    clusters = _graph_analytics.find_fraud_clusters_by_embedding(
+        embeddings=embeddings,
+        similarity_threshold=req.similarity_threshold,
+        min_cluster_size=req.min_cluster_size,
+    )
+    return {
+        "clusters": clusters,
+        "total_clusters": len(clusters),
+    }
+
+
+@router.get("/embeddings/stats")
+async def get_embedding_stats() -> dict:
+    """Get summary statistics about the GNN embedding space.
+
+    Returns the number of embedded nodes, embedding dimension, model
+    parameter count, and pairwise similarity distribution statistics.
+    """
+    return _graph_embedding_service.get_embedding_stats()
+

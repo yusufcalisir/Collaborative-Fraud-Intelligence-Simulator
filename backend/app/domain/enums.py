@@ -183,3 +183,13 @@ class ScenarioType(StrEnum):
     ACCOUNT_TAKEOVER = "account_takeover"
     MONEY_LAUNDERING = "money_laundering"
     CARD_TESTING = "card_testing"
+
+
+# ── Phase 5: Federated Graph Embedding ────────
+
+
+class GNNArchitecture(StrEnum):
+    """Graph Neural Network architecture for federated graph embedding."""
+
+    GRAPHSAGE = "graphsage"
+

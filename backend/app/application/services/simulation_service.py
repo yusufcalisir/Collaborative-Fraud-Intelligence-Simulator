@@ -645,7 +645,113 @@ class SimulationService:
                         privacy_budget=budget.total_epsilon if enable_dp else 0.0,
                     )
 
+            # Phase 3b: Federated Graph Embedding (FedGNN)
+            enable_gnn = getattr(config, "enable_graph_embedding", False)
+            if enable_gnn:
+                self._notify(
+                    progress_callback,
+                    simulation.id,
+                    "status",
+                    {
+                        "status": simulation.status,
+                        "message": "Starting Federated Graph Neural Network (FedGNN) training",
+                    },
+                )
+                from app.application.services.graph_embedding_service import GraphEmbeddingService
+
+                gnn_service = GraphEmbeddingService(
+                    graph_engine=self.fl_engine.model_service.graph_engine if hasattr(self.fl_engine.model_service, "graph_engine") else None,
+                    embedding_dim=getattr(config, "gnn_embedding_dim", 64),
+                    hidden_dim=getattr(config, "gnn_hidden_dim", 128),
+                    num_layers=getattr(config, "gnn_num_layers", 2),
+                    neighbor_sample_size=getattr(config, "gnn_neighbor_sample_size", 10),
+                )
+
+                global_gnn_weights = None
+                gnn_rounds = min(5, getattr(config, "num_rounds", 5))  # Keep it short for simulation responsiveness
+
+                for round_num in range(1, gnn_rounds + 1):
+                    logger.info("Starting Federated GNN Round %d/%d", round_num, gnn_rounds)
+
+                    self._notify(
+                        progress_callback,
+                        simulation.id,
+                        "gnn_round_start",
+                        {
+                            "round": round_num,
+                            "total": gnn_rounds,
+                        },
+                    )
+
+                    client_gnn_weights = []
+                    client_gnn_samples = []
+                    per_bank_gnn_loss = {}
+
+                    for bank in banks:
+                        local_weights, local_metrics = gnn_service.train_local_gnn(
+                            bank_id=bank.id,
+                            global_weights=global_gnn_weights,
+                            epochs=getattr(config, "gnn_epochs_per_round", 5),
+                            learning_rate=getattr(config, "gnn_learning_rate", 0.01),
+                        )
+
+                        if enable_dp and global_gnn_weights is not None:
+                            local_weights = privacy_service.clip_model_update(
+                                global_gnn_weights,
+                                local_weights,
+                                config.dp_max_grad_norm,
+                            )
+                            local_weights = privacy_service.add_noise_to_weights(
+                                local_weights,
+                                config.dp_epsilon,
+                                config.dp_delta,
+                                config.dp_max_grad_norm,
+                                rng=rng,
+                            )
+
+                        client_gnn_weights.append(local_weights)
+                        client_gnn_samples.append(local_metrics["num_nodes"])
+                        per_bank_gnn_loss[bank.id] = local_metrics["loss"]
+
+                    agg_method = AggregationMethod(config.aggregation_method)
+                    global_gnn_weights = self.fl_engine.aggregate_graph_parameters(
+                        client_gnn_weights,
+                        client_samples=client_gnn_samples,
+                        method=agg_method,
+                    )
+
+                    gnn_service.load_global_weights(global_gnn_weights)
+
+                    self._notify(
+                        progress_callback,
+                        simulation.id,
+                        "gnn_round_complete",
+                        {
+                            "round": round_num,
+                            "total": gnn_rounds,
+                            "losses": per_bank_gnn_loss,
+                            "stats": gnn_service.get_embedding_stats(),
+                        },
+                    )
+
+                # Sync computed embeddings & GNN model parameters back to the active API presentation layers
+                try:
+                    from app.presentation.routers import graph
+                    graph._graph_embedding_service._embeddings = gnn_service._embeddings
+                    graph._graph_embedding_service._node_id_to_index = gnn_service._node_id_to_index
+                    graph._graph_embedding_service._index_to_node_id = gnn_service._index_to_node_id
+                    graph._graph_embedding_service._model = gnn_service._model
+                    graph._graph_embedding_service.embedding_dim = gnn_service.embedding_dim
+                    graph._graph_embedding_service.hidden_dim = gnn_service.hidden_dim
+                    graph._graph_embedding_service.num_layers = gnn_service.num_layers
+                    graph._graph_embedding_service.neighbor_sample_size = gnn_service.neighbor_sample_size
+                    logger.info("Successfully synchronized FedGNN embeddings and model parameters with API presentation routers.")
+                except ImportError as ie:
+                    logger.warning("Could not sync embeddings with presentation router: %s", ie)
+
+
             # Phase 4: Evaluate federated model at each bank
+
             simulation.status = SimulationStatus.EVALUATING
             self._notify(
                 progress_callback,

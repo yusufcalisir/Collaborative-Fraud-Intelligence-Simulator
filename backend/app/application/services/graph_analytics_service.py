@@ -270,3 +270,226 @@ class GraphAnalyticsService:
                 break
 
         return anomalies
+
+    def embedding_enhanced_risk_propagation(
+        self,
+        embeddings: dict[str, list[float]],
+        decay_factor: float = 0.85,
+    ) -> dict[str, Any]:
+        """Propagate risk using learned GNN embeddings instead of heuristic multipliers.
+
+        Instead of using hardcoded RELATIONSHIP_MULTIPLIERS (e.g., OWNS=1.0,
+        SHARES_IP=0.5), this method uses cosine similarity between node
+        embeddings to weight risk propagation. Nodes with similar structural
+        patterns (high embedding similarity) propagate more risk to each other.
+
+        This replaces the heuristic assumption "device sharing = 0.9 risk transfer"
+        with a learned signal: "structurally similar nodes in the fraud embedding
+        space transfer more risk."
+
+        Args:
+            embeddings: Dict of entity_id → embedding vector (from GraphEmbeddingService).
+            decay_factor: Risk decay per hop (same as standard propagation).
+
+        Returns:
+            Dict with updated node counts, max score, and average score change.
+        """
+        import numpy as np
+
+        entities = {e.id: e for e in self.entity_service.get_entities(limit=1000)}
+        relationships = self.entity_service.get_relationships()
+
+        if not entities or not embeddings:
+            return {"updated_nodes_count": 0, "max_score": 0.0, "avg_score_change": 0.0}
+
+        # Initialize scores
+        base_scores = {
+            eid: RISK_LEVEL_TO_SCORE.get(e.risk_level, 50.0) for eid, e in entities.items()
+        }
+        current_scores = base_scores.copy()
+
+        # Build adjacency with embedding-based weights
+        adjacency: dict[str, list[tuple[str, float]]] = defaultdict(list)
+
+        for r in relationships:
+            src, tgt = r.source_entity_id, r.target_entity_id
+            if src not in entities or tgt not in entities:
+                continue
+
+            # Compute embedding similarity as edge weight
+            src_emb = embeddings.get(src)
+            tgt_emb = embeddings.get(tgt)
+
+            if src_emb and tgt_emb:
+                src_arr = np.array(src_emb)
+                tgt_arr = np.array(tgt_emb)
+                src_norm = np.linalg.norm(src_arr)
+                tgt_norm = np.linalg.norm(tgt_arr)
+
+                if src_norm > 0 and tgt_norm > 0:
+                    similarity = float(np.dot(src_arr, tgt_arr) / (src_norm * tgt_norm))
+                    # Clamp to [0, 1] — negative similarity means structurally dissimilar
+                    edge_weight = max(0.0, similarity)
+                else:
+                    edge_weight = 0.5
+            else:
+                # Fallback to heuristic multiplier if no embedding available
+                edge_weight = RELATIONSHIP_MULTIPLIERS.get(r.relationship_type, 0.5)
+
+            confidence = r.confidence
+            adjacency[src].append((tgt, edge_weight * confidence))
+            adjacency[tgt].append((src, edge_weight * confidence))
+
+        # Iterative propagation (3 rounds, same as standard)
+        updated_count = 0
+        total_change = 0.0
+        max_score = 0.0
+
+        for _ in range(3):
+            next_scores = current_scores.copy()
+            for u in entities:
+                propagated = []
+                for v, weight in adjacency[u]:
+                    score_from_neighbor = current_scores[v] * decay_factor * weight
+                    propagated.append(score_from_neighbor)
+                if propagated:
+                    next_scores[u] = max(base_scores[u], max(propagated))
+            current_scores = next_scores
+
+        # Apply changes
+        for eid, new_score in current_scores.items():
+            old_level = entities[eid].risk_level
+            new_level = score_to_risk_level(new_score)
+            max_score = max(max_score, new_score)
+
+            if old_level != new_level:
+                self.entity_service.update_risk_level(eid, new_level)
+                updated_count += 1
+                diff = abs(new_score - RISK_LEVEL_TO_SCORE.get(old_level, 50.0))
+                total_change += diff
+
+        avg_change = total_change / len(entities) if entities else 0.0
+
+        logger.info(
+            "Embedding-enhanced risk propagation: updated %d nodes, max=%.2f, avg_change=%.2f",
+            updated_count,
+            max_score,
+            avg_change,
+        )
+
+        return {
+            "updated_nodes_count": updated_count,
+            "max_score": round(max_score, 2),
+            "avg_score_change": round(avg_change, 2),
+            "method": "embedding_enhanced",
+        }
+
+    def find_fraud_clusters_by_embedding(
+        self,
+        embeddings: dict[str, list[float]],
+        similarity_threshold: float = 0.75,
+        min_cluster_size: int = 3,
+    ) -> list[dict[str, Any]]:
+        """Cluster entities by embedding similarity rather than graph connectivity.
+
+        Standard community detection finds connected components (graph topology).
+        This method finds clusters of entities with similar learned structural
+        patterns, even if they are not directly connected in the graph.
+
+        For example: Two separate fraud rings at Bank A and Bank B that use
+        the same modus operandi (card testing via small transactions on
+        high-risk merchants) would have similar embeddings but no direct
+        graph connection.
+
+        Args:
+            embeddings: Dict of entity_id → embedding vector.
+            similarity_threshold: Minimum cosine similarity for clustering.
+            min_cluster_size: Minimum entities per cluster.
+
+        Returns:
+            List of clusters sorted by average risk, each with member IDs,
+            size, average similarity, and fraud density.
+        """
+        import numpy as np
+
+        if not embeddings:
+            return []
+
+        entity_ids = list(embeddings.keys())
+        emb_matrix = np.array([embeddings[eid] for eid in entity_ids])
+
+        # Normalize embeddings
+        norms = np.linalg.norm(emb_matrix, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-8)
+        normalized = emb_matrix / norms
+
+        # Compute pairwise similarity matrix
+        sim_matrix = normalized @ normalized.T
+
+        # Simple greedy clustering: assign each node to the cluster of its
+        # most similar already-clustered neighbor, or start a new cluster
+        assigned = [-1] * len(entity_ids)
+        clusters: list[list[int]] = []
+
+        for i in range(len(entity_ids)):
+            if assigned[i] >= 0:
+                continue
+
+            # Start a new cluster with node i
+            cluster_idx = len(clusters)
+            cluster = [i]
+            assigned[i] = cluster_idx
+
+            # Expand: find all unassigned nodes similar enough to any cluster member
+            queue = [i]
+            while queue:
+                current = queue.pop(0)
+                for j in range(len(entity_ids)):
+                    if assigned[j] >= 0:
+                        continue
+                    if sim_matrix[current, j] >= similarity_threshold:
+                        assigned[j] = cluster_idx
+                        cluster.append(j)
+                        queue.append(j)
+
+            clusters.append(cluster)
+
+        # Filter by minimum size and build results
+        results = []
+        for cluster_indices in clusters:
+            if len(cluster_indices) < min_cluster_size:
+                continue
+
+            cluster_ids = [entity_ids[idx] for idx in cluster_indices]
+
+            # Compute cluster metrics
+            cluster_sims = []
+            for a_idx in cluster_indices:
+                for b_idx in cluster_indices:
+                    if a_idx != b_idx:
+                        cluster_sims.append(float(sim_matrix[a_idx, b_idx]))
+
+            avg_similarity = float(np.mean(cluster_sims)) if cluster_sims else 0.0
+
+            # Get risk levels for fraud density
+            fraud_count = 0
+            total_risk = 0.0
+            for eid in cluster_ids:
+                entity = self.entity_service.get_entity(eid)
+                if entity:
+                    if entity.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
+                        fraud_count += 1
+                    total_risk += RISK_LEVEL_TO_SCORE.get(entity.risk_level, 50.0)
+
+            results.append({
+                "cluster_id": len(results),
+                "node_ids": cluster_ids,
+                "size": len(cluster_ids),
+                "avg_embedding_similarity": round(avg_similarity, 4),
+                "fraud_density": round(fraud_count / len(cluster_ids), 4),
+                "average_risk": round(total_risk / len(cluster_ids), 2),
+            })
+
+        results.sort(key=lambda c: (c["fraud_density"], c["size"]), reverse=True)
+        return results
+

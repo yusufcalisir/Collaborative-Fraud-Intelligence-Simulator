@@ -379,3 +379,63 @@ class FederatedLearningEngine:
         # coordinate_wise_median and any unknown defense: return all weights
         # unchanged — the aggregation method will apply robustness if configured.
         return client_weights
+
+    def aggregate_graph_parameters(
+        self,
+        client_weights: list[ModelWeights],
+        client_samples: list[int],
+        method: AggregationMethod = AggregationMethod.FED_AVG_WEIGHTED,
+    ) -> ModelWeights:
+        """Aggregate GraphSAGE model parameters from multiple clients.
+
+        This is a thin wrapper around aggregate_parameters() that adds
+        GNN-specific validation before delegating to the standard
+        aggregation logic. The same FedAvg/Krum/Median strategies apply.
+
+        Validates:
+        - All clients have the same number of layers (layer_shapes match)
+        - Parameter counts are identical across clients
+
+        Args:
+            client_weights: GNN parameter sets from each participating bank.
+            client_samples: Number of graph nodes at each bank.
+            method: Aggregation strategy (same as MLP aggregation).
+
+        Returns:
+            Aggregated global GNN model parameters.
+        """
+        if not client_weights:
+            raise ValueError("Cannot aggregate empty GNN parameter list")
+
+        # Validate layer shape consistency across clients
+        reference_shapes = client_weights[0].layer_shapes
+        reference_params = client_weights[0].num_parameters
+
+        for i, w in enumerate(client_weights[1:], 1):
+            if w.layer_shapes != reference_shapes:
+                raise ValueError(
+                    f"GNN layer shape mismatch: client 0 has {reference_shapes}, "
+                    f"client {i} has {w.layer_shapes}"
+                )
+            if w.num_parameters != reference_params:
+                raise ValueError(
+                    f"GNN parameter count mismatch: client 0 has {reference_params}, "
+                    f"client {i} has {w.num_parameters}"
+                )
+
+        logger.info(
+            "Aggregating GNN parameters from %d clients (%d params each, method=%s)",
+            len(client_weights),
+            reference_params,
+            method,
+        )
+
+        # Fallback to unweighted FED_AVG if all clients have 0 samples (e.g. empty graphs in testing)
+        if sum(client_samples) == 0 and method == AggregationMethod.FED_AVG_WEIGHTED:
+            logger.warning("All clients have 0 GNN samples. Falling back to unweighted FED_AVG.")
+            method = AggregationMethod.FED_AVG
+
+        # Delegate to the standard aggregation logic
+        return self.aggregate_parameters(client_weights, client_samples, method)
+
+

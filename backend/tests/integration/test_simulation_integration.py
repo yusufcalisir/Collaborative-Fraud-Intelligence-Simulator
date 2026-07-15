@@ -138,3 +138,66 @@ def test_simulation_with_client_dropouts(
         status in (ClientStatus.DROPPED, ClientStatus.ACTIVE, ClientStatus.RECONNECTED)
         for status in statuses
     )
+
+
+def test_simulation_with_graph_embedding(
+    simulation_service: SimulationService, sample_config: dict
+):
+    """Test FL simulation with Federated Graph Embedding (FedGNN) enabled."""
+    # Populate the graph engine with mock nodes and edges to train on
+    from app.domain.entities_phase2 import Entity, Relationship
+    from app.domain.enums import EntityType, RelationshipType, RiskLevel
+    from app.application.services.graph_engine import GraphEngine
+
+    ge = GraphEngine()
+
+    
+    # Clean previous test residues
+    ge._entities.clear()
+    ge._relationships.clear()
+
+    # Register nodes for each bank
+    banks = ["bank_a", "bank_b", "bank_c"]
+    for i, b_id in enumerate(banks):
+        e1 = Entity(id=f"cust_{b_id}_1", entity_type=EntityType.CUSTOMER, bank_id=b_id, risk_level=RiskLevel.MINIMAL)
+        e2 = Entity(id=f"dev_{b_id}_2", entity_type=EntityType.DEVICE, bank_id=b_id, risk_level=RiskLevel.HIGH)
+        e3 = Entity(id=f"cust_{b_id}_3", entity_type=EntityType.CUSTOMER, bank_id=b_id, risk_level=RiskLevel.CRITICAL)
+        
+        ge.register_entity(e1)
+        ge.register_entity(e2)
+        ge.register_entity(e3)
+
+        # Connect them
+        ge.add_relationship(Relationship(id=f"rel_{b_id}_1", source_entity_id=e1.id, target_entity_id=e2.id, relationship_type=RelationshipType.USES))
+        ge.add_relationship(Relationship(id=f"rel_{b_id}_2", source_entity_id=e3.id, target_entity_id=e2.id, relationship_type=RelationshipType.USES))
+
+    sample_config["enable_graph_embedding"] = True
+    sample_config["gnn_embedding_dim"] = 16
+    sample_config["gnn_hidden_dim"] = 32
+    sample_config["gnn_num_layers"] = 2
+    sample_config["gnn_epochs_per_round"] = 1
+    sample_config["num_rounds"] = 2
+    sample_config["local_epochs"] = 1
+
+    config = SimulationConfig(**sample_config)
+    events = []
+
+    def progress_callback(sim_id: str, event_type: str, data: dict[str, Any]) -> None:
+        events.append((event_type, data))
+
+    simulation = simulation_service.run_simulation(config, progress_callback=progress_callback)
+
+    assert simulation.status == SimulationStatus.COMPLETED
+
+    event_types = [e[0] for e in events]
+    assert "gnn_round_start" in event_types
+    assert "gnn_round_complete" in event_types
+
+    # Ensure embeddings are synchronized and accessible via stats
+    from app.presentation.routers import graph
+    stats = graph._graph_embedding_service.get_embedding_stats()
+    assert stats["num_embedded_nodes"] == 9
+    assert stats["embedding_dim"] == 16
+    assert stats["model_parameters"] > 0
+
+

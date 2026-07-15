@@ -126,3 +126,13 @@ class SimulationConfig:
     poisoning_bank_id: str = "bank_c"
     poisoning_scale: float = 5.0
     byzantine_defense: str = "none"  # "none", "krum", "coordinate_wise_median"
+
+    # Federated Graph Embedding (FedGNN)
+    enable_graph_embedding: bool = False
+    gnn_embedding_dim: int = 64
+    gnn_hidden_dim: int = 128
+    gnn_num_layers: int = 2
+    gnn_epochs_per_round: int = 5
+    gnn_learning_rate: float = 0.01
+    gnn_neighbor_sample_size: int = 10
+
