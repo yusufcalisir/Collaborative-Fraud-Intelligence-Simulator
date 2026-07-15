@@ -711,7 +711,8 @@ class SimulationService:
                             )
 
                         client_gnn_weights.append(local_weights)
-                        client_gnn_samples.append(local_metrics["num_nodes"])
+                        client_gnn_samples.append(int(local_metrics["num_nodes"]))
+
                         per_bank_gnn_loss[bank.id] = local_metrics["loss"]
 
                     agg_method = AggregationMethod(config.aggregation_method)

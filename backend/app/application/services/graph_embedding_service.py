@@ -169,7 +169,8 @@ class GraphEmbeddingService:
         global_weights: ModelWeights | None = None,
         epochs: int = 5,
         learning_rate: float = 0.01,
-    ) -> tuple[ModelWeights, dict[str, float]]:
+    ) -> tuple[ModelWeights, dict[str, Any]]:
+
         """Train GraphSAGE locally on one bank's subgraph.
 
         If global_weights are provided (from the coordinator), the model
