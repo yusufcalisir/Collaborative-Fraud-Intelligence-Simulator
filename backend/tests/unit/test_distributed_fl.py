@@ -26,12 +26,13 @@ client = TestClient(app)
 
 # ── Signature Helpers ────────────────────────────────────────────────────────
 
+
 def _sign_payload(payload: dict[str, Any]) -> tuple[bytes, dict[str, str]]:
     """Generate valid HMAC-SHA256 signature headers and canonical body bytes."""
     settings = get_settings()
     secret = settings.payload_signing_secret
     timestamp = str(time.time())
-    body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    body_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     sign_data = timestamp.encode("utf-8") + b"." + body_bytes
     signature = hmac.new(
         secret.encode("utf-8"),
@@ -127,7 +128,7 @@ def test_request_without_signature_is_rejected() -> None:
 def test_request_with_invalid_signature_is_rejected() -> None:
     """Requests with a tampered signature must be rejected with 401."""
     payload = {"bank_id": "bank_a", "num_transactions": 500, "seed": 42}
-    body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    body_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     headers = {
         "X-Payload-Signature": "deadbeef" * 8,  # invalid hex
         "X-Payload-Timestamp": str(time.time()),
@@ -144,7 +145,7 @@ def test_request_with_expired_timestamp_is_rejected() -> None:
     settings = get_settings()
     secret = settings.payload_signing_secret
     old_timestamp = str(time.time() - 600)  # 10 minutes ago
-    body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    body_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     sign_data = old_timestamp.encode("utf-8") + b"." + body_bytes
     signature = hmac.new(secret.encode("utf-8"), sign_data, hashlib.sha256).hexdigest()
     headers = {
@@ -174,7 +175,9 @@ def mock_get_client(*args: Any, **kwargs: Any) -> Any:
 
         def raise_for_status(self) -> None:
             if self.status_code >= 400:
-                raise httpx.HTTPStatusError("Error", request=cast("Any", None), response=cast("Any", self))
+                raise httpx.HTTPStatusError(
+                    "Error", request=cast("Any", None), response=cast("Any", self)
+                )
 
     class MockClient:
         def __enter__(self) -> MockClient:
@@ -190,7 +193,7 @@ def mock_get_client(*args: Any, **kwargs: Any) -> Any:
             content: Any = None,
             headers: Any = None,
             timeout: Any = None,
-            **kwargs: Any
+            **kwargs: Any,
         ) -> MockResponse:
             # Resolve URL path mapping
             path_parts = url.split("api/v1/")

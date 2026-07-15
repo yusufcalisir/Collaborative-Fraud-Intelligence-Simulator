@@ -56,6 +56,7 @@ async def verify_payload_signature(request: Request) -> None:
 
     # Replay protection – reject requests older than max age
     import time
+
     try:
         ts = float(timestamp)
     except ValueError:
@@ -73,6 +74,7 @@ async def verify_payload_signature(request: Request) -> None:
     # Recompute HMAC over raw body
     import hashlib
     import hmac
+
     body_bytes = await request.body()
     sign_data = timestamp.encode("utf-8") + b"." + body_bytes
     expected = hmac.new(
@@ -164,7 +166,9 @@ class BankEvaluateResponse(BaseModel):
 # ── API Endpoint Implementations ─────────────────────────────────────────────
 
 
-@router.post("/initialize", response_model=dict[str, Any], dependencies=[Depends(verify_payload_signature)])
+@router.post(
+    "/initialize", response_model=dict[str, Any], dependencies=[Depends(verify_payload_signature)]
+)
 async def initialize_dataset(payload: BankInitializeRequest) -> dict[str, Any]:
     """Deterministically generate and cache the dataset partition for this bank client."""
     try:
@@ -235,7 +239,9 @@ async def initialize_dataset(payload: BankInitializeRequest) -> dict[str, Any]:
         )
 
 
-@router.post("/train", response_model=BankTrainResponse, dependencies=[Depends(verify_payload_signature)])
+@router.post(
+    "/train", response_model=BankTrainResponse, dependencies=[Depends(verify_payload_signature)]
+)
 async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
     """Train the model locally on the bank client cached dataset partition."""
     if _client_state.X_train is None or _client_state.y_train is None:
@@ -304,7 +310,11 @@ async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
         )
 
 
-@router.post("/evaluate", response_model=BankEvaluateResponse, dependencies=[Depends(verify_payload_signature)])
+@router.post(
+    "/evaluate",
+    response_model=BankEvaluateResponse,
+    dependencies=[Depends(verify_payload_signature)],
+)
 async def evaluate_global_weights(payload: BankEvaluateRequest) -> BankEvaluateResponse:
     """Evaluate the global weights on this bank client local test partition."""
     if _client_state.X_test is None or _client_state.y_test is None:
@@ -324,11 +334,14 @@ async def evaluate_global_weights(payload: BankEvaluateRequest) -> BankEvaluateR
         model = _model_service.create_model(dp_compatible=False)
         model = _model_service.set_parameters(model, input_weights)
 
-        eval_result = cast("dict[str, Any]", _model_service.evaluate(
-            model,
-            _client_state.X_test,
-            _client_state.y_test,
-        ))
+        eval_result = cast(
+            "dict[str, Any]",
+            _model_service.evaluate(
+                model,
+                _client_state.X_test,
+                _client_state.y_test,
+            ),
+        )
 
         return BankEvaluateResponse(
             loss=eval_result["loss"],

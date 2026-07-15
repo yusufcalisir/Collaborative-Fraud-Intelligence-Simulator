@@ -39,6 +39,7 @@ class RESTBankConnector(BankConnectorInterface):
         self.client_key_path = client_key_path
         self._token: str | None = None
         from app.config import get_settings
+
         self.settings = get_settings()
 
     def _get_headers(self) -> dict[str, str]:
@@ -50,22 +51,22 @@ class RESTBankConnector(BankConnectorInterface):
             headers["Authorization"] = f"Bearer {token}"
         return headers
 
-    def _sign_payload(self, payload: dict[str, Any], headers: dict[str, str]) -> tuple[bytes, dict[str, str]]:
+    def _sign_payload(
+        self, payload: dict[str, Any], headers: dict[str, str]
+    ) -> tuple[bytes, dict[str, str]]:
         import json
-        body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+
+        body_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         secret = self.settings.payload_signing_secret
         if not secret:
             return body_bytes, headers
         import hashlib
         import hmac
         import time
+
         timestamp = str(time.time())
         sign_data = timestamp.encode("utf-8") + b"." + body_bytes
-        signature = hmac.new(
-            secret.encode("utf-8"),
-            sign_data,
-            hashlib.sha256
-        ).hexdigest()
+        signature = hmac.new(secret.encode("utf-8"), sign_data, hashlib.sha256).hexdigest()
         new_headers = dict(headers)
         new_headers["X-Payload-Signature"] = signature
         new_headers["X-Payload-Timestamp"] = timestamp
