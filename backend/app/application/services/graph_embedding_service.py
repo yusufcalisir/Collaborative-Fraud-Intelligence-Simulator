@@ -211,9 +211,8 @@ class GraphEmbeddingService:
         # Use class-weighted BCE to handle fraud/legitimate imbalance
         fraud_count = sum(labels)
         legit_count = len(labels) - fraud_count
+        criterion: nn.Module
         if fraud_count > 0 and legit_count > 0:
-            pos_weight = torch.tensor([legit_count / fraud_count])
-            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             # Since our model already applies sigmoid, we use BCELoss with manual weight
             criterion = nn.BCELoss(
                 weight=None,
@@ -340,7 +339,8 @@ class GraphEmbeddingService:
                 )
 
         # Sort by similarity descending
-        results.sort(key=lambda x: x["similarity"], reverse=True)
+        results.sort(key=lambda x: float(x["similarity"]), reverse=True)
+
         return results[:top_k]
 
     def get_all_embeddings(self) -> dict[str, list[float]]:

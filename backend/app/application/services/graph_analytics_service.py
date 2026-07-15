@@ -455,7 +455,8 @@ class GraphAnalyticsService:
             clusters.append(cluster)
 
         # Filter by minimum size and build results
-        results = []
+        results: list[dict[str, Any]] = []
+
         for cluster_indices in clusters:
             if len(cluster_indices) < min_cluster_size:
                 continue
