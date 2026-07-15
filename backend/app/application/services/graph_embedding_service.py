@@ -315,7 +315,7 @@ class GraphEmbeddingService:
         if query_emb is None:
             return []
 
-        results = []
+        results: list[dict[str, Any]] = []
         query_norm = np.linalg.norm(query_emb)
         if query_norm == 0:
             return []
