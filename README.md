@@ -328,6 +328,8 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── fl_engine.py     # Custom FedAvg simulator (latent simulation, secure aggregation, client dropout)
 │   │   │       ├── flower_engine.py # Flower framework adapter service using Ray simulation backend
 │   │   │       ├── graph_analytics_service.py # PageRank risk propagation, community analytics, and temporal velocity metrics
+│   │   │       ├── graph_embedding_model.py # GraphSAGE neural network model definition (PyTorch)
+│   │   │       ├── graph_embedding_service.py # GNN training orchestration, embedding cache, and similarity index
 │   │   │       ├── graph_engine.py  # Assembles node-link data models for React Flow visualization
 │   │   │       ├── metrics_service.py # Calculations for F1, Accuracy, Precision, and Recall improvements
 │   │   │       ├── psi_service.py   # Zero-knowledge Diffie-Hellman Private Set Intersection (DH-PSI)
@@ -395,6 +397,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
 │   │   │   ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes
 │   │   │   ├── test_graph_analytics.py # Asserts risk propagation decay and community metrics
+│   │   │   ├── test_graph_embedding.py # Verifies GraphSAGE forward pass, loss, parameter aggregation, and similarity search
 │   │   │   ├── test_metrics_service.py # Asserts correctness of evaluation metrics serialization
 │   │   │   ├── test_model_registry.py # Validates model saving, versioning, promotion, and canary
 │   │   │   ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
@@ -427,7 +430,8 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   └── package.json
 ├── docs/                         # Extended systems design and threat models
 │   ├── threat_model.md           # STRIDE / OWASP ASVS v4.0 / MITRE ATLAS security architecture
-│   └── aml-platform.md           # AML platform architecture and investigation workflows
+│   ├── aml-platform.md           # AML platform architecture and investigation workflows
+│   └── architecture-phase2.md     # Phase 2 system architecture design and cryptographic data flows
 ├── monitoring/                   # Observability stack configuration
 │   ├── prometheus.yml            # Prometheus scrape targets (all backend services)
 │   └── grafana/
