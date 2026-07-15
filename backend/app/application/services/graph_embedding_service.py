@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -30,9 +30,12 @@ from app.application.services.graph_embedding_model import (
     extract_node_features,
 )
 from app.application.services.graph_engine import GraphEngine
-from app.domain.value_objects import ModelWeights
+
+if TYPE_CHECKING:
+    from app.domain.value_objects import ModelWeights
 
 logger = logging.getLogger(__name__)
+
 
 
 class GraphEmbeddingService:

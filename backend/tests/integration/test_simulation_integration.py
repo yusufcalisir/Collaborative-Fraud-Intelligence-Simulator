@@ -145,13 +145,12 @@ def test_simulation_with_graph_embedding(
 ):
     """Test FL simulation with Federated Graph Embedding (FedGNN) enabled."""
     # Populate the graph engine with mock nodes and edges to train on
+    from app.application.services.graph_engine import GraphEngine
     from app.domain.entities_phase2 import Entity, Relationship
     from app.domain.enums import EntityType, RelationshipType, RiskLevel
-    from app.application.services.graph_engine import GraphEngine
 
     ge = GraphEngine()
 
-    
     # Clean previous test residues
     ge._entities.clear()
     ge._relationships.clear()
@@ -162,10 +161,11 @@ def test_simulation_with_graph_embedding(
         e1 = Entity(id=f"cust_{b_id}_1", entity_type=EntityType.CUSTOMER, bank_id=b_id, risk_level=RiskLevel.MINIMAL)
         e2 = Entity(id=f"dev_{b_id}_2", entity_type=EntityType.DEVICE, bank_id=b_id, risk_level=RiskLevel.HIGH)
         e3 = Entity(id=f"cust_{b_id}_3", entity_type=EntityType.CUSTOMER, bank_id=b_id, risk_level=RiskLevel.CRITICAL)
-        
+
         ge.register_entity(e1)
         ge.register_entity(e2)
         ge.register_entity(e3)
+
 
         # Connect them
         ge.add_relationship(Relationship(id=f"rel_{b_id}_1", source_entity_id=e1.id, target_entity_id=e2.id, relationship_type=RelationshipType.USES))

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from app.application.schemas.phase2 import (
     CommunityAnalyticsResponse,
@@ -15,6 +16,7 @@ from app.application.schemas.phase2 import (
     TemporalAnomalyResponse,
 )
 from app.application.services.graph_analytics_service import GraphAnalyticsService
+from app.application.services.graph_embedding_service import GraphEmbeddingService
 from app.application.services.graph_engine import GraphEngine
 from app.domain.enums import EntityType
 
@@ -123,11 +125,8 @@ async def get_subgraph(
 
 # ── Federated Graph Embedding (FedGNN) Endpoints ────────
 
-from pydantic import BaseModel, Field
-
-from app.application.services.graph_embedding_service import GraphEmbeddingService
-
 _graph_embedding_service = GraphEmbeddingService(graph_engine=_graph_engine)
+
 
 
 class GNNTrainRequest(BaseModel):

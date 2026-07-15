@@ -24,7 +24,7 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 
 from app.domain.enums import EntityType, RiskLevel
 from app.domain.value_objects import ModelWeights

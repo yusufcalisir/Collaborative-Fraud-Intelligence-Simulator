@@ -23,8 +23,6 @@ from app.application.services.graph_embedding_model import (
 from app.application.services.graph_embedding_service import GraphEmbeddingService
 from app.application.services.graph_engine import GraphEngine
 from app.domain.enums import AggregationMethod
-from app.domain.value_objects import ModelWeights
-
 
 # ── Node Feature Extraction ──────────────────────
 
