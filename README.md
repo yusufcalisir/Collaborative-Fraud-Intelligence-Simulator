@@ -921,6 +921,17 @@ graph TD
 
 ---
 
+## Model Verification & Threats to Validity (FedGraphSAGE)
+
+While the Federated GraphSAGE (FedGNN) implementation has been verified for mathematical correctness, architectural privacy, and code path completeness, the following limitations must be noted for rigorous academic and scientific validity:
+
+*   **Synthetic Data Dependency:** Current experiments and quality metrics (e.g., Silhouette score of `1.0000` and Davies-Bouldin index of `0.0000`) are evaluated on synthetic graph data with highly distinct, pre-defined features. In real-world banking datasets, features are noisy and cluster boundaries overlap.
+*   **Implementation Correctness vs. Real-World Performance:** The verification tests prove that the message passing, mean neighbor pooling, L2 normalization, and parameter aggregation loops run correctly according to the original GraphSAGE specification. They do not claim state-of-the-art fraud detection performance on large-scale heterogeneous banking datasets (e.g., Elliptic, YelpChi, or AMLSim), which were unavailable during simulation development.
+*   **Indirect Privacy Leakage:** While model weights transmission prevents direct exposure of raw transaction graphs or PII, deep evaluation against gradient inversion, membership inference, and graph reconstruction attacks remains future work.
+*   **Data Heterogeneity (Non-I.D.D.):** Real-world multi-bank environments suffer from extreme feature, label, and topological drift. The shared embedding space and cosine similarity search have only been validated under controlled, I.D.D. synthetic scenarios where bank graph topologies follow identical generative rules.
+
+---
+
 ## Architectural Decision Records (ADRs)
 
 ### ADR 01: Custom Federated Learning Aggregation Loop & Flower Adapter Integration
