@@ -932,6 +932,23 @@ While the Federated GraphSAGE (FedGNN) implementation has been verified for math
 
 ---
 
+## Public Dataset Benchmarking Blueprint (Future Work)
+
+To demonstrate state-of-the-art fraud detection capability on real-world networks beyond implementation validation, we propose benchmarking the platform's Federated GraphSAGE model using the following public transaction graphs:
+
+*   **Elliptic Bitcoin Dataset:** Evaluates binary node classification (Licit vs. Illicit addresses) on a transaction network containing 203,769 nodes and 234,355 edges, partitioned temporally to simulate distinct banks.
+*   **AMLSim (Anti-Money Laundering Simulator):** Simulates multi-bank money laundering loops (smurfing/layering circles) across independent local subgraphs.
+*   **YelpChi Spam Review Graph:** Evaluates multi-relation graph anomaly detection under adversarial reviewer behavior.
+
+### Advanced Federated Optimizers for Top-Tier Benchmarking
+
+To address client graph structural drift, future releases will evaluate local GNN training using:
+*   **FedProx:** Bounding local parameter weight deviation via a proximal penalty term: $\frac{\mu}{2} \|\mathbf{w} - \mathbf{w}^t\|_2^2$.
+*   **SCAFFOLD:** Resolving client drift with control variates to steer local gradients toward the global direction.
+*   **MOON:** Aligning client-side GNN representation spaces using model-contrastive loss.
+
+---
+
 ## Architectural Decision Records (ADRs)
 
 ### ADR 01: Custom Federated Learning Aggregation Loop & Flower Adapter Integration
