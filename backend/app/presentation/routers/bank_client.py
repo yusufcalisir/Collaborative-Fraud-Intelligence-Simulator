@@ -7,12 +7,12 @@ allowing the coordinator to trigger local training and validation over HTTP.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     import numpy as np
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from app.application.services.data_generator import DataGenerator
@@ -26,6 +26,66 @@ router = APIRouter(prefix="/api/v1/bank-client", tags=["bank-client"])
 # Initialize singleton model service matching our training context
 _settings = get_settings()
 _model_service = ModelService(_settings)
+
+# ── Payload Signature Verification ───────────────────────────────────────────
+# Maximum age (seconds) of a signed request before it is considered expired.
+_SIGNATURE_MAX_AGE_SECONDS = 300
+
+
+async def verify_payload_signature(request: Request) -> None:
+    """Validate HMAC-SHA256 payload signature sent by the coordinator.
+
+    The coordinator signs every outbound REST payload with the shared
+    ``payload_signing_secret``.  Bank clients verify the signature to
+    guarantee authenticity and reject tampered / replayed requests.
+
+    If the secret is empty (local dev mode), verification is skipped.
+    """
+    secret = _settings.payload_signing_secret
+    if not secret:
+        return  # signing disabled in local dev
+
+    signature = request.headers.get("X-Payload-Signature")
+    timestamp = request.headers.get("X-Payload-Timestamp")
+
+    if not signature or not timestamp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing payload signature headers.",
+        )
+
+    # Replay protection – reject requests older than max age
+    import time
+    try:
+        ts = float(timestamp)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid payload timestamp.",
+        )
+
+    if abs(time.time() - ts) > _SIGNATURE_MAX_AGE_SECONDS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Payload signature expired.",
+        )
+
+    # Recompute HMAC over raw body
+    import hashlib
+    import hmac
+    body_bytes = await request.body()
+    sign_data = timestamp.encode("utf-8") + b"." + body_bytes
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        sign_data,
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected, signature):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid payload signature.",
+        )
 
 
 class BankClientState:
@@ -104,7 +164,7 @@ class BankEvaluateResponse(BaseModel):
 # ── API Endpoint Implementations ─────────────────────────────────────────────
 
 
-@router.post("/initialize", response_model=dict[str, Any])
+@router.post("/initialize", response_model=dict[str, Any], dependencies=[Depends(verify_payload_signature)])
 async def initialize_dataset(payload: BankInitializeRequest) -> dict[str, Any]:
     """Deterministically generate and cache the dataset partition for this bank client."""
     try:
@@ -143,7 +203,7 @@ async def initialize_dataset(payload: BankInitializeRequest) -> dict[str, Any]:
                 y,
                 test_size=0.2,
                 random_state=42,
-                stratify=y,
+                stratify=y,  # type: ignore[arg-type]
             )
         except Exception:
             # Fallback for small class samples sizes
@@ -175,7 +235,7 @@ async def initialize_dataset(payload: BankInitializeRequest) -> dict[str, Any]:
         )
 
 
-@router.post("/train", response_model=BankTrainResponse)
+@router.post("/train", response_model=BankTrainResponse, dependencies=[Depends(verify_payload_signature)])
 async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
     """Train the model locally on the bank client cached dataset partition."""
     if _client_state.X_train is None or _client_state.y_train is None:
@@ -244,7 +304,7 @@ async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
         )
 
 
-@router.post("/evaluate", response_model=BankEvaluateResponse)
+@router.post("/evaluate", response_model=BankEvaluateResponse, dependencies=[Depends(verify_payload_signature)])
 async def evaluate_global_weights(payload: BankEvaluateRequest) -> BankEvaluateResponse:
     """Evaluate the global weights on this bank client local test partition."""
     if _client_state.X_test is None or _client_state.y_test is None:
@@ -264,11 +324,11 @@ async def evaluate_global_weights(payload: BankEvaluateRequest) -> BankEvaluateR
         model = _model_service.create_model(dp_compatible=False)
         model = _model_service.set_parameters(model, input_weights)
 
-        eval_result = _model_service.evaluate(
+        eval_result = cast(dict[str, Any], _model_service.evaluate(
             model,
             _client_state.X_test,
             _client_state.y_test,
-        )
+        ))
 
         return BankEvaluateResponse(
             loss=eval_result["loss"],

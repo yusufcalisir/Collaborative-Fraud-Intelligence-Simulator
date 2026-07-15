@@ -38,6 +38,8 @@ class RESTBankConnector(BankConnectorInterface):
         self.client_cert_path = client_cert_path
         self.client_key_path = client_key_path
         self._token: str | None = None
+        from app.config import get_settings
+        self.settings = get_settings()
 
     def _get_headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -47,6 +49,27 @@ class RESTBankConnector(BankConnectorInterface):
             token = self._get_oauth2_token()
             headers["Authorization"] = f"Bearer {token}"
         return headers
+
+    def _sign_payload(self, payload: dict[str, Any], headers: dict[str, str]) -> tuple[bytes, dict[str, str]]:
+        import json
+        body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+        secret = self.settings.payload_signing_secret
+        if not secret:
+            return body_bytes, headers
+        import hmac
+        import hashlib
+        import time
+        timestamp = str(time.time())
+        sign_data = timestamp.encode("utf-8") + b"." + body_bytes
+        signature = hmac.new(
+            secret.encode("utf-8"),
+            sign_data,
+            hashlib.sha256
+        ).hexdigest()
+        new_headers = dict(headers)
+        new_headers["X-Payload-Signature"] = signature
+        new_headers["X-Payload-Timestamp"] = timestamp
+        return body_bytes, new_headers
 
     def _get_oauth2_token(self) -> str:
         if self._token:
@@ -76,9 +99,9 @@ class RESTBankConnector(BankConnectorInterface):
             "num_transactions": num_transactions,
             "seed": seed,
         }
-        headers = self._get_headers()
+        body_bytes, headers = self._sign_payload(payload, self._get_headers())
         with self._get_client() as client:
-            resp = client.post(url, json=payload, headers=headers, timeout=30.0)
+            resp = client.post(url, content=body_bytes, headers=headers, timeout=30.0)
             resp.raise_for_status()
             return resp.json()
 
@@ -111,9 +134,9 @@ class RESTBankConnector(BankConnectorInterface):
             "dp_delta": dp_delta,
             "dp_max_grad_norm": dp_max_grad_norm,
         }
-        headers = self._get_headers()
+        body_bytes, headers = self._sign_payload(payload, self._get_headers())
         with self._get_client() as client:
-            resp = client.post(url, json=payload, headers=headers, timeout=120.0)
+            resp = client.post(url, content=body_bytes, headers=headers, timeout=120.0)
             resp.raise_for_status()
             res_data = resp.json()
             res_data["correlation_id"] = correlation_id
@@ -132,9 +155,9 @@ class RESTBankConnector(BankConnectorInterface):
             "flat_weights": weights.flat_weights,
         }
         payload = {"weights": schema_weights}
-        headers = self._get_headers()
+        body_bytes, headers = self._sign_payload(payload, self._get_headers())
         with self._get_client() as client:
-            resp = client.post(url, json=payload, headers=headers, timeout=60.0)
+            resp = client.post(url, content=body_bytes, headers=headers, timeout=60.0)
             resp.raise_for_status()
             res_data = resp.json()
             res_data["correlation_id"] = correlation_id

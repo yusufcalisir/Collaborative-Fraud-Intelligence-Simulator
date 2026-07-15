@@ -275,4 +275,58 @@ To move beyond heuristic relationship weights, Phase 5 introduces a **Federated 
    - **Embedding-Enhanced Propagation**: Connected node risk transfer weights are calculated dynamically using cosine similarity of GNN embeddings rather than hardcoded heuristics.
    - **Unconnected Clustering**: Nodes are clustered across banks by embedding similarity, isolating coordinated syndicate networks that share a modus operandi without having a direct edge connection in the graph.
 
+---
 
+## Decentralized Infrastructure & Network Isolation (Production Design)
+
+To move away from monolithic or shared environments, the production-grade simulator models a multi-VPC decentralized cloud architecture using distinct networks and database containers.
+
+### 1. Security Boundaries & Network-Level VPC Simulation
+The system is divided into four private, isolated security zones and one shared federation channel:
+- **Bank Client Private Zones (`net-bank-a`, `net-bank-b`, `net-bank-c`)**: Contains the respective Bank Client microservice and its **isolated database container** (e.g. `postgres-bank-a`). No database port is exposed to other networks or the host, preventing cross-bank data leakage.
+- **Coordinator Private Zone (`net-coordinator`)**: Hosts the central control plane, including the Gateway, Federated Learning Coordinator, Identity & Graph Service, Fraud & Alert Engine, Celery Workers, Flower, Redis Event Broker, Jaeger, Prometheus, Grafana, and the coordinator database.
+- **Federation Network Channel (`net-federation`)**: A dedicated network bridge restricted to cross-zone communications. Only the `fl-coordinator` and the bank clients (`bank-a`, `bank-b`, `bank-c`) have interfaces on this network.
+
+```mermaid
+graph TD
+    subgraph VPC Bank A
+        postgres-a[(Postgres Bank A)]
+        bank-a[Bank Client A Service]
+        bank-a --- postgres-a
+    end
+
+    subgraph VPC Bank B
+        postgres-b[(Postgres Bank B)]
+        bank-b[Bank Client B Service]
+        bank-b --- postgres-b
+    end
+
+    subgraph VPC Bank C
+        postgres-c[(Postgres Bank C)]
+        bank-c[Bank Client C Service]
+        bank-c --- postgres-c
+    end
+
+    subgraph VPC Coordinator Control Plane
+        fl-coord[FL Coordinator]
+        postgres-coord[(Coordinator Postgres)]
+        gateway[API Gateway]
+        redis[Redis Event Bus]
+        fl-coord --- postgres-coord
+    end
+
+    %% Federation Links
+    fl-coord ===|net-federation| bank-a
+    fl-coord ===|net-federation| bank-b
+    fl-coord ===|net-federation| bank-c
+```
+
+### 2. Mutual Auth & Cryptographic Payload Signing
+To protect the REST communication channel between the `fl-coordinator` and the `bank-client` nodes on `net-federation`, the API implements **end-to-end payload signing**:
+1. **Outbound Request Signing**: The coordinator computes an HMAC-SHA256 signature using the shared `PAYLOAD_SIGNING_SECRET`, the current Unix timestamp, and the request body:
+   $$\text{Signature} = \text{HMAC-SHA256}(\text{Secret}, \text{Timestamp} \mathbin{\Vert} \text{Payload Bytes})$$
+2. **Transmission**: The request is sent with the custom headers `X-Payload-Signature` and `X-Payload-Timestamp`.
+3. **Inbound Validation**: The bank client validates that:
+   - The timestamp header is present and is within a $\pm 300\text{s}$ tolerance window (mitigating replay attacks).
+   - The HMAC computed locally over the received raw request body matches the signature header.
+4. **Rejection**: If signature verification fails, the request is rejected with a `401 Unauthorized` response.

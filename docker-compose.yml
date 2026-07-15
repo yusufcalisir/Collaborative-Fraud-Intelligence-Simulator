@@ -1,5 +1,18 @@
+# ══════════════════════════════════════════════════════════════════
+# Collaborative Fraud Intelligence – Decentralized Docker Compose
+# ──────────────────────────────────────────────────────────────────
+# Each bank runs in an isolated network (simulating a VPC) with its
+# own dedicated PostgreSQL database.  Cross-bank communication flows
+# exclusively over the `net-federation` bridge, which connects the
+# FL coordinator to the bank client nodes.
+# ══════════════════════════════════════════════════════════════════
+
 services:
-  # ── PostgreSQL ──────────────────────────────
+  # ══════════════════════════════════════════════
+  # COORDINATOR ZONE (net-coordinator)
+  # ══════════════════════════════════════════════
+
+  # ── Central PostgreSQL (coordinator services) ──
   postgres:
     image: postgres:16-alpine
     environment:
@@ -10,6 +23,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - net-coordinator
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fraud_user} -d ${POSTGRES_DB:-fraud_intelligence}"]
       interval: 5s
@@ -23,6 +38,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - net-coordinator
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -64,6 +81,8 @@ services:
         condition: service_started
       jaeger:
         condition: service_started
+    networks:
+      - net-coordinator
     volumes:
       - model_storage:/app/app/storage
     restart: unless-stopped
@@ -93,87 +112,9 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_started
-    volumes:
-      - model_storage:/app/app/storage
-    restart: unless-stopped
-
-  # ── Bank Client A ───────────────────────────
-  bank-a:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: >
-      uvicorn app.main:app
-      --host 0.0.0.0
-      --port 8011
-    environment:
-      - SERVICE_NAME=bank-a
-      - OTEL_ENABLED=true
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-      - OTEL_SERVICE_NAME=cfi-bank-a
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      jaeger:
-        condition: service_started
-    volumes:
-      - model_storage:/app/app/storage
-    restart: unless-stopped
-
-  # ── Bank Client B ───────────────────────────
-  bank-b:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: >
-      uvicorn app.main:app
-      --host 0.0.0.0
-      --port 8012
-    environment:
-      - SERVICE_NAME=bank-b
-      - OTEL_ENABLED=true
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-      - OTEL_SERVICE_NAME=cfi-bank-b
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      jaeger:
-        condition: service_started
-    volumes:
-      - model_storage:/app/app/storage
-    restart: unless-stopped
-
-  # ── Bank Client C ───────────────────────────
-  bank-c:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: >
-      uvicorn app.main:app
-      --host 0.0.0.0
-      --port 8013
-    environment:
-      - SERVICE_NAME=bank-c
-      - OTEL_ENABLED=true
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-      - OTEL_SERVICE_NAME=cfi-bank-c
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      jaeger:
-        condition: service_started
+    networks:
+      - net-coordinator
+      - net-federation
     volumes:
       - model_storage:/app/app/storage
     restart: unless-stopped
@@ -203,6 +144,8 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_started
+    networks:
+      - net-coordinator
     volumes:
       - model_storage:/app/app/storage
     restart: unless-stopped
@@ -232,6 +175,8 @@ services:
         condition: service_healthy
       jaeger:
         condition: service_started
+    networks:
+      - net-coordinator
     volumes:
       - model_storage:/app/app/storage
     restart: unless-stopped
@@ -253,6 +198,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - net-coordinator
     volumes:
       - model_storage:/app/app/storage
     restart: unless-stopped
@@ -271,6 +218,8 @@ services:
       - .env
     depends_on:
       - worker
+    networks:
+      - net-coordinator
     restart: unless-stopped
 
   # ── Frontend ────────────────────────────────
@@ -282,10 +231,159 @@ services:
       - "3000:80"
     depends_on:
       - gateway
+    networks:
+      - net-coordinator
     restart: unless-stopped
 
   # ══════════════════════════════════════════════
-  # OBSERVABILITY STACK
+  # BANK A ZONE (net-bank-a)
+  # ══════════════════════════════════════════════
+
+  postgres-bank-a:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fraud_bank_a
+      POSTGRES_USER: bank_a_user
+      POSTGRES_PASSWORD: bank_a_secret_change_me
+    volumes:
+      - postgres_bank_a_data:/var/lib/postgresql/data
+    networks:
+      - net-bank-a
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bank_a_user -d fraud_bank_a"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bank-a:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8011
+    environment:
+      - SERVICE_NAME=bank-a
+      - POSTGRES_HOST=postgres-bank-a
+      - POSTGRES_DB=fraud_bank_a
+      - POSTGRES_USER=bank_a_user
+      - POSTGRES_PASSWORD=bank_a_secret_change_me
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=cfi-bank-a
+    env_file:
+      - .env
+    depends_on:
+      postgres-bank-a:
+        condition: service_healthy
+    networks:
+      - net-bank-a
+      - net-federation
+    volumes:
+      - model_storage:/app/app/storage
+    restart: unless-stopped
+
+  # ══════════════════════════════════════════════
+  # BANK B ZONE (net-bank-b)
+  # ══════════════════════════════════════════════
+
+  postgres-bank-b:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fraud_bank_b
+      POSTGRES_USER: bank_b_user
+      POSTGRES_PASSWORD: bank_b_secret_change_me
+    volumes:
+      - postgres_bank_b_data:/var/lib/postgresql/data
+    networks:
+      - net-bank-b
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bank_b_user -d fraud_bank_b"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bank-b:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8012
+    environment:
+      - SERVICE_NAME=bank-b
+      - POSTGRES_HOST=postgres-bank-b
+      - POSTGRES_DB=fraud_bank_b
+      - POSTGRES_USER=bank_b_user
+      - POSTGRES_PASSWORD=bank_b_secret_change_me
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=cfi-bank-b
+    env_file:
+      - .env
+    depends_on:
+      postgres-bank-b:
+        condition: service_healthy
+    networks:
+      - net-bank-b
+      - net-federation
+    volumes:
+      - model_storage:/app/app/storage
+    restart: unless-stopped
+
+  # ══════════════════════════════════════════════
+  # BANK C ZONE (net-bank-c)
+  # ══════════════════════════════════════════════
+
+  postgres-bank-c:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fraud_bank_c
+      POSTGRES_USER: bank_c_user
+      POSTGRES_PASSWORD: bank_c_secret_change_me
+    volumes:
+      - postgres_bank_c_data:/var/lib/postgresql/data
+    networks:
+      - net-bank-c
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bank_c_user -d fraud_bank_c"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bank-c:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8013
+    environment:
+      - SERVICE_NAME=bank-c
+      - POSTGRES_HOST=postgres-bank-c
+      - POSTGRES_DB=fraud_bank_c
+      - POSTGRES_USER=bank_c_user
+      - POSTGRES_PASSWORD=bank_c_secret_change_me
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=cfi-bank-c
+    env_file:
+      - .env
+    depends_on:
+      postgres-bank-c:
+        condition: service_healthy
+    networks:
+      - net-bank-c
+      - net-federation
+    volumes:
+      - model_storage:/app/app/storage
+    restart: unless-stopped
+
+  # ══════════════════════════════════════════════
+  # OBSERVABILITY STACK (net-coordinator)
   # ══════════════════════════════════════════════
 
   # ── Jaeger (Distributed Tracing) ────────────
@@ -301,6 +399,9 @@ services:
       - ./monitoring/jaeger-ui-config.json:/etc/jaeger/ui-config.json:ro
     command:
       - "--query.ui-config=/etc/jaeger/ui-config.json"
+    networks:
+      - net-coordinator
+      - net-federation
     restart: unless-stopped
 
   # ── Prometheus (Metrics) ────────────────────
@@ -322,6 +423,8 @@ services:
       - '--web.enable-lifecycle'
     depends_on:
       - gateway
+    networks:
+      - net-coordinator
     restart: unless-stopped
 
   # ── Grafana (Dashboards) ────────────────────
@@ -340,6 +443,8 @@ services:
     depends_on:
       - prometheus
       - jaeger
+    networks:
+      - net-coordinator
     restart: unless-stopped
 
   # ── MLflow Tracking Server ──────────────────
@@ -352,11 +457,39 @@ services:
     volumes:
       - ./backend/mlruns:/app/mlruns
     entrypoint: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns --default-artifact-root /app/mlruns
+    networks:
+      - net-coordinator
     restart: unless-stopped
 
+# ══════════════════════════════════════════════
+# VOLUMES
+# ══════════════════════════════════════════════
 volumes:
   postgres_data:
+  postgres_bank_a_data:
+  postgres_bank_b_data:
+  postgres_bank_c_data:
   redis_data:
   prometheus_data:
   grafana_data:
   model_storage:
+
+# ══════════════════════════════════════════════
+# NETWORKS – Simulating VPC Isolation
+# ══════════════════════════════════════════════
+# net-coordinator : Control plane services only.
+# net-bank-{a,b,c}: Each bank's private zone (DB + client).
+# net-federation  : Federated learning channel
+#                   (coordinator + bank clients only).
+# ══════════════════════════════════════════════
+networks:
+  net-coordinator:
+    driver: bridge
+  net-bank-a:
+    driver: bridge
+  net-bank-b:
+    driver: bridge
+  net-bank-c:
+    driver: bridge
+  net-federation:
+    driver: bridge

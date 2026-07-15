@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     gateway_require_auth: bool = False
     gateway_rate_limit: int = 120  # requests per minute
     gateway_api_keys: str = "key_bank_a:bank_a:bank,key_bank_b:bank_b:bank,key_bank_c:bank_c:bank,key_analyst:analyst:analyst"
+    payload_signing_secret: str = "cfi_local_secret_key_2026_change_me_in_production"
 
     # ── Observability (OpenTelemetry) ─────────
     otel_enabled: bool = False

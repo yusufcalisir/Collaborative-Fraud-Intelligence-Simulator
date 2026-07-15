@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+import hashlib
+import hmac
+import json
+import time
+from typing import Any, cast
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -20,6 +24,37 @@ from app.main import app
 client = TestClient(app)
 
 
+# ── Signature Helpers ────────────────────────────────────────────────────────
+
+def _sign_payload(payload: dict[str, Any]) -> tuple[bytes, dict[str, str]]:
+    """Generate valid HMAC-SHA256 signature headers and canonical body bytes."""
+    settings = get_settings()
+    secret = settings.payload_signing_secret
+    timestamp = str(time.time())
+    body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    sign_data = timestamp.encode("utf-8") + b"." + body_bytes
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        sign_data,
+        hashlib.sha256,
+    ).hexdigest()
+    headers = {
+        "X-Payload-Signature": signature,
+        "X-Payload-Timestamp": timestamp,
+        "Content-Type": "application/json",
+    }
+    return body_bytes, headers
+
+
+def _signed_post(url: str, payload: dict[str, Any]) -> Any:
+    """Post a signed JSON payload to the TestClient using raw bytes."""
+    body_bytes, headers = _sign_payload(payload)
+    return client.post(url, content=body_bytes, headers=headers)
+
+
+# ── Lifecycle Tests ──────────────────────────────────────────────────────────
+
+
 def test_bank_client_endpoints_lifecycle() -> None:
     """Verify that initialize, train, and evaluate endpoints function in sequence."""
     # 1. Initialize dataset
@@ -28,7 +63,7 @@ def test_bank_client_endpoints_lifecycle() -> None:
         "num_transactions": 500,
         "seed": 42,
     }
-    init_resp = client.post("/api/v1/bank-client/initialize", json=init_payload)
+    init_resp = _signed_post("/api/v1/bank-client/initialize", init_payload)
     assert init_resp.status_code == 200
     init_data = init_resp.json()
     assert init_data["status"] == "initialized"
@@ -57,7 +92,7 @@ def test_bank_client_endpoints_lifecycle() -> None:
         "dp_delta": 1e-5,
         "dp_max_grad_norm": 1.0,
     }
-    train_resp = client.post("/api/v1/bank-client/train", json=train_payload)
+    train_resp = _signed_post("/api/v1/bank-client/train", train_payload)
     assert train_resp.status_code == 200
     train_data = train_resp.json()
     assert "loss" in train_data
@@ -68,7 +103,7 @@ def test_bank_client_endpoints_lifecycle() -> None:
     eval_payload = {
         "weights": weights_payload,
     }
-    eval_resp = client.post("/api/v1/bank-client/evaluate", json=eval_payload)
+    eval_resp = _signed_post("/api/v1/bank-client/evaluate", eval_payload)
     assert eval_resp.status_code == 200
     eval_data = eval_resp.json()
     assert "loss" in eval_data
@@ -76,6 +111,53 @@ def test_bank_client_endpoints_lifecycle() -> None:
     assert "f1_score" in eval_data
     assert "roc_fpr" in eval_data
     assert eval_data["num_samples"] == init_data["test_samples"]
+
+
+# ── Signature Rejection Tests ────────────────────────────────────────────────
+
+
+def test_request_without_signature_is_rejected() -> None:
+    """Requests missing signature headers must be rejected with 401."""
+    payload = {"bank_id": "bank_a", "num_transactions": 500, "seed": 42}
+    resp = client.post("/api/v1/bank-client/initialize", json=payload)
+    assert resp.status_code == 401
+    assert "Missing payload signature" in resp.json()["detail"]
+
+
+def test_request_with_invalid_signature_is_rejected() -> None:
+    """Requests with a tampered signature must be rejected with 401."""
+    payload = {"bank_id": "bank_a", "num_transactions": 500, "seed": 42}
+    body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    headers = {
+        "X-Payload-Signature": "deadbeef" * 8,  # invalid hex
+        "X-Payload-Timestamp": str(time.time()),
+        "Content-Type": "application/json",
+    }
+    resp = client.post("/api/v1/bank-client/initialize", content=body_bytes, headers=headers)
+    assert resp.status_code == 401
+    assert "Invalid payload signature" in resp.json()["detail"]
+
+
+def test_request_with_expired_timestamp_is_rejected() -> None:
+    """Requests with a timestamp older than 300s must be rejected with 401."""
+    payload = {"bank_id": "bank_a", "num_transactions": 500, "seed": 42}
+    settings = get_settings()
+    secret = settings.payload_signing_secret
+    old_timestamp = str(time.time() - 600)  # 10 minutes ago
+    body_bytes = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    sign_data = old_timestamp.encode("utf-8") + b"." + body_bytes
+    signature = hmac.new(secret.encode("utf-8"), sign_data, hashlib.sha256).hexdigest()
+    headers = {
+        "X-Payload-Signature": signature,
+        "X-Payload-Timestamp": old_timestamp,
+        "Content-Type": "application/json",
+    }
+    resp = client.post("/api/v1/bank-client/initialize", content=body_bytes, headers=headers)
+    assert resp.status_code == 401
+    assert "expired" in resp.json()["detail"]
+
+
+# ── Distributed Simulation Tests ─────────────────────────────────────────────
 
 
 def mock_get_client(*args: Any, **kwargs: Any) -> Any:
@@ -92,7 +174,7 @@ def mock_get_client(*args: Any, **kwargs: Any) -> Any:
 
         def raise_for_status(self) -> None:
             if self.status_code >= 400:
-                raise httpx.HTTPStatusError("Error", request=None, response=self)
+                raise httpx.HTTPStatusError("Error", request=cast(Any, None), response=cast(Any, self))
 
     class MockClient:
         def __enter__(self) -> MockClient:
@@ -102,7 +184,13 @@ def mock_get_client(*args: Any, **kwargs: Any) -> Any:
             pass
 
         def post(
-            self, url: str, json: Any = None, headers: Any = None, timeout: Any = None
+            self,
+            url: str,
+            json: Any = None,
+            content: Any = None,
+            headers: Any = None,
+            timeout: Any = None,
+            **kwargs: Any
         ) -> MockResponse:
             # Resolve URL path mapping
             path_parts = url.split("api/v1/")
@@ -111,7 +199,11 @@ def mock_get_client(*args: Any, **kwargs: Any) -> Any:
                 if len(path_parts) > 1
                 else "/api/v1/bank-client/initialize"
             )
-            resp = client.post(path, json=json)
+            # Forward signature headers and either json or content
+            if content is not None:
+                resp = client.post(path, content=content, headers=headers)
+            else:
+                resp = client.post(path, json=json, headers=headers)
             return MockResponse(resp)
 
     return MockClient()
