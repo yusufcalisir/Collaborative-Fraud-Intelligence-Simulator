@@ -481,15 +481,16 @@ class GraphAnalyticsService:
                         fraud_count += 1
                     total_risk += RISK_LEVEL_TO_SCORE.get(entity.risk_level, 50.0)
 
-            results.append({
-                "cluster_id": len(results),
-                "node_ids": cluster_ids,
-                "size": len(cluster_ids),
-                "avg_embedding_similarity": round(avg_similarity, 4),
-                "fraud_density": round(fraud_count / len(cluster_ids), 4),
-                "average_risk": round(total_risk / len(cluster_ids), 2),
-            })
+            results.append(
+                {
+                    "cluster_id": len(results),
+                    "node_ids": cluster_ids,
+                    "size": len(cluster_ids),
+                    "avg_embedding_similarity": round(avg_similarity, 4),
+                    "fraud_density": round(fraud_count / len(cluster_ids), 4),
+                    "average_risk": round(total_risk / len(cluster_ids), 2),
+                }
+            )
 
         results.sort(key=lambda c: (c["fraud_density"], c["size"]), reverse=True)
         return results
-

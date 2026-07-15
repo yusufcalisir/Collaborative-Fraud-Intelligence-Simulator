@@ -192,4 +192,3 @@ class GNNArchitecture(StrEnum):
     """Graph Neural Network architecture for federated graph embedding."""
 
     GRAPHSAGE = "graphsage"
-

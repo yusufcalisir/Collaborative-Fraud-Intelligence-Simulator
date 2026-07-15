@@ -307,4 +307,3 @@ class GraphSAGEModel(nn.Module):
             param_data = weights.flat_weights[offset : offset + numel]
             param.data = torch.tensor(param_data, dtype=torch.float32).reshape(shape)
             offset += numel
-

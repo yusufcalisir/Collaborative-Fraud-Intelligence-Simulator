@@ -135,4 +135,3 @@ class SimulationConfig:
     gnn_epochs_per_round: int = 5
     gnn_learning_rate: float = 0.01
     gnn_neighbor_sample_size: int = 10
-

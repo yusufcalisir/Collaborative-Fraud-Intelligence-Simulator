@@ -37,7 +37,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-
 class GraphEmbeddingService:
     """Manages the federated graph embedding lifecycle.
 
@@ -173,7 +172,6 @@ class GraphEmbeddingService:
         epochs: int = 5,
         learning_rate: float = 0.01,
     ) -> tuple[ModelWeights, dict[str, Any]]:
-
         """Train GraphSAGE locally on one bank's subgraph.
 
         If global_weights are provided (from the coordinator), the model
@@ -334,10 +332,12 @@ class GraphEmbeddingService:
             similarity = float(np.dot(query_emb, emb) / (query_norm * emb_norm))
 
             if similarity >= threshold:
-                results.append({
-                    "entity_id": entity_id,
-                    "similarity": round(similarity, 4),
-                })
+                results.append(
+                    {
+                        "entity_id": entity_id,
+                        "similarity": round(similarity, 4),
+                    }
+                )
 
         # Sort by similarity descending
         results.sort(key=lambda x: x["similarity"], reverse=True)
@@ -348,10 +348,7 @@ class GraphEmbeddingService:
 
         Used for API responses and visualization.
         """
-        return {
-            entity_id: emb.tolist()
-            for entity_id, emb in self._embeddings.items()
-        }
+        return {entity_id: emb.tolist() for entity_id, emb in self._embeddings.items()}
 
     def get_embedding_stats(self) -> dict[str, Any]:
         """Get summary statistics about the embedding space."""
@@ -376,11 +373,13 @@ class GraphEmbeddingService:
             rng = np.random.default_rng(42)
             idx_a = rng.choice(n, size=100, replace=True)
             idx_b = rng.choice(n, size=100, replace=True)
-            similarities = np.array([
-                float(np.dot(normalized[a], normalized[b]))
-                for a, b in zip(idx_a, idx_b)
-                if a != b
-            ])
+            similarities = np.array(
+                [
+                    float(np.dot(normalized[a], normalized[b]))
+                    for a, b in zip(idx_a, idx_b)
+                    if a != b
+                ]
+            )
         else:
             sim_matrix = normalized @ normalized.T
             np.fill_diagonal(sim_matrix, 0)
@@ -393,8 +392,16 @@ class GraphEmbeddingService:
             "num_embedded_nodes": len(self._embeddings),
             "embedding_dim": self.embedding_dim,
             "model_parameters": num_params,
-            "mean_similarity": round(float(np.mean(similarities)), 4) if len(similarities) > 0 else 0.0,
-            "std_similarity": round(float(np.std(similarities)), 4) if len(similarities) > 0 else 0.0,
-            "max_similarity": round(float(np.max(similarities)), 4) if len(similarities) > 0 else 0.0,
-            "min_similarity": round(float(np.min(similarities)), 4) if len(similarities) > 0 else 0.0,
+            "mean_similarity": round(float(np.mean(similarities)), 4)
+            if len(similarities) > 0
+            else 0.0,
+            "std_similarity": round(float(np.std(similarities)), 4)
+            if len(similarities) > 0
+            else 0.0,
+            "max_similarity": round(float(np.max(similarities)), 4)
+            if len(similarities) > 0
+            else 0.0,
+            "min_similarity": round(float(np.min(similarities)), 4)
+            if len(similarities) > 0
+            else 0.0,
         }

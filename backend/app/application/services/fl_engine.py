@@ -437,5 +437,3 @@ class FederatedLearningEngine:
 
         # Delegate to the standard aggregation logic
         return self.aggregate_parameters(client_weights, client_samples, method)
-
-

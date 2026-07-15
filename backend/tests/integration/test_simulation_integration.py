@@ -158,18 +158,46 @@ def test_simulation_with_graph_embedding(
     # Register nodes for each bank
     banks = ["bank_a", "bank_b", "bank_c"]
     for i, b_id in enumerate(banks):
-        e1 = Entity(id=f"cust_{b_id}_1", entity_type=EntityType.CUSTOMER, bank_id=b_id, risk_level=RiskLevel.MINIMAL)
-        e2 = Entity(id=f"dev_{b_id}_2", entity_type=EntityType.DEVICE, bank_id=b_id, risk_level=RiskLevel.HIGH)
-        e3 = Entity(id=f"cust_{b_id}_3", entity_type=EntityType.CUSTOMER, bank_id=b_id, risk_level=RiskLevel.CRITICAL)
+        e1 = Entity(
+            id=f"cust_{b_id}_1",
+            entity_type=EntityType.CUSTOMER,
+            bank_id=b_id,
+            risk_level=RiskLevel.MINIMAL,
+        )
+        e2 = Entity(
+            id=f"dev_{b_id}_2",
+            entity_type=EntityType.DEVICE,
+            bank_id=b_id,
+            risk_level=RiskLevel.HIGH,
+        )
+        e3 = Entity(
+            id=f"cust_{b_id}_3",
+            entity_type=EntityType.CUSTOMER,
+            bank_id=b_id,
+            risk_level=RiskLevel.CRITICAL,
+        )
 
         ge.register_entity(e1)
         ge.register_entity(e2)
         ge.register_entity(e3)
 
-
         # Connect them
-        ge.add_relationship(Relationship(id=f"rel_{b_id}_1", source_entity_id=e1.id, target_entity_id=e2.id, relationship_type=RelationshipType.USES))
-        ge.add_relationship(Relationship(id=f"rel_{b_id}_2", source_entity_id=e3.id, target_entity_id=e2.id, relationship_type=RelationshipType.USES))
+        ge.add_relationship(
+            Relationship(
+                id=f"rel_{b_id}_1",
+                source_entity_id=e1.id,
+                target_entity_id=e2.id,
+                relationship_type=RelationshipType.USES,
+            )
+        )
+        ge.add_relationship(
+            Relationship(
+                id=f"rel_{b_id}_2",
+                source_entity_id=e3.id,
+                target_entity_id=e2.id,
+                relationship_type=RelationshipType.USES,
+            )
+        )
 
     sample_config["enable_graph_embedding"] = True
     sample_config["gnn_embedding_dim"] = 16
@@ -195,9 +223,8 @@ def test_simulation_with_graph_embedding(
 
     # Ensure embeddings are synchronized and accessible via stats
     from app.presentation.routers import graph
+
     stats = graph._graph_embedding_service.get_embedding_stats()
     assert stats["num_embedded_nodes"] == 9
     assert stats["embedding_dim"] == 16
     assert stats["model_parameters"] > 0
-
-

@@ -128,7 +128,6 @@ async def get_subgraph(
 _graph_embedding_service = GraphEmbeddingService(graph_engine=_graph_engine)
 
 
-
 class GNNTrainRequest(BaseModel):
     """Request body for GNN training."""
 
@@ -285,4 +284,3 @@ async def get_embedding_stats() -> dict:
     parameter count, and pairwise similarity distribution statistics.
     """
     return _graph_embedding_service.get_embedding_stats()
-
