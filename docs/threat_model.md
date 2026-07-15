@@ -52,6 +52,15 @@
 
 **Mitigation**: The MLP architecture with dropout (0.3, 0.2) and batch normalization reduces overfitting. DP noise further prevents memorization of individual examples.
 
+### 2.4 GNN Link and Attribute Reconstruction (FedGNN)
+
+**Threat**: An adversary or semi-honest server attempts to reconstruct the local bank's transaction graph topology (e.g., who transacts with whom) or node attributes from shared GraphSAGE model updates.
+
+**Mitigations in this system**:
+- **Gradient/Weight Clipping & DP**: Like the MLP classifier, GNN weight updates are clipped and noised (Gaussian mechanism) before sharing. This bounds the impact of any single edge or node connection on the aggregated model parameters.
+- **Aggregator Mean-Pooling**: In GraphSAGE, neighbors are aggregated using permutation-invariant mean pooling. An observer of weights cannot easily reconstruct specific neighborhood graph connections since local adjacency structures are compressed into aggregated local features before gradient computation.
+- **Edge Dropout / Mini-batch Sampling**: Neighborhood sampling during GraphSAGE forward passes naturally acts as an edge-level dropout defense, preventing the model from over-fitting to specific node-link structures.
+
 ---
 
 ## 3. Integrity Threats
@@ -60,12 +69,12 @@
 
 **Threat**: A compromised bank sends malicious model updates to degrade the global model or introduce a backdoor.
 
-**Status in simulator**: Not mitigated. This is a known limitation.
+**Status in simulator**: Fully mitigated and configurable via robust aggregation defenses.
 
-**Production mitigations**:
-- Robust aggregation methods (Krum, trimmed mean, coordinate-wise median)
-- Anomaly detection on update norms
-- Byzantine fault-tolerant protocols
+**Simulator mitigations**:
+- **Byzantine Defenses (Krum)**: The simulator implements the Krum aggregation algorithm (Blanchard et al., 2017), which computes pairwise distances between client model updates and selects the representative update that is closest to its neighboring models. This successfully detects and discards poisoned updates from malicious/outlier banks.
+- **Coordinate-wise Median**: Evaluates the median value independently for each model parameter across all participating bank updates. This filters out coordinate-wise outlier gradient injections.
+- **Adversarial Simulation Toggles**: The UI allows simulating a poisoning attacker (e.g. Bank C scaling its weights maliciously) to test the vulnerability of standard FedAvg versus Krum or Median aggregation.
 
 ### 3.2 Data Poisoning
 
