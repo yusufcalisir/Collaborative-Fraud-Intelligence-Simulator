@@ -683,8 +683,9 @@ class SimulationService:
                         },
                     )
 
-                    client_gnn_weights = []
-                    client_gnn_samples = []
+                    client_gnn_weights: list[ModelWeights] = []
+                    client_gnn_samples: list[int] = []
+
                     per_bank_gnn_loss = {}
 
                     for bank in banks:
