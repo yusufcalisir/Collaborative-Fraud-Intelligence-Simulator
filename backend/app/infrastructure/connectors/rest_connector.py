@@ -56,8 +56,8 @@ class RESTBankConnector(BankConnectorInterface):
         secret = self.settings.payload_signing_secret
         if not secret:
             return body_bytes, headers
-        import hmac
         import hashlib
+        import hmac
         import time
         timestamp = str(time.time())
         sign_data = timestamp.encode("utf-8") + b"." + body_bytes

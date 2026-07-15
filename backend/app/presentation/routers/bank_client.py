@@ -324,7 +324,7 @@ async def evaluate_global_weights(payload: BankEvaluateRequest) -> BankEvaluateR
         model = _model_service.create_model(dp_compatible=False)
         model = _model_service.set_parameters(model, input_weights)
 
-        eval_result = cast(dict[str, Any], _model_service.evaluate(
+        eval_result = cast("dict[str, Any]", _model_service.evaluate(
             model,
             _client_state.X_test,
             _client_state.y_test,

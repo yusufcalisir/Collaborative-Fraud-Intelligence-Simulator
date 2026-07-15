@@ -174,7 +174,7 @@ def mock_get_client(*args: Any, **kwargs: Any) -> Any:
 
         def raise_for_status(self) -> None:
             if self.status_code >= 400:
-                raise httpx.HTTPStatusError("Error", request=cast(Any, None), response=cast(Any, self))
+                raise httpx.HTTPStatusError("Error", request=cast("Any", None), response=cast("Any", self))
 
     class MockClient:
         def __enter__(self) -> MockClient:
