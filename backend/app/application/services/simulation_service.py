@@ -126,6 +126,20 @@ class SimulationService:
                 bank_b_size=max(500, config.bank_b_transactions // 10),
                 bank_c_size=max(500, config.bank_c_transactions // 10),
             )
+
+            # Run Data Ingestion Validation (Pandera & Great Expectations)
+            from app.application.services.data_validator import DataValidatorService
+
+            validator_service = DataValidatorService(alert_service=None)
+            validated_datasets = {}
+            for bank_id, (features_df, labels) in datasets.items():
+                # 1. Pandera Streaming Batch Validation
+                validated_df = validator_service.validate_streaming_batch(features_df, bank_id)
+                # 2. Great Expectations Data Contract Gating
+                validator_service.gate_data_contract(validated_df, bank_id)
+                validated_datasets[bank_id] = (validated_df, labels)
+            datasets = validated_datasets
+
             profiles = self.data_generator.create_bank_profiles(datasets)
             banks = self.data_generator.create_bank_entities(datasets, profiles)
             simulation.banks = banks

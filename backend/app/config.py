@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     client_key_path: str = ""
     mq_broker_uri: str = "amqp://guest:guest@localhost:5672//"
 
+    # ── Distributed Streaming & DBs ───────────
+    database_type: str = "postgres"  # "postgres", "cockroachdb", "sqlite"
+    use_kafka: bool = False
+    kafka_bootstrap_servers: str = "localhost:9092"
+
     # ── Feature Store Configuration ───────────
     feature_store_enabled: bool = True
     feature_store_provider: str = "feast"  # "feast" or "hopsworks"

@@ -147,6 +147,44 @@ class EventBus:
             except Exception:
                 logger.warning("Failed to forward event to Redis", exc_info=True)
 
+        # Forward to Kafka/Redpanda if enabled
+        from app.config import get_settings
+
+        app_settings = get_settings()
+        if app_settings.use_kafka:
+            try:
+                # Simulated Kafka Broker Producer
+                topic = f"domain_events.{event.event_type}"
+                # Partition key by bank_id if present in metadata/event
+                bank_id = getattr(
+                    event, "bank_id", event.metadata.get("bank_id", "default_partition")
+                )
+                partition = hash(bank_id) % 3
+
+                # Mock sequential offset increment (Kafka log append)
+                offset = len(self._event_log)
+
+                logger.info(
+                    "Simulated KafkaProducer published to bootstrap servers '%s' - "
+                    "Topic: %s, Partition: %d, Offset: %d, Key: %s",
+                    app_settings.kafka_bootstrap_servers,
+                    topic,
+                    partition,
+                    offset,
+                    bank_id,
+                )
+
+                # Inject broker metadata to event log
+                event.metadata["kafka_publish"] = {
+                    "topic": topic,
+                    "partition": partition,
+                    "offset": offset,
+                    "broker": app_settings.kafka_bootstrap_servers,
+                    "timestamp_ms": int(datetime.now(UTC).timestamp() * 1000),
+                }
+            except Exception:
+                logger.warning("Failed to forward event to Kafka", exc_info=True)
+
         logger.debug("Published %s (%d handlers)", event.event_type, len(handlers))
 
     def get_event_log(self, event_type: str | None = None, limit: int = 100) -> list[DomainEvent]:

@@ -1,0 +1,163 @@
+"""Data Validation & Contract Gating Service.
+
+Integrates Pandera for streaming schema validation and
+Great Expectations (v1.x) for data contract statistical stability checks.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import great_expectations as ge
+import great_expectations.expectations as gxe
+import pandas as pd  # noqa: TC002
+import pandera as pa
+from great_expectations import ExpectationSuite, ValidationDefinition
+from pandera.typing import Series  # noqa: TC002
+
+logger = logging.getLogger(__name__)
+
+
+class DataContractValidationError(Exception):
+    """Custom exception raised when a dataset fails the Great Expectations data contract gating."""
+
+    pass
+
+
+class TransactionSchema(pa.DataFrameModel):
+    """Pandera schema model for verifying transaction dataframe specifications."""
+
+    transaction_amount: Series[float] = pa.Field(gt=0.0)
+    velocity: Series[float] = pa.Field(ge=0.0)
+    hour_of_day: Series[int] = pa.Field(ge=0, le=23)
+    merchant_risk_score: Series[float] = pa.Field(ge=0.0, le=1.0)
+    customer_history_score: Series[float] = pa.Field(ge=0.0, le=1.0)
+    chargeback_count: Series[int] = pa.Field(ge=0)
+    account_age_days: Series[int] = pa.Field(ge=0)
+    country_code: Series[str] = pa.Field()
+    merchant_category: Series[str] = pa.Field()
+    device_type: Series[str] = pa.Field()
+
+    @pa.check("country_code")
+    def validate_country_code(self, series: Series[str]) -> Series[bool]:  # noqa: N805
+        """Ensure country code conforms to ISO 2-letter standard."""
+        return series.str.len() == 2
+
+
+class DataValidatorService:
+    """Orchestrates Pandera schema checks and Great Expectations statistical tests."""
+
+    # Allowed categorical values for device_type validation
+    ALLOWED_DEVICES = ["mobile_app", "web_browser", "pos_terminal", "atm", "phone_banking"]
+
+    def __init__(self, alert_service: Any = None) -> None:
+        self.alert_service = alert_service
+        self._quarantine_store: dict[str, list[pd.DataFrame]] = {}
+
+    def validate_streaming_batch(self, df: pd.DataFrame, bank_id: str) -> pd.DataFrame:
+        """Validate an incoming streaming transaction batch using Pandera.
+
+        If validation fails, the batch is quarantined, a system alert is triggered,
+        and an exception is raised to abort ingestion.
+        """
+        try:
+            validated_df = TransactionSchema.validate(df)
+            return validated_df
+        except pa.errors.SchemaError as exc:
+            logger.error(
+                "Streaming batch validation failed for bank %s: %s. Quarantining batch.",
+                bank_id,
+                exc,
+            )
+            self._quarantine_batch(df, bank_id, "Pandera Schema Validation Failure")
+            raise DataContractValidationError(
+                f"Pandera schema validation failed for bank {bank_id}: {exc}"
+            ) from exc
+
+    def gate_data_contract(
+        self,
+        df: pd.DataFrame,
+        bank_id: str,
+        amount_mean_min: float = 10.0,
+        amount_mean_max: float = 1000.0,
+    ) -> None:
+        """Run Great Expectations checks on bank data prior to model training.
+
+        Uses GE 1.x ephemeral context and ValidationDefinition API.
+
+        Verifies statistical properties:
+        1. Null value ratios are 0 on critical numeric columns.
+        2. Average transaction amount stays within historical confidence limits.
+        3. Allowed category distributions are valid.
+
+        If a check fails, triggers alerts and raises DataContractValidationError to halt training.
+        """
+        context = ge.get_context(mode="ephemeral")
+
+        # Register datasource, asset, and batch definition
+        ds = context.data_sources.add_pandas(f"ds_{bank_id}")
+        asset = ds.add_dataframe_asset(f"asset_{bank_id}")
+        bd = asset.add_batch_definition_whole_dataframe(f"bd_{bank_id}")
+
+        # Build expectation suite
+        suite = ExpectationSuite(name=f"contract_{bank_id}")
+        suite.add_expectation(gxe.ExpectColumnValuesToNotBeNull(column="transaction_amount"))
+        suite.add_expectation(gxe.ExpectColumnValuesToNotBeNull(column="velocity"))
+        suite.add_expectation(
+            gxe.ExpectColumnMeanToBeBetween(
+                column="transaction_amount",
+                min_value=amount_mean_min,
+                max_value=amount_mean_max,
+            )
+        )
+        suite.add_expectation(
+            gxe.ExpectColumnValuesToBeInSet(column="device_type", value_set=self.ALLOWED_DEVICES)
+        )
+        suite = context.suites.add(suite)
+
+        # Register and run validation
+        val_def = ValidationDefinition(name=f"val_{bank_id}", data=bd, suite=suite)
+        val_def = context.validation_definitions.add(val_def)
+        result = val_def.run(batch_parameters={"dataframe": df})
+
+        if not result.success:
+            failures = []
+            for r in result.results:
+                if not r.success:
+                    failures.append(
+                        f"Expectation '{r.expectation_config.type}' on "
+                        f"column '{r.expectation_config.kwargs.get('column', '?')}' failed."
+                    )
+            error_msg = "; ".join(failures)
+            logger.critical(
+                "Data Contract validation failed on bank %s node! Errors: %s. Quarantining dataset.",
+                bank_id,
+                error_msg,
+            )
+            self._quarantine_batch(df, bank_id, f"Great Expectations Contract Failure: {error_msg}")
+            raise DataContractValidationError(
+                f"Great Expectations contract validation failed for bank {bank_id}: {error_msg}"
+            )
+
+        logger.info(
+            "Great Expectations data contract validation successfully passed for bank %s.",
+            bank_id,
+        )
+
+    def _quarantine_batch(self, df: pd.DataFrame, bank_id: str, reason: str) -> None:
+        """Quarantine a corrupted dataset batch and trigger a security/system alert."""
+        if bank_id not in self._quarantine_store:
+            self._quarantine_store[bank_id] = []
+        self._quarantine_store[bank_id].append(df.copy())
+
+        if self.alert_service:
+            try:
+                self.alert_service.create_system_alert(
+                    title="Data Contract Compliance Alert",
+                    description=f"Bank {bank_id} dataset quarantined. Reason: {reason}",
+                    severity="CRITICAL",
+                    metadata={"bank_id": bank_id, "row_count": len(df)},
+                )
+            except Exception as e:
+                logger.warning("Failed to log alert for data contract quarantine: %s", e)

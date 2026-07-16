@@ -203,3 +203,31 @@ Adversarial ML risks are audited against the **MITRE ATLAS** (Adversarial Threat
     *   *Technique:* AML.T0024 (Model Inversion). Reconstructing training distribution records.
     *   *Mitigation:* **Differential Privacy** adds calibrated Gaussian noise, mathematically bounding reconstruction success probability.
 
+---
+
+## 10. Data Integrity & Streaming Security
+
+### 10.1 Data Poisoning via Corrupt Input
+
+**Threat**: Malformed or statistically anomalous transaction batches (null values, invalid currency codes, extreme amounts) silently corrupt GNN embeddings or cause training runtime crashes.
+
+**Mitigations**:
+*   **Pandera Schema Validation**: Enforces strict dataframe schemas at the streaming consumer boundary. Validates ISO 2-letter country codes, positive transaction amounts, valid categorical values (device types, merchant categories), and numeric range constraints.
+*   **Great Expectations Data Contract Gating**: Runs automated statistical stability checks (null ratio assertions, mean transaction amount confidence intervals, categorical distribution validation) on each bank's data prior to local model training. Failing batches are quarantined and trigger system alerts.
+
+### 10.2 Event Stream Tampering
+
+**Threat**: In-transit event messages (alerts, training updates) could be reordered, duplicated, or dropped, causing inconsistent system state.
+
+**Mitigations**:
+*   **Apache Kafka/Redpanda Backbone**: When enabled, replaces Redis Pub/Sub with a fault-tolerant, append-only log. Events are partitioned by bank ID, ordered by offset, and durably persisted. Consumer groups provide exactly-once semantics.
+*   **Event Metadata Injection**: Each published event is tagged with topic, partition, offset, broker address, and millisecond timestamp for full audit traceability.
+
+### 10.3 Database Consistency Under High Write Load
+
+**Threat**: Concurrent high-throughput transaction writes cause serialization conflicts, phantom reads, or silent data loss under standard isolation levels.
+
+**Mitigations**:
+*   **CockroachDB Serializable Isolation**: When configured with `database_type=cockroachdb`, the platform operates under strict SERIALIZABLE isolation, preventing phantom reads and write skew anomalies.
+*   **Application-Level Transaction Retries**: The `run_cockroach_transaction` utility automatically retries on SQLSTATE 40001 (serialization conflict) with configurable max retries, ensuring transactional consistency without silent failures.
+

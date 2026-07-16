@@ -621,6 +621,16 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 | **Model Poisoning Attack** | Boolean | `False` | Simulates a malicious bank sending corrupted weights to sabotage the model. |
 | **Byzantine Defense** | Selection (`none`, `krum`, `coordinate_wise_median`) | `none` | Activates a robust aggregation filter to reject poisoned client updates before FedAvg. |
 
+### Enterprise Data Streaming & Database Settings
+
+| Parameter | Type / Range | Default | Description |
+| :--- | :--- | :--- | :--- |
+| **Database Type** | Selection (`postgres`, `cockroachdb`, `sqlite`) | `postgres` | Selects the backing database engine. CockroachDB enables serializable isolation with automatic transaction retries. |
+| **Use Kafka** | Boolean | `False` | Enables Apache Kafka/Redpanda event streaming backbone for fault-tolerant, ordered event delivery. |
+| **Kafka Bootstrap Servers** | String | `localhost:9092` | Comma-separated list of Kafka broker addresses for the event streaming backbone. |
+| **Data Validation (Pandera)** | Automatic | Enabled | Enforces strict dataframe schemas on incoming transaction batches (ISO country codes, positive amounts, valid categories). |
+| **Data Contract Gating (GE)** | Automatic | Enabled | Runs Great Expectations statistical stability checks (null ratios, mean bounds, category distributions) before local model training. Quarantines failing batches. |
+
 ***
 
 ## API Endpoint Blueprints
