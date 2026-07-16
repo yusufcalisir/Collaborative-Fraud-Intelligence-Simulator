@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.application.services.alert_service import AlertIntelligenceService
 from app.application.services.explainability_service import ExplainabilityService
+from app.application.services.feature_store_service import FeatureStoreService
 from app.application.services.model_registry import ModelRegistry
 from app.application.services.model_service import ModelService
 from app.application.services.risk_engine import RiskScoringEngine
@@ -32,6 +33,8 @@ _registry = ModelRegistry()
 _risk_engine = RiskScoringEngine()
 _alert_service = AlertIntelligenceService()
 _explainability_service = ExplainabilityService()
+
+_feature_store = FeatureStoreService()
 
 # Global reference bounds for min-max scaling of single transactions
 REFERENCE_BOUNDS = {
@@ -216,7 +219,59 @@ async def predict_transaction(
         model.load_state_dict(state_dict)
         model.eval()
 
+        bank_id = payload.bank_id or "serving_client"
+        txn_id = str(uuid.uuid4())
+        # Use stable entity hash to demonstrate velocity windows on repeated requests
+        entity_hash = f"serving:{bank_id}:customer_1"
+
         txn_dict = payload.model_dump()
+
+        # Ingest and query from Feature Store
+        if _settings.feature_store_enabled:
+            merch_id = f"merch_{payload.merchant_category}"
+            _feature_store.ingest_transaction(
+                customer_id=entity_hash,
+                amount=payload.transaction_amount,
+                merchant_id=merch_id,
+                merchant_category=payload.merchant_category,
+                merchant_risk_score=payload.merchant_risk_score,
+                customer_history_score=payload.customer_history_score,
+                chargeback_count=payload.chargeback_count,
+                account_age_days=payload.account_age_days,
+            )
+            online_feats = _feature_store.get_online_features(
+                [{"customer_id": entity_hash, "merchant_id": merch_id}],
+                [
+                    "rolling_velocity_1h",
+                    "avg_amount_24h",
+                    "customer_history_score",
+                    "account_age_days",
+                    "chargeback_count",
+                    "merchant_risk_score",
+                    "merchant_category",
+                ],
+            )
+            if online_feats:
+                feats = online_feats[0]
+                txn_dict["velocity"] = feats.get(
+                    "rolling_velocity_1h", txn_dict.get("velocity", 1.0)
+                )
+                txn_dict["customer_history_score"] = feats.get(
+                    "customer_history_score", txn_dict.get("customer_history_score", 0.95)
+                )
+                txn_dict["account_age_days"] = feats.get(
+                    "account_age_days", txn_dict.get("account_age_days", 365)
+                )
+                txn_dict["chargeback_count"] = feats.get(
+                    "chargeback_count", txn_dict.get("chargeback_count", 0)
+                )
+                txn_dict["merchant_risk_score"] = feats.get(
+                    "merchant_risk_score", txn_dict.get("merchant_risk_score", 0.05)
+                )
+                txn_dict["merchant_category"] = feats.get(
+                    "merchant_category", txn_dict.get("merchant_category", "grocery")
+                )
+
         input_tensor = preprocess_transaction(txn_dict).to(_model_service.device)
 
         with torch.no_grad():
@@ -229,11 +284,6 @@ async def predict_transaction(
         )
 
     # 4. Compute composite risk score
-    bank_id = payload.bank_id or "serving_client"
-    # Compute one-way hash of transaction for scoring entity resolution checks
-    txn_id = str(uuid.uuid4())
-    entity_hash = f"serving:{bank_id}:{txn_id[:8]}"
-
     # Register historical signals context dynamically for the entity hash
     if payload.chargeback_count > 0:
         _risk_engine.register_chargeback(entity_hash, min(1.0, payload.chargeback_count / 10.0))

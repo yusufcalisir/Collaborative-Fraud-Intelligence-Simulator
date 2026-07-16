@@ -152,8 +152,26 @@ class SimulationService:
 
             # Split into train/test per bank
             bank_data: dict[str, dict[str, np.ndarray]] = {}
+            from app.application.services.feature_store_service import FeatureStoreService
+
+            feature_store = FeatureStoreService()
+
             for bank_id, (df, labels) in datasets.items():
-                X = DataGenerator.encode_features(df)
+                # Simulate Offline Feature Store point-in-time join to retrieve training features
+                offline_features = [
+                    "transaction_amount",
+                    "merchant_category",
+                    "country_code",
+                    "device_type",
+                    "velocity",
+                    "hour_of_day",
+                    "merchant_risk_score",
+                    "customer_history_score",
+                    "chargeback_count",
+                    "account_age_days",
+                ]
+                df_features = feature_store.get_historical_features(df, offline_features)
+                X = DataGenerator.encode_features(df_features)
                 y = labels.values
 
                 # Stratified split preferred, but fall back to random split

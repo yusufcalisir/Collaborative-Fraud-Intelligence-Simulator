@@ -62,3 +62,23 @@ The platform includes a real-time scenario simulator to showcase how collaborati
 4. **Card Testing**:
    * *Behavior*: Cards are tested with sub-$5 transactions at different merchants/banks.
    * *Outcome*: Individual banks ignore the minor transactions. Graph correlation links the test charges to reveal the card testing ring before large-scale card draining occurs.
+
+---
+
+## 🧬 Feature Store Integration (Feast / Hopsworks)
+
+To handle production scale and meet strict SLA latency bounds (<50ms), the platform integrates a dual offline-online Feature Store (simulating Feast / Hopsworks):
+
+### 1. Online Feature Store (Redis-backed)
+- Serves live features to the `RiskScoringEngine` and MLP inference pipeline in real time.
+- Uses a unified entity mapping (`customer_id`, `merchant_id`) to pull aggregated vectors under strict latency bounds (<5ms execution).
+
+### 2. Offline Feature Store (Snowflake / BigQuery)
+- Provides point-in-time joins (`get_historical_features`) over historical logs.
+- Guarantees data leakage prevention by ensuring features represent the state of entities exactly as they existed at the transaction timestamp.
+
+### 3. Dynamic Streaming Pipelines (Apache Flink / Spark Streaming)
+- Transactions ingested into the API stream directly update sliding window features:
+  - `rolling_velocity_1h`: Counts customer transactions in the last hour.
+  - `avg_amount_24h`: Running average amount of customer transactions in the last 24 hours.
+- Updates are pushed instantly to the Online Store to protect downstream scoring from high-velocity rings.

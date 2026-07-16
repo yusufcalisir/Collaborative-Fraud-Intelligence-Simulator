@@ -187,6 +187,7 @@ To transform the prototype into a production-oriented distributed system:
 3.  **API Gateway Routing & Security Suite**: Centralized traffic routing, versioning checks (enforcing `/api/v1/`), rate-limiting, and auditable request logging implemented in [gateway.py](file:///backend/app/presentation/routers/gateway.py).
 4.  **Decentralized Networks & Database Isolation**: Simulates strict enterprise security zones (VPCs). Each bank client runs in its own private network (`net-bank-a`, `net-bank-b`, `net-bank-c`) with an isolated PostgreSQL database. The host exposes no database ports, eliminating cross-bank data leakage vectors.
 5.  **Cryptographic Payload Signing & Verification**: Secures communication over the shared `net-federation` bridge. The FL coordinator and bank clients mutually sign and verify REST payloads using HMAC-SHA256 headers (`X-Payload-Signature`, `X-Payload-Timestamp`) with a 5-minute replay-prevention window.
+6.  **Enterprise Feature Store Integration (Feast / Hopsworks)**: Decoupled online features serving (<50ms from Redis) and offline point-in-time joins (preventing training data leakage) with dynamic sliding window streaming ingestion (Flink/Spark simulator).
 
 ### Track 4: MLOps, Explainability & Advanced Drift Detection (Phase 4)
 To bring the platform closer to production ML operations standards:

@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     client_key_path: str = ""
     mq_broker_uri: str = "amqp://guest:guest@localhost:5672//"
 
+    # ── Feature Store Configuration ───────────
+    feature_store_enabled: bool = True
+    feature_store_provider: str = "feast"  # "feast" or "hopsworks"
+    feature_store_latency_ms: float = 2.0  # simulated latency overhead
+
     @property
     def database_url(self) -> str:
         """Async PostgreSQL connection URL."""

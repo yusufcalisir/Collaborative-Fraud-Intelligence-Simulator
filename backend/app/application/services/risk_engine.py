@@ -86,6 +86,9 @@ class RiskScoringEngine:
         self._alert_history: dict[str, int] = {}  # entity_hash → alert count
         self._chargeback_history: dict[str, float] = {}  # entity_hash → chargeback rate
         self._behavior_baselines: dict[str, dict] = {}  # entity_hash → baseline stats
+        from app.application.services.feature_store_service import FeatureStoreService
+
+        self.feature_store = FeatureStoreService()
 
     def score_transaction(
         self,
@@ -103,16 +106,70 @@ class RiskScoringEngine:
         Returns:
             Composite RiskScore with breakdown.
         """
+        from app.config import get_settings
+
+        settings = get_settings()
+
+        txn_eval = transaction.copy()
+        if settings.feature_store_enabled and entity_hash:
+            entity_rows = [
+                {
+                    "customer_id": entity_hash,
+                    "merchant_id": transaction.get(
+                        "merchant_id", f"merch_{transaction.get('merchant_category', 'grocery')}"
+                    ),
+                }
+            ]
+            features_to_fetch = [
+                "rolling_velocity_1h",
+                "avg_amount_24h",
+                "customer_history_score",
+                "account_age_days",
+                "chargeback_count",
+                "merchant_risk_score",
+                "merchant_category",
+            ]
+            try:
+                online_feats = self.feature_store.get_online_features(
+                    entity_rows, features_to_fetch
+                )
+                if online_feats:
+                    feats = online_feats[0]
+                    # Map online features back to txn fields for scoring
+                    txn_eval["velocity"] = feats.get(
+                        "rolling_velocity_1h", txn_eval.get("velocity", 1.0)
+                    )
+                    txn_eval["customer_history_score"] = feats.get(
+                        "customer_history_score", txn_eval.get("customer_history_score", 0.95)
+                    )
+                    txn_eval["account_age_days"] = feats.get(
+                        "account_age_days", txn_eval.get("account_age_days", 365)
+                    )
+                    txn_eval["chargeback_count"] = feats.get(
+                        "chargeback_count", txn_eval.get("chargeback_count", 0)
+                    )
+                    txn_eval["merchant_risk_score"] = feats.get(
+                        "merchant_risk_score", txn_eval.get("merchant_risk_score", 0.05)
+                    )
+                    txn_eval["merchant_category"] = feats.get(
+                        "merchant_category", txn_eval.get("merchant_category", "grocery")
+                    )
+                    logger.info(
+                        "Online Feature Store retrieved successfully for entity %s", entity_hash
+                    )
+            except Exception as e:
+                logger.warning("Feature Store online lookup failed: %s", e)
+
         signals = [
             self._eval_ml_prediction(ml_prediction),
-            self._eval_velocity(transaction),
-            self._eval_merchant_reputation(transaction),
-            self._eval_country_risk(transaction),
-            self._eval_device_anomaly(transaction),
-            self._eval_customer_history(transaction),
+            self._eval_velocity(txn_eval),
+            self._eval_merchant_reputation(txn_eval),
+            self._eval_country_risk(txn_eval),
+            self._eval_device_anomaly(txn_eval),
+            self._eval_customer_history(txn_eval),
             self._eval_previous_alerts(entity_hash),
             self._eval_chargeback_history(entity_hash),
-            self._eval_behavior_anomaly(transaction, entity_hash),
+            self._eval_behavior_anomaly(txn_eval, entity_hash),
         ]
 
         composite = self._combine_signals(signals)
