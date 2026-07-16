@@ -60,8 +60,13 @@ def test_gateway_authorization():
 
 
 def test_gateway_rate_limiting():
+    from app.infrastructure.redis_store import RedisStore
     from app.presentation.routers.gateway import _rate_limiter
 
+    # Reset RedisStore global state to ensure clean in-memory fallback isolation during test suite execution
+    RedisStore._global_redis_unavailable = False
+    if "gateway_rate_limit" in RedisStore._shared_fallback_stores:
+        RedisStore._shared_fallback_stores["gateway_rate_limit"].clear()
     _rate_limiter.clear()
     original_rate_limit = settings.gateway_rate_limit
     # Set low rate limit for test
