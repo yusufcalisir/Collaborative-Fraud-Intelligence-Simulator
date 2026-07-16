@@ -3,7 +3,11 @@
 import numpy as np
 import pytest
 
-from app.application.services.privacy_service import PrivacyBudget, PrivacyService
+from app.application.services.privacy_service import (
+    PrivacyBudget,
+    PrivacyBudgetExceededError,
+    PrivacyService,
+)
 from app.domain.value_objects import ModelWeights
 
 
@@ -146,3 +150,27 @@ class TestOpacusRecording:
         budget = privacy_service.get_or_create_budget("sim_opacus_2")
         assert budget.rounds_spent == 2
         assert budget.history == [0.5, 0.7]
+
+
+class TestPrivacyBudgetLimits:
+    def test_spend_within_limit_succeeds(self) -> None:
+        budget = PrivacyBudget(epsilon_per_round=1.0)
+        budget.spend(2.0, limit=8.0)
+        budget.spend(4.5, limit=8.0)
+        assert budget.total_epsilon == 6.5
+
+    def test_spend_exceeding_limit_raises_error(self) -> None:
+        budget = PrivacyBudget(epsilon_per_round=1.0)
+        budget.spend(5.0, limit=8.0)
+        with pytest.raises(PrivacyBudgetExceededError) as exc_info:
+            budget.spend(4.0, limit=8.0)
+        assert "Cumulative privacy budget exceeded" in str(exc_info.value)
+        assert budget.total_epsilon == 9.0
+
+    def test_record_opacus_exceeding_limit_raises_error(
+        self, privacy_service: PrivacyService
+    ) -> None:
+        privacy_service.record_opacus_epsilon("sim_limit", 5.0, limit=8.0)
+        with pytest.raises(PrivacyBudgetExceededError) as exc_info:
+            privacy_service.record_opacus_epsilon("sim_limit", 3.5, limit=8.0)
+        assert "Cumulative privacy budget exceeded" in str(exc_info.value)

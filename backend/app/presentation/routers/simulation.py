@@ -70,6 +70,7 @@ async def create_simulation(
             PrivacyMechanism.BOTH,
         ),
         "dp_epsilon": config.dp_epsilon,
+        "dp_epsilon_limit": config.dp_epsilon_limit,
         "dp_delta": config.dp_delta,
         "dp_max_grad_norm": config.dp_max_grad_norm,
         "dp_mode": config.dp_mode,

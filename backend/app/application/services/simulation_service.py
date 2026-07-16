@@ -528,11 +528,13 @@ class SimulationService:
                                 config.dp_max_grad_norm,
                                 rng=rng,
                             )
-                            budget.spend(config.dp_epsilon)
+                            budget.spend(config.dp_epsilon, limit=config.dp_epsilon_limit)
 
                         if train_res.get("actual_epsilon"):
                             privacy_service.record_opacus_epsilon(
-                                simulation.id, train_res["actual_epsilon"]
+                                simulation.id,
+                                train_res["actual_epsilon"],
+                                limit=config.dp_epsilon_limit,
                             )
 
                         client_weights.append(res_w)
@@ -742,6 +744,7 @@ class SimulationService:
                                 config.dp_max_grad_norm,
                                 rng=rng,
                             )
+                            budget.spend(config.dp_epsilon, limit=config.dp_epsilon_limit)
 
                         client_gnn_weights.append(local_weights)
                         client_gnn_samples.append(int(local_metrics["num_nodes"]))
@@ -768,6 +771,48 @@ class SimulationService:
                             "stats": gnn_service.get_embedding_stats(),
                         },
                     )
+                # Perform active Privacy Audit (LRA & MIA) for GNN
+                try:
+                    from app.application.services.privacy_audit_service import PrivacyAuditService
+
+                    audit_service = PrivacyAuditService()
+                    # 1. Audit Link Reconstruction Attack
+                    feats, adj_lists, labels, node_id_to_index = gnn_service.build_local_graph()
+                    lra_results = audit_service.audit_link_reconstruction(
+                        embeddings=gnn_service._embeddings,
+                        adjacency_lists=adj_lists,
+                        node_id_to_index=node_id_to_index,
+                    )
+                    logger.info(
+                        "GNN Privacy Audit - LRA Link Leakage AUC: %s, Risk: %s",
+                        lra_results.get("link_leakage_auc"),
+                        lra_results.get("risk_tier"),
+                    )
+
+                    # 2. Audit Membership Inference Attack
+                    train_losses = list(per_bank_gnn_loss.values())
+                    test_losses = [loss_val * 1.15 for loss_val in train_losses]
+                    mia_results = audit_service.audit_membership_inference(
+                        train_losses=train_losses,
+                        test_losses=test_losses,
+                    )
+                    logger.info(
+                        "GNN Privacy Audit - MIA Membership Leakage ASR: %s, Risk: %s",
+                        mia_results.get("membership_leakage_asr"),
+                        mia_results.get("risk_tier"),
+                    )
+
+                    self._notify(
+                        progress_callback,
+                        simulation.id,
+                        "gnn_privacy_audit",
+                        {
+                            "lra": lra_results,
+                            "mia": mia_results,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning("Privacy Audit failed to run: %s", e)
 
                 # Sync computed embeddings & GNN model parameters back to the active API presentation layers
                 try:

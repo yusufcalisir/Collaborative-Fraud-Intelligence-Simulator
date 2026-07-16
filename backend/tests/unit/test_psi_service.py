@@ -69,3 +69,32 @@ class TestPSIService:
         assert stats["num_entities_b"] == 2
         # Data exchanged = 2 * (len_a + len_b) * 64 bytes = 2 * 4 * 64 = 512 bytes
         assert stats["data_exchanged_bytes"] == 512
+
+    def test_psi_with_tee_simulation(
+        self,
+        entity_service: EntityResolutionService,
+        psi_service: PSIService,
+    ) -> None:
+        # Create common entities
+        entity_service.create_entity(
+            entity_type=EntityType.CUSTOMER,
+            raw_identifier="common.user@mail.com",
+            bank_id="bank_a",
+        )
+        entity_service.create_entity(
+            entity_type=EntityType.CUSTOMER,
+            raw_identifier="common.user@mail.com",
+            bank_id="bank_b",
+        )
+
+        result = psi_service.run_psi("bank_a", "bank_b", EntityType.CUSTOMER, enable_tee=True)
+        matches = result["matches"]
+        stats = result["stats"]
+
+        assert len(matches) >= 1
+        assert stats["enclave_execution"] is True
+        assert "mrenclave" in stats
+        assert "mrsigner" in stats
+        assert stats["attestation_verified"] is True
+        # TEE matching only sends initial hashes (len_a + len_b) * 64 bytes
+        assert stats["data_exchanged_bytes"] < 512

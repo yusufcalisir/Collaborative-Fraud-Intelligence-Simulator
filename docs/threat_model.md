@@ -45,6 +45,7 @@
 **Threat**: Determine whether a specific transaction was in a bank's training set.
 
 **Mitigation**: Differential privacy with (ε, δ)-guarantees provides formal bounds on membership inference advantage. With ε=1.0, the adversary's advantage is bounded by e^ε ≈ 2.72x over random guessing.
+*   **Active MIA Audit**: The system runs a post-training **Membership Inference Attack (MIA)** audit using the `PrivacyAuditService`. It compares training and test loss distributions, setting a dynamic classification threshold to verify that the attack success rate (ASR) does not exceed acceptable security boundaries (e.g. ASR ≈ 0.5 for random guessing).
 
 ### 2.3 Model Memorization
 
@@ -60,6 +61,7 @@
 - **Gradient/Weight Clipping & DP**: Like the MLP classifier, GNN weight updates are clipped and noised (Gaussian mechanism) before sharing. This bounds the impact of any single edge or node connection on the aggregated model parameters.
 - **Aggregator Mean-Pooling**: In GraphSAGE, neighbors are aggregated using permutation-invariant mean pooling. An observer of weights cannot easily reconstruct specific neighborhood graph connections since local adjacency structures are compressed into aggregated local features before gradient computation.
 - **Edge Dropout / Mini-batch Sampling**: Neighborhood sampling during GraphSAGE forward passes naturally acts as an edge-level dropout defense, preventing the model from over-fitting to specific node-link structures.
+- **Active LRA Audit**: The system implements an active **Link Reconstruction Attack (LRA)** vulnerability audit inside `PrivacyAuditService`. By computing the cosine similarity of node representation updates between linked and unlinked pairs, it computes the area under the ROC curve (AUC). A low AUC (close to 0.5) mathematically proves that an adversary cannot reconstruct the topology.
 
 ---
 
@@ -120,8 +122,10 @@ With default settings (ε=1.0, δ=1e-5) over 10 rounds:
 | Total ε (10 rounds, basic composition) | 10.0 |
 | Max gradient norm | 1.0 |
 | Noise multiplier (σ/C) | ~5.3 |
+| **Strict DP Budget Limit** | 8.0 (Configurable) |
 
 **Note**: Basic sequential composition is used. Advanced composition (Rényi DP, moments accountant) would yield tighter bounds. In production, use the `opacus` library for rigorous privacy accounting.
+*   **Strict DP Budget Monitor**: The simulator implements an automated privacy budget monitor (`PrivacyBudget.spend`). If the cumulative spent privacy budget exceeds the configured safety threshold (default `dp_epsilon_limit = 8.0`), it immediately throws a `PrivacyBudgetExceededError` and halts the federated simulation to prevent further privacy loss.
 
 ---
 
@@ -131,13 +135,14 @@ With default settings (ε=1.0, δ=1e-5) over 10 rounds:
 |---|---|---|
 | Transport encryption | None (localhost) | TLS 1.3 mutual auth |
 | Client authentication | None | mTLS + API keys |
-| Secure aggregation | Simulated pairwise masks | MPC (SPDZ, SecureNN) |
-| DP accounting | Basic composition | Rényi DP (moments accountant) |
-| Byzantine resilience | None | Krum / Trimmed Mean |
-| Audit logging | Console logging | Tamper-evident audit trail |
+| Secure aggregation | Simulated pairwise masks | MPC (SPDZ, SecureNN) or **Secure Enclaves (Intel SGX / AMD SEV)** |
+| Private Set Intersection (PSI) | Simulated DH-PSI / **Secure TEE Enclave Matching** | **Hardware Enclave (Intel SGX)** or Multi-party Computation (MPC) |
+| DP accounting & Budgeting | Basic composition + **Strict Budget Limit Gating** | Rényi DP (moments accountant) + Budget limits |
+| Byzantine resilience | **Krum / Median Implemented** | Krum / Trimmed Mean |
+| Audit logging & Vulnerability Audits | Console logging + **Active GNN LRA & MIA Privacy Auditing** | Tamper-evident audit trail + Real-time vulnerability scanning |
 | Key management | None | HSM-backed key infrastructure |
 
-This gap analysis is intentional — the simulator demonstrates the concepts. Production deployment requires hardening each layer.
+This gap analysis is intentional — the simulator demonstrates the concepts and simulates hardware constraints. Production deployment requires hardening each layer.
 
 ---
 

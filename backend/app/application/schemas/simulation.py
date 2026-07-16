@@ -29,6 +29,7 @@ class SimulationConfigRequest(BaseModel):
     # Privacy
     privacy_mechanism: PrivacyMechanism = PrivacyMechanism.NONE
     dp_epsilon: float = Field(default=1.0, gt=0)
+    dp_epsilon_limit: float = Field(default=8.0, gt=0, description="Strict cumulative privacy budget epsilon limit")
     dp_delta: float = Field(default=1e-5, gt=0)
     dp_max_grad_norm: float = Field(default=1.0, gt=0)
     dp_mode: str = Field(

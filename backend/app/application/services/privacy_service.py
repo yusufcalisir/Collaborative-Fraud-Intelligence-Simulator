@@ -24,6 +24,12 @@ from app.domain.value_objects import ModelWeights
 logger = logging.getLogger(__name__)
 
 
+class PrivacyBudgetExceededError(Exception):
+    """Custom exception raised when the cumulative DP epsilon budget is exceeded."""
+
+    pass
+
+
 @dataclass
 class PrivacyBudget:
     """Tracks cumulative privacy expenditure across rounds.
@@ -48,10 +54,18 @@ class PrivacyBudget:
         """Cumulative delta under basic composition."""
         return self.delta * self.rounds_spent
 
-    def spend(self, epsilon: float) -> None:
-        """Record privacy expenditure for one round."""
+    def spend(self, epsilon: float, limit: float = 8.0) -> None:
+        """Record privacy expenditure for one round and verify cumulative budget.
+
+        Raises:
+            PrivacyBudgetExceededError: if total spent epsilon exceeds the security limit.
+        """
         self.rounds_spent += 1
         self._epsilon_history.append(epsilon)
+        if self.total_epsilon > limit:
+            raise PrivacyBudgetExceededError(
+                f"Cumulative privacy budget exceeded! Total: {self.total_epsilon:.4f} > Limit: {limit:.4f}"
+            )
 
     @property
     def history(self) -> list[float]:
@@ -163,7 +177,7 @@ class PrivacyService:
             flat_weights=clipped.tolist(),
         )
 
-    def record_opacus_epsilon(self, simulation_id: str, epsilon: float) -> None:
+    def record_opacus_epsilon(self, simulation_id: str, epsilon: float, limit: float = 8.0) -> None:
         """Record the actual privacy budget spent in Opacus mode for a round.
 
         Since Opacus computes the total Rényi Differential Privacy (RDP)
@@ -171,7 +185,7 @@ class PrivacyService:
         resulting epsilon computed by the PrivacyEngine.
         """
         budget = self.get_or_create_budget(simulation_id)
-        budget.spend(epsilon)
+        budget.spend(epsilon, limit)
         logger.info(
             "Recorded Opacus DP spend for simulation %s: round_epsilon=%.4f, total_spent_epsilon=%.4f",
             simulation_id,
