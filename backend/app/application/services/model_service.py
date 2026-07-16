@@ -158,7 +158,7 @@ class ModelService:
 
                 # FedProx proximal term
                 if fedprox_mu > 0.0 and global_model is not None:
-                    proximal_term = 0.0
+                    proximal_term: float | torch.Tensor = 0.0
                     for param, g_param in zip(model.parameters(), global_model.parameters()):
                         proximal_term += (param - g_param).pow(2).sum()
                     loss = loss + (fedprox_mu / 2.0) * proximal_term
@@ -301,7 +301,7 @@ class ModelService:
 
                 # FedProx proximal term
                 if fedprox_mu > 0.0 and global_model is not None:
-                    proximal_term = 0.0
+                    proximal_term: float | torch.Tensor = 0.0
                     for param, g_param in zip(
                         model_private.parameters(), global_model.parameters()
                     ):

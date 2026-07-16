@@ -391,7 +391,7 @@ class SimulationService:
                     )
 
                 rounds = []
-                prev_local_weights_by_bank = {}
+                prev_local_weights_by_bank: dict[str, ModelWeights] = {}
 
                 for round_num in range(1, config.num_rounds + 1):
                     round_start = time.perf_counter()
