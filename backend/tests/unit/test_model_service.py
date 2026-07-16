@@ -129,3 +129,52 @@ class TestModelService:
         assert set(importance_ig.keys()) == set(FEATURE_NAMES)
         assert any(v > 0 for v in importance_ig.values())
         assert all(0 <= v <= 1 for v in importance_ig.values())
+
+    def test_train_local_with_fedprox(
+        self,
+        model_service: ModelService,
+        sample_data: tuple,
+    ) -> None:
+        """Verify train_local supports FedProx regularization."""
+        X, y = sample_data
+        model = model_service.create_model()
+        global_weights = model_service.get_parameters(model)
+
+        # Train with high proximal term to force model to stay close to original weights
+        model_prox, loss_history = model_service.train_local(
+            model,
+            X,
+            y,
+            epochs=2,
+            fedprox_mu=10.0,
+            global_weights=global_weights,
+        )
+        assert len(loss_history) == 2
+        assert model_prox is not None
+
+    def test_train_local_with_moon(
+        self,
+        model_service: ModelService,
+        sample_data: tuple,
+    ) -> None:
+        """Verify train_local supports MOON model-contrastive loss."""
+        X, y = sample_data
+        model = model_service.create_model()
+        global_weights = model_service.get_parameters(model)
+
+        # Create previous local model weights
+        prev_model = model_service.create_model()
+        prev_weights = model_service.get_parameters(prev_model)
+
+        model_moon, loss_history = model_service.train_local(
+            model,
+            X,
+            y,
+            epochs=2,
+            moon_mu=1.0,
+            moon_temperature=0.5,
+            global_weights=global_weights,
+            prev_local_weights=prev_weights,
+        )
+        assert len(loss_history) == 2
+        assert model_moon is not None

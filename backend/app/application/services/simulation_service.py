@@ -391,6 +391,7 @@ class SimulationService:
                     )
 
                 rounds = []
+                prev_local_weights_by_bank = {}
 
                 for round_num in range(1, config.num_rounds + 1):
                     round_start = time.perf_counter()
@@ -463,6 +464,8 @@ class SimulationService:
                         logger.info("Triggering training for %s via connector", bank.id)
                         connector = bank_connectors[bank.id]
 
+                        prev_w = prev_local_weights_by_bank.get(bank.id)
+
                         train_res = connector.train(
                             bank_id=bank.id,
                             weights=global_weights,
@@ -474,6 +477,10 @@ class SimulationService:
                             dp_delta=config.dp_delta,
                             dp_max_grad_norm=config.dp_max_grad_norm,
                             correlation_id=correlation_id,
+                            fedprox_mu=getattr(config, "fedprox_mu", 0.0),
+                            moon_mu=getattr(config, "moon_mu", 0.0),
+                            moon_temperature=getattr(config, "moon_temperature", 0.5),
+                            prev_local_weights=prev_w,
                         )
 
                         if "error" in train_res:
@@ -532,6 +539,8 @@ class SimulationService:
                         client_samples.append(train_res["num_samples"])
                         per_bank_loss[bank.id] = train_res["loss"]
                         per_bank_samples[bank.id] = train_res["num_samples"]
+                        # Save weights for the next round's contrastive loss
+                        prev_local_weights_by_bank[bank.id] = res_w
 
                     # Apply secure aggregation masks
                     if enable_sa and len(client_weights) > 1:
@@ -570,6 +579,8 @@ class SimulationService:
                             client_weights,
                             client_samples=client_samples,
                             method=agg_method,
+                            global_weights=global_weights,
+                            simulation_id=simulation.id,
                         )
                         agg_time = (time.perf_counter() - agg_start) * 1000
                     else:

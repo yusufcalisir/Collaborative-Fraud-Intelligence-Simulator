@@ -64,6 +64,29 @@ class SimulationConfigRequest(BaseModel):
         description="Byzantine defense strategy: none, krum, coordinate_wise_median",
     )
 
+    # Advanced Federated Optimization
+    fedprox_mu: float = Field(
+        default=0.0, ge=0.0, le=10.0, description="FedProx proximal coefficient"
+    )
+    moon_mu: float = Field(
+        default=0.0, ge=0.0, le=10.0, description="MOON model-contrastive loss coefficient"
+    )
+    moon_temperature: float = Field(
+        default=0.5, gt=0.0, le=2.0, description="MOON contrastive loss temperature"
+    )
+    fedopt_server_lr: float = Field(
+        default=0.01, gt=0.0, le=1.0, description="FedOpt server learning rate"
+    )
+    fedopt_beta1: float = Field(
+        default=0.9, ge=0.0, le=1.0, description="FedOpt beta1 momentum parameter"
+    )
+    fedopt_beta2: float = Field(
+        default=0.999, ge=0.0, le=1.0, description="FedOpt beta2 momentum parameter"
+    )
+    fedopt_tau: float = Field(
+        default=1e-3, gt=0.0, description="FedOpt server optimizer epsilon equivalent"
+    )
+
 
 class SimulationSummaryResponse(BaseModel):
     """Abbreviated simulation info for list views."""

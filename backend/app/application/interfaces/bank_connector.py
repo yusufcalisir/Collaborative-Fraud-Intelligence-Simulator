@@ -35,6 +35,7 @@ class BankConnectorInterface(ABC):
         dp_delta: float,
         dp_max_grad_norm: float,
         correlation_id: str,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Perform local training on bank client node and return updated weights."""
         pass

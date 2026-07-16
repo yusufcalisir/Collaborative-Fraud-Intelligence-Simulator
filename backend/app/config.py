@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     fl_default_batch_size: int = 64
     fl_min_clients_per_round: int = 2
 
+    # ── Advanced Federated Optimization ───────
+    fedprox_mu: float = 0.0
+    moon_mu: float = 0.0
+    moon_temperature: float = 0.5
+    fedopt_server_lr: float = 0.01
+    fedopt_beta1: float = 0.9
+    fedopt_beta2: float = 0.999
+    fedopt_tau: float = 1e-3
+
     # ── API Gateway Security ──────────────────
     gateway_require_auth: bool = False
     gateway_rate_limit: int = 120  # requests per minute

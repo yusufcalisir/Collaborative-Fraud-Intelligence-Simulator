@@ -118,6 +118,7 @@ class RESTBankConnector(BankConnectorInterface):
         dp_delta: float,
         dp_max_grad_norm: float,
         correlation_id: str,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Trigger model training over HTTP REST endpoint."""
         url = f"{self.base_url}/api/v1/bank-client/train"
@@ -134,7 +135,18 @@ class RESTBankConnector(BankConnectorInterface):
             "dp_epsilon": dp_epsilon,
             "dp_delta": dp_delta,
             "dp_max_grad_norm": dp_max_grad_norm,
+            "fedprox_mu": kwargs.get("fedprox_mu", 0.0),
+            "moon_mu": kwargs.get("moon_mu", 0.0),
+            "moon_temperature": kwargs.get("moon_temperature", 0.5),
         }
+
+        prev_local_weights = kwargs.get("prev_local_weights")
+        if prev_local_weights:
+            payload["prev_local_weights"] = {
+                "layer_shapes": [list(shape) for shape in prev_local_weights.layer_shapes],
+                "flat_weights": prev_local_weights.flat_weights,
+            }
+
         body_bytes, headers = self._sign_payload(payload, self._get_headers())
         with self._get_client() as client:
             resp = client.post(url, content=body_bytes, headers=headers, timeout=120.0)

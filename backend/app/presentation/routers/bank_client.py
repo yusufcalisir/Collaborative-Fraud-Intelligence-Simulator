@@ -136,6 +136,10 @@ class BankTrainRequest(BaseModel):
     dp_delta: float
     dp_max_grad_norm: float
     dp_mode: str = "opacus"
+    fedprox_mu: float = 0.0
+    moon_mu: float = 0.0
+    moon_temperature: float = 0.5
+    prev_local_weights: ModelWeightsSchema | None = None
 
 
 class BankTrainResponse(BaseModel):
@@ -259,6 +263,14 @@ async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
 
     use_opacus_dp = payload.enable_dp and payload.dp_mode == "opacus"
 
+    prev_weights = None
+    if payload.prev_local_weights:
+        prev_shapes = [tuple(shape) for shape in payload.prev_local_weights.layer_shapes]
+        prev_weights = ModelWeights(
+            layer_shapes=prev_shapes,
+            flat_weights=payload.prev_local_weights.flat_weights,
+        )
+
     try:
         # Load weights into local neural structure
         local_model = _model_service.create_model(dp_compatible=use_opacus_dp)
@@ -276,6 +288,11 @@ async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
                 epochs=payload.epochs,
                 learning_rate=payload.learning_rate,
                 batch_size=payload.batch_size,
+                fedprox_mu=payload.fedprox_mu,
+                moon_mu=payload.moon_mu,
+                moon_temperature=payload.moon_temperature,
+                global_weights=input_weights,
+                prev_local_weights=prev_weights,
             )
         else:
             local_model, loss_hist = _model_service.train_local(
@@ -285,6 +302,11 @@ async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
                 epochs=payload.epochs,
                 learning_rate=payload.learning_rate,
                 batch_size=payload.batch_size,
+                fedprox_mu=payload.fedprox_mu,
+                moon_mu=payload.moon_mu,
+                moon_temperature=payload.moon_temperature,
+                global_weights=input_weights,
+                prev_local_weights=prev_weights,
             )
 
         updated_weights = _model_service.get_parameters(local_model)

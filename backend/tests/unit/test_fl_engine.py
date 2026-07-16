@@ -243,3 +243,59 @@ class TestByzantineRobustness:
         # Poisoned weights should be different from honest weights
         assert poisoned.flat_weights != honest.flat_weights
         assert poisoned.layer_shapes == honest.layer_shapes
+
+    def test_fed_adam_aggregation(
+        self,
+        fl_engine: FederatedLearningEngine,
+        sample_weights: list[ModelWeights],
+    ) -> None:
+        """Verify FedAdam server optimizer updates correctly with running momentum/variance."""
+        global_weights = ModelWeights(
+            layer_shapes=sample_weights[0].layer_shapes,
+            flat_weights=[0.0] * 12,
+        )
+
+        result = fl_engine.aggregate_parameters(
+            sample_weights,
+            client_samples=[100, 100, 100],
+            method=AggregationMethod.FED_ADAM,
+            global_weights=global_weights,
+            simulation_id="test_adam_sim",
+        )
+
+        # Standard average of client weights is 2.0.
+        # w_t = 0.0, delta_t = 2.0 - 0.0 = 2.0.
+        # Since running states are initialized to 0:
+        # m_1 = (1 - beta1) * delta_t = 0.1 * 2.0 = 0.2
+        # v_1 = (1 - beta2) * delta_t^2 = 0.001 * 4.0 = 0.004
+        # w_1 = w_0 + eta * m_1 / (sqrt(v_1) + tau) = 0.0 + 0.01 * 0.2 / (sqrt(0.004) + 0.001)
+        # w_1 = 0.002 / (0.063245 + 0.001) = 0.002 / 0.064245 = ~0.0311
+        # Let's assert it is positive and close to expected.
+        assert len(result.flat_weights) == 12
+        assert all(0.030 < w < 0.032 for w in result.flat_weights)
+
+    def test_fed_adagrad_aggregation(
+        self,
+        fl_engine: FederatedLearningEngine,
+        sample_weights: list[ModelWeights],
+    ) -> None:
+        """Verify FedAdaGrad server optimizer updates correctly with squared updates."""
+        global_weights = ModelWeights(
+            layer_shapes=sample_weights[0].layer_shapes,
+            flat_weights=[0.0] * 12,
+        )
+
+        result = fl_engine.aggregate_parameters(
+            sample_weights,
+            client_samples=[100, 100, 100],
+            method=AggregationMethod.FED_ADAGRAD,
+            global_weights=global_weights,
+            simulation_id="test_adagrad_sim",
+        )
+
+        # delta_t = 2.0
+        # v_1 = delta_t^2 = 4.0
+        # w_1 = w_0 + eta * delta_t / (sqrt(v_1) + tau) = 0.0 + 0.01 * 2.0 / (sqrt(4.0) + 0.001)
+        # w_1 = 0.02 / 2.001 = ~0.009995
+        assert len(result.flat_weights) == 12
+        assert all(0.009 < w < 0.011 for w in result.flat_weights)

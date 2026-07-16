@@ -126,15 +126,26 @@ Instead of centralizing raw customer transactions, the framework uses a distribu
 1.  **Local Training:** Each bank trains a local PyTorch Multi-Layer Perceptron (MLP) on its own transaction data.
 2.  **Gradient Exchange:** Banks export only their local model weights (gradients), keeping all raw transactions strictly on-premise.
 3.  **Secure Aggregation:** An Aggregation Server averages the weights using the Federated Averaging (FedAvg) algorithm to create an improved global model.
-4.  **Dual FL Engine Architectures:** Selectable from the UI settings panel:
+4.  **Advanced Federated Optimization & Client Drift Defense:**
+    *   **FedProx (Regularized Local Training):** To mitigate client drift in highly heterogeneous data environments, a proximal regularization term is added to the local loss:
+        $$\mathcal{L}_{\text{FedProx}}(w; w_t) = \mathcal{L}_{\text{BCE}}(w) + \frac{\mu}{2} \| w - w_t \|_2^2$$
+        where $w_t$ represents the global weights at the start of the round and $\mu$ is the regularization coefficient.
+    *   **MOON (Model-Contrastive Federated Learning):** Model-contrastive loss is applied to representation layers to align intermediate feature coordinates across institutions:
+        $$\mathcal{L}_{\text{con}} = - \log \frac{\exp(\text{sim}(z, z_{\text{global}}) / \tau)}{\exp(\text{sim}(z, z_{\text{global}}) / \tau) + \exp(\text{sim}(z, z_{\text{prev\_local}}) / \tau)}$$
+        where $z$ is the current model representation, $z_{\text{global}}$ is the global representation, and $z_{\text{prev\_local}}$ is the bank's previous local representation.
+    *   **FedOpt (FedAdam & FedAdaGrad Server Updates):** Server-side momentum-based and adaptive update rules replace standard simple averaging, stabilizing global gradients:
+        $$m_{t+1} = \beta_1 m_t + (1 - \beta_1) \Delta_t$$
+        $$v_{t+1} = \beta_2 v_t + (1 - \beta_2) \Delta_t^2 \quad (\text{or } v_{t+1} = v_t + \Delta_t^2 \text{ for FedAdaGrad})$$
+        $$w_{t+1} = w_t + \eta \frac{m_{t+1}}{\sqrt{v_{t+1}} + \tau}$$
+5.  **Dual FL Engine Architectures:** Selectable from the UI settings panel:
     *   **Custom Engine:** Built-in simulation with thread-safe queue systems, supporting latency simulation, dropout simulation, secure aggregation masks, Byzantine robustness, and poisoning attacks.
     *   **Flower Engine (flwr.dev):** Industry-standard Flower integration utilizing Ray-based simulation to execute compliant NumPyClient adapters for standard-compliant federated loops.
-5.  **Differential Privacy (DP) — Dual Mode:** Two implementation modes are available, selectable from the UI:
+6.  **Differential Privacy (DP) — Dual Mode:** Two implementation modes are available, selectable from the UI:
     *   **Post-Hoc Mode:** Calibrated Gaussian noise is injected into weight deltas after local training, backed by mathematical privacy budget tracking (epsilon, delta).
     *   **Opacus Mode (Industry-Standard):** Per-sample gradient clipping and noise injection during training via Meta AI's [Opacus](https://opacus.ai/) library, with Rényi Differential Privacy (RDP) accounting for tighter privacy bounds.
-6.  **Byzantine-Robust Aggregation:** Supports advanced aggregation strategies including **Krum** (Blanchard et al., 2017) and **Coordinate-wise Median** to securely isolate and discard corrupted model updates.
-7.  **Adversarial Poisoning Simulation:** Toggles active **Model Poisoning** attacks to corrupt specific client weights with noise scaling, enabling visual comparison of FedAvg vulnerability vs. robust aggregation defense.
-8.  **Non-IID Distribution Visualization:** Displays transaction amount distributions (overlapping area charts), hourly fraud patterns (grouped bar charts), and merchant risk profiles across institutions to visually demonstrate data drift and data heterogeneity before or after starting simulations, using Kolmogorov-Smirnov (KS) divergence to quantify the distribution difference.
+7.  **Byzantine-Robust Aggregation:** Supports advanced aggregation strategies including **Krum** (Blanchard et al., 2017) and **Coordinate-wise Median** to securely isolate and discard corrupted model updates.
+8.  **Adversarial Poisoning Simulation:** Toggles active **Model Poisoning** attacks to corrupt specific client weights with noise scaling, enabling visual comparison of FedAvg vulnerability vs. robust aggregation defense.
+9.  **Non-IID Distribution Visualization:** Displays transaction amount distributions (overlapping area charts), hourly fraud patterns (grouped bar charts), and merchant risk profiles across institutions to visually demonstrate data drift and data heterogeneity before or after starting simulations, using Kolmogorov-Smirnov (KS) divergence to quantify the distribution difference.
 
 ### Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine (Phase 2)
 To provide real-time transaction screening and investigation capabilities:

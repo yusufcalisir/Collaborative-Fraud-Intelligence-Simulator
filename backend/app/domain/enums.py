@@ -42,6 +42,8 @@ class AggregationMethod(StrEnum):
     FED_AVG_WEIGHTED = "fed_avg_weighted"
     KRUM = "krum"
     COORDINATE_WISE_MEDIAN = "coordinate_wise_median"
+    FED_ADAM = "fed_adam"
+    FED_ADAGRAD = "fed_adagrad"
 
 
 class ClientStatus(StrEnum):

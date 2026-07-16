@@ -53,7 +53,16 @@ class FraudDetectionModel(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, return_features: bool = False
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        if return_features:
+            feats = x
+            for i in range(8):
+                feats = self.network[i](feats)
+            preds = self.network[8](feats)
+            preds = self.network[9](preds).squeeze(-1)
+            return preds, feats
         return self.network(x).squeeze(-1)
 
 
@@ -82,6 +91,11 @@ class ModelService:
         epochs: int | None = None,
         learning_rate: float | None = None,
         batch_size: int | None = None,
+        fedprox_mu: float = 0.0,
+        moon_mu: float = 0.0,
+        moon_temperature: float = 0.5,
+        global_weights: ModelWeights | None = None,
+        prev_local_weights: ModelWeights | None = None,
     ) -> tuple[FraudDetectionModel, list[float]]:
         """Train the model on a bank's local data.
 
@@ -92,6 +106,25 @@ class ModelService:
         batch_size = batch_size or self.settings.fl_default_batch_size
 
         model.train()
+
+        # Prepare reference models for FedProx and MOON
+        global_model = None
+        prev_local_model = None
+        dp_comp = any(isinstance(m, nn.GroupNorm) for m in model.modules())
+
+        if (fedprox_mu > 0.0 or moon_mu > 0.0) and global_weights is not None:
+            global_model = self.create_model(dp_compatible=dp_comp)
+            global_model = self.set_parameters(global_model, global_weights)
+            global_model.eval()
+            for p in global_model.parameters():
+                p.requires_grad = False
+
+        if moon_mu > 0.0 and prev_local_weights is not None:
+            prev_local_model = self.create_model(dp_compatible=dp_comp)
+            prev_local_model = self.set_parameters(prev_local_model, prev_local_weights)
+            prev_local_model.eval()
+            for p in prev_local_model.parameters():
+                p.requires_grad = False
 
         # Use standard BCE since model has sigmoid
         criterion: Any = nn.BCELoss()
@@ -113,8 +146,43 @@ class ModelService:
 
             for X_batch, y_batch in loader:
                 optimizer.zero_grad()
-                predictions = model(X_batch)
+
+                # Check if we need representation features for MOON
+                if moon_mu > 0.0 and global_model is not None and prev_local_model is not None:
+                    predictions, feats = model(X_batch, return_features=True)
+                else:
+                    predictions = model(X_batch)
+                    feats = None
+
                 loss = criterion(predictions, y_batch)
+
+                # FedProx proximal term
+                if fedprox_mu > 0.0 and global_model is not None:
+                    proximal_term = 0.0
+                    for param, g_param in zip(model.parameters(), global_model.parameters()):
+                        proximal_term += (param - g_param).pow(2).sum()
+                    loss = loss + (fedprox_mu / 2.0) * proximal_term
+
+                # MOON model-contrastive loss
+                if (
+                    moon_mu > 0.0
+                    and feats is not None
+                    and global_model is not None
+                    and prev_local_model is not None
+                ):
+                    with torch.no_grad():
+                        _, g_feats = global_model(X_batch, return_features=True)
+                        _, p_feats = prev_local_model(X_batch, return_features=True)
+
+                    cos = nn.CosineSimilarity(dim=-1)
+                    sim_global = cos(feats, g_feats) / moon_temperature
+                    sim_prev = cos(feats, p_feats) / moon_temperature
+
+                    logits = torch.cat([sim_global.unsqueeze(1), sim_prev.unsqueeze(1)], dim=1)
+                    targets = torch.zeros(feats.size(0), dtype=torch.long, device=self.device)
+                    con_loss = nn.CrossEntropyLoss()(logits, targets)
+                    loss = loss + moon_mu * con_loss
+
                 loss.backward()
                 optimizer.step()
 
@@ -148,6 +216,11 @@ class ModelService:
         epochs: int | None = None,
         learning_rate: float | None = None,
         batch_size: int | None = None,
+        fedprox_mu: float = 0.0,
+        moon_mu: float = 0.0,
+        moon_temperature: float = 0.5,
+        global_weights: ModelWeights | None = None,
+        prev_local_weights: ModelWeights | None = None,
     ) -> tuple[FraudDetectionModel, list[float], float]:
         """Train the model on a bank's local data with Differential Privacy using Opacus.
 
@@ -161,6 +234,25 @@ class ModelService:
         batch_size = batch_size or self.settings.fl_default_batch_size
 
         model.train()
+
+        # Prepare reference models for FedProx and MOON
+        global_model = None
+        prev_local_model = None
+        dp_comp = any(isinstance(m, nn.GroupNorm) for m in model.modules())
+
+        if (fedprox_mu > 0.0 or moon_mu > 0.0) and global_weights is not None:
+            global_model = self.create_model(dp_compatible=dp_comp)
+            global_model = self.set_parameters(global_model, global_weights)
+            global_model.eval()
+            for p in global_model.parameters():
+                p.requires_grad = False
+
+        if moon_mu > 0.0 and prev_local_weights is not None:
+            prev_local_model = self.create_model(dp_compatible=dp_comp)
+            prev_local_model = self.set_parameters(prev_local_model, prev_local_weights)
+            prev_local_model.eval()
+            for p in prev_local_model.parameters():
+                p.requires_grad = False
 
         criterion: Any = nn.BCELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -197,8 +289,45 @@ class ModelService:
 
             for X_batch, y_batch in loader_private:
                 optimizer_private.zero_grad()
-                predictions = model_private(X_batch)
+
+                # Check if we need representation features for MOON
+                if moon_mu > 0.0 and global_model is not None and prev_local_model is not None:
+                    predictions, feats = model_private(X_batch, return_features=True)
+                else:
+                    predictions = model_private(X_batch)
+                    feats = None
+
                 loss = criterion(predictions, y_batch)
+
+                # FedProx proximal term
+                if fedprox_mu > 0.0 and global_model is not None:
+                    proximal_term = 0.0
+                    for param, g_param in zip(
+                        model_private.parameters(), global_model.parameters()
+                    ):
+                        proximal_term += (param - g_param).pow(2).sum()
+                    loss = loss + (fedprox_mu / 2.0) * proximal_term
+
+                # MOON model-contrastive loss
+                if (
+                    moon_mu > 0.0
+                    and feats is not None
+                    and global_model is not None
+                    and prev_local_model is not None
+                ):
+                    with torch.no_grad():
+                        _, g_feats = global_model(X_batch, return_features=True)
+                        _, p_feats = prev_local_model(X_batch, return_features=True)
+
+                    cos = nn.CosineSimilarity(dim=-1)
+                    sim_global = cos(feats, g_feats) / moon_temperature
+                    sim_prev = cos(feats, p_feats) / moon_temperature
+
+                    logits = torch.cat([sim_global.unsqueeze(1), sim_prev.unsqueeze(1)], dim=1)
+                    targets = torch.zeros(feats.size(0), dtype=torch.long, device=self.device)
+                    con_loss = nn.CrossEntropyLoss()(logits, targets)
+                    loss = loss + moon_mu * con_loss
+
                 loss.backward()
                 optimizer_private.step()
 

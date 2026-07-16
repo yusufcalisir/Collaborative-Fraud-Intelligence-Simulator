@@ -135,3 +135,12 @@ class SimulationConfig:
     gnn_epochs_per_round: int = 5
     gnn_learning_rate: float = 0.01
     gnn_neighbor_sample_size: int = 10
+
+    # Advanced Federated Optimization
+    fedprox_mu: float = 0.0
+    moon_mu: float = 0.0
+    moon_temperature: float = 0.5
+    fedopt_server_lr: float = 0.01
+    fedopt_beta1: float = 0.9
+    fedopt_beta2: float = 0.999
+    fedopt_tau: float = 1e-3

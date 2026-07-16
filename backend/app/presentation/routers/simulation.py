@@ -86,6 +86,13 @@ async def create_simulation(
         "enable_poisoning_simulation": config.enable_poisoning_simulation,
         "poisoning_bank_id": config.poisoning_bank_id,
         "poisoning_scale": config.poisoning_scale,
+        "fedprox_mu": config.fedprox_mu,
+        "moon_mu": config.moon_mu,
+        "moon_temperature": config.moon_temperature,
+        "fedopt_server_lr": config.fedopt_server_lr,
+        "fedopt_beta1": config.fedopt_beta1,
+        "fedopt_beta2": config.fedopt_beta2,
+        "fedopt_tau": config.fedopt_tau,
     }
 
     # Store pending status

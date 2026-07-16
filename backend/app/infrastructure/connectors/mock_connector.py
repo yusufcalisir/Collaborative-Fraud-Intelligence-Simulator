@@ -90,6 +90,7 @@ class MockBankConnector(BankConnectorInterface):
         dp_delta: float,
         dp_max_grad_norm: float,
         correlation_id: str,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Perform in-memory training of model."""
         try:
@@ -98,6 +99,11 @@ class MockBankConnector(BankConnectorInterface):
 
             model = self.model_service.create_model(dp_compatible=enable_dp)
             model = self.model_service.set_parameters(model, weights)
+
+            fedprox_mu = kwargs.get("fedprox_mu", 0.0)
+            moon_mu = kwargs.get("moon_mu", 0.0)
+            moon_temperature = kwargs.get("moon_temperature", 0.5)
+            prev_local_weights = kwargs.get("prev_local_weights")
 
             actual_eps = None
             if enable_dp:
@@ -111,6 +117,11 @@ class MockBankConnector(BankConnectorInterface):
                     epochs=epochs,
                     learning_rate=learning_rate,
                     batch_size=batch_size,
+                    fedprox_mu=fedprox_mu,
+                    moon_mu=moon_mu,
+                    moon_temperature=moon_temperature,
+                    global_weights=weights,
+                    prev_local_weights=prev_local_weights,
                 )
             else:
                 trained_model, loss_hist = self.model_service.train_local(
@@ -120,6 +131,11 @@ class MockBankConnector(BankConnectorInterface):
                     epochs=epochs,
                     learning_rate=learning_rate,
                     batch_size=batch_size,
+                    fedprox_mu=fedprox_mu,
+                    moon_mu=moon_mu,
+                    moon_temperature=moon_temperature,
+                    global_weights=weights,
+                    prev_local_weights=prev_local_weights,
                 )
 
             output_weights = self.model_service.get_parameters(trained_model)

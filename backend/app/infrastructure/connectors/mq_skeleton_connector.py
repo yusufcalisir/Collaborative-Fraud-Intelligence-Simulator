@@ -94,6 +94,7 @@ class MQSkeletonBankConnector(BankConnectorInterface):
         dp_delta: float,
         dp_max_grad_norm: float,
         correlation_id: str,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Simulate training trigger via message queue payload."""
         schema_weights = {
@@ -110,7 +111,16 @@ class MQSkeletonBankConnector(BankConnectorInterface):
             "dp_delta": dp_delta,
             "dp_max_grad_norm": dp_max_grad_norm,
             "correlation_id": correlation_id,
+            "fedprox_mu": kwargs.get("fedprox_mu", 0.0),
+            "moon_mu": kwargs.get("moon_mu", 0.0),
+            "moon_temperature": kwargs.get("moon_temperature", 0.5),
         }
+        prev_local_weights = kwargs.get("prev_local_weights")
+        if prev_local_weights:
+            payload["prev_local_weights"] = {
+                "layer_shapes": [list(shape) for shape in prev_local_weights.layer_shapes],
+                "flat_weights": prev_local_weights.flat_weights,
+            }
         res = self._publish_and_await(
             routing_key=f"{bank_id}.train",
             reply_to=f"{self.queue_prefix}.coordinator.train_replies",

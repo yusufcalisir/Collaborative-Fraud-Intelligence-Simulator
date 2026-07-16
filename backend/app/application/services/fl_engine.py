@@ -58,24 +58,32 @@ class FederatedLearningEngine:
         self.settings = settings
         self.model_service = model_service
         self.privacy_service = privacy_service
+        # Server optimizer states for FedOpt (FedAdam / FedAdaGrad) keyed by simulation_id
+        self._server_m_by_sim: dict[str, np.ndarray] = {}
+        self._server_v_by_sim: dict[str, np.ndarray] = {}
 
     def aggregate_parameters(
         self,
         client_weights: list[ModelWeights],
         client_samples: list[int],
         method: AggregationMethod = AggregationMethod.FED_AVG_WEIGHTED,
+        global_weights: ModelWeights | None = None,
+        simulation_id: str | None = None,
     ) -> ModelWeights:
         """Aggregate model parameters from multiple clients.
 
         Supports multiple strategies:
         - FedAvg / FedAvg Weighted: standard averaging (McMahan et al., 2017)
         - Krum: selects the single client closest to all others (Blanchard et al., 2017)
-        - Coordinate-wise Median: takes element-wise median across clients
+        - Coordinate-wise Median: element-wise median across clients
+        - FedAdam / FedAdaGrad: adaptive server optimizers (FedOpt framework)
 
         Args:
             client_weights: Parameter sets from each participating client.
             client_samples: Number of training samples at each client.
             method: Aggregation strategy.
+            global_weights: Global weights before this round (required for FedOpt).
+            simulation_id: Unique simulation run identifier to persist server states.
 
         Returns:
             Aggregated global model parameters.
@@ -102,6 +110,52 @@ class FederatedLearningEngine:
             for w, proportion in zip(client_weights, proportions, strict=False):
                 avg_weights += np.array(w.flat_weights) * proportion
             avg_weights = avg_weights.tolist()
+
+        elif method in (AggregationMethod.FED_ADAM, AggregationMethod.FED_ADAGRAD):
+            # Calculate standard weighted FedAvg first to get the averaged updates
+            total_samples = sum(client_samples)
+            proportions = [s / total_samples for s in client_samples]
+            w_avg = np.zeros(len(client_weights[0].flat_weights))
+            for w, proportion in zip(client_weights, proportions, strict=False):
+                w_avg += np.array(w.flat_weights) * proportion
+
+            if global_weights is None:
+                # Round 0 fallback to standard FedAvg
+                avg_weights = w_avg.tolist()
+            else:
+                w_t = np.array(global_weights.flat_weights)
+                delta_t = w_avg - w_t  # pseudo-gradient
+
+                sim_id = simulation_id or "default_sim"
+                if sim_id not in self._server_m_by_sim:
+                    self._server_m_by_sim[sim_id] = np.zeros_like(w_avg)
+                if sim_id not in self._server_v_by_sim:
+                    self._server_v_by_sim[sim_id] = np.zeros_like(w_avg)
+
+                m_t = self._server_m_by_sim[sim_id]
+                v_t = self._server_v_by_sim[sim_id]
+
+                eta = self.settings.fedopt_server_lr
+                beta1 = self.settings.fedopt_beta1
+                beta2 = self.settings.fedopt_beta2
+                tau = self.settings.fedopt_tau
+
+                if method == AggregationMethod.FED_ADAM:
+                    # Update moments
+                    m_t_next = beta1 * m_t + (1 - beta1) * delta_t
+                    v_t_next = beta2 * v_t + (1 - beta2) * (delta_t**2)
+                    # Update global weights
+                    w_next = w_t + eta * m_t_next / (np.sqrt(v_t_next) + tau)
+
+                    self._server_m_by_sim[sim_id] = m_t_next
+                    self._server_v_by_sim[sim_id] = v_t_next
+                else:  # FED_ADAGRAD
+                    v_t_next = v_t + (delta_t**2)
+                    w_next = w_t + eta * delta_t / (np.sqrt(v_t_next) + tau)
+
+                    self._server_v_by_sim[sim_id] = v_t_next
+
+                avg_weights = w_next.tolist()
 
         elif method == AggregationMethod.KRUM:
             # Krum (Blanchard et al., 2017): Select the client whose
