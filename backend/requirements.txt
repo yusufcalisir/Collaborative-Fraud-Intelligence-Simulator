@@ -23,6 +23,10 @@ pandas>=2.2.0,<3.0.0
 shap>=0.45.0,<1.0.0
 mlflow>=2.10.0,<3.0.0
 
+# Data Validation & Contracts
+pandera>=0.21.0,<1.0.0
+great_expectations>=1.0.0,<2.0.0
+
 # FL Framework
 flwr[simulation]>=1.12.0,<2.0.0
 
