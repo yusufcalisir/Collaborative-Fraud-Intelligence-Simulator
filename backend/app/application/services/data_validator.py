@@ -125,10 +125,10 @@ class DataValidatorService:
             failures = []
             for r in result.results:
                 if not r.success:
-                    failures.append(
-                        f"Expectation '{r.expectation_config.type}' on "
-                        f"column '{r.expectation_config.kwargs.get('column', '?')}' failed."
-                    )
+                    exp_cfg = r.expectation_config
+                    exp_type = exp_cfg.type if exp_cfg else "unknown"
+                    exp_col = exp_cfg.kwargs.get("column", "?") if exp_cfg else "?"
+                    failures.append(f"Expectation '{exp_type}' on column '{exp_col}' failed.")
             error_msg = "; ".join(failures)
             logger.critical(
                 "Data Contract validation failed on bank %s node! Errors: %s. Quarantining dataset.",
