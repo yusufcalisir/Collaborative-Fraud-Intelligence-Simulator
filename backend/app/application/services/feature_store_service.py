@@ -102,7 +102,7 @@ class FeatureStoreService:
             customer_id,
             {
                 "rolling_velocity_1h": float(rolling_velocity_1h),
-                "avg_amount_24h": float(avg_amount_24h),
+                "avg_amount_24h": avg_amount_24h,
             },
         )
 
