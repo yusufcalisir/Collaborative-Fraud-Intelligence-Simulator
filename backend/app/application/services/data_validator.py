@@ -13,6 +13,7 @@ import great_expectations as ge
 import great_expectations.expectations as gxe
 import pandas as pd  # noqa: TC002
 import pandera as pa
+import pandera.errors  # explicitly import for type checker
 from great_expectations import ExpectationSuite, ValidationDefinition
 from pandera.typing import Series  # noqa: TC002
 
@@ -42,7 +43,8 @@ class TransactionSchema(pa.DataFrameModel):
     @pa.check("country_code")
     def validate_country_code(self, series: Series[str]) -> Series[bool]:  # noqa: N805
         """Ensure country code conforms to ISO 2-letter standard."""
-        return series.str.len() == 2
+        result: Series[bool] = series.str.len() == 2  # type: ignore[assignment]
+        return result
 
 
 class DataValidatorService:
