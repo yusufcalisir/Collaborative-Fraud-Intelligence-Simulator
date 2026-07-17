@@ -482,6 +482,7 @@ export const CASE_STATUS_LABELS: Record<string, string> = {
   investigating: 'Investigating',
   pending_review: 'Pending Review',
   escalated: 'Escalated',
+  sar_filed: 'SAR Filed',
   closed_confirmed: 'Closed (Confirmed)',
   closed_false_positive: 'Closed (FP)',
 };

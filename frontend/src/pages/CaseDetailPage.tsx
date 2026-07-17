@@ -11,6 +11,7 @@ const STATUS_COLORS: Record<string, string> = {
   investigating: '#f59e0b',
   pending_review: '#f97316',
   escalated: '#ef4444',
+  sar_filed: '#d946ef',
   closed_confirmed: '#22c55e',
   closed_false_positive: '#6b7280',
 };
@@ -114,21 +115,39 @@ export default function CaseDetailPage() {
 
         {/* Status Actions */}
         {caseData.is_open && (
-          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-[var(--color-border)]">
+          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-[var(--color-border)] items-center w-full">
             <span className="text-xs text-[var(--color-text-muted)] self-center mr-2">Change status:</span>
-            {Object.entries(CASE_STATUS_LABELS)
-              .filter(([k]) => k !== caseData.status)
-              .slice(0, 4)
-              .map(([value, label]) => (
+            {(() => {
+              const VALID_TRANSITIONS: Record<string, string[]> = {
+                open: ['assigned', 'investigating', 'closed_false_positive'],
+                assigned: ['investigating', 'open'],
+                investigating: ['pending_review', 'escalated', 'closed_confirmed', 'closed_false_positive'],
+                pending_review: ['investigating', 'escalated', 'closed_confirmed', 'closed_false_positive'],
+                escalated: ['investigating', 'closed_confirmed', 'sar_filed'],
+                sar_filed: ['closed_confirmed'],
+              };
+              return (VALID_TRANSITIONS[caseData.status] || []).map((value) => (
                 <button
                   key={value}
                   onClick={() => handleStatusChange(value)}
                   disabled={updateStatus.isPending}
                   className="px-2 py-1 text-xs rounded border border-[var(--color-border)] hover:bg-[var(--color-surface-alt)] transition-colors disabled:opacity-50"
                 >
-                  {label}
+                  {CASE_STATUS_LABELS[value] || value}
                 </button>
-              ))}
+              ));
+            })()}
+            {caseData.status === 'sar_filed' && (
+              <a
+                href={`/api/v1/cases/${caseData.id}/sar-report`}
+                download={`sar_report_${caseData.id.slice(0, 8)}.xml`}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold flex items-center gap-1 transition-colors"
+              >
+                📥 Download SAR XML
+              </a>
+            )}
           </div>
         )}
       </motion.div>

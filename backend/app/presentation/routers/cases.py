@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 
 from app.application.schemas.phase2 import (
     CaseCreateRequest,
@@ -145,6 +146,24 @@ async def export_case(case_id: str) -> dict:
         return {"case_id": case_id, "format": "markdown", "content": summary}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{case_id}/sar-report")
+async def download_sar_report(case_id: str) -> FileResponse:
+    """Download generated FinCEN SAR XML report for the case."""
+    import os
+
+    report_path = f"storage/regulatory_filings/sar_{case_id}.xml"
+    if not os.path.exists(report_path):
+        raise HTTPException(
+            status_code=404,
+            detail="SAR report not found. Ensure case status is 'sar_filed'.",
+        )
+    return FileResponse(
+        path=report_path,
+        media_type="application/xml",
+        filename=f"sar_report_{case_id[:8]}.xml",
+    )
 
 
 def _serialize_case(case: Any) -> CaseResponse:

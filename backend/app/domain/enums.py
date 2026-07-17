@@ -123,6 +123,7 @@ class CaseStatus(StrEnum):
     ESCALATED = "escalated"
     CLOSED_CONFIRMED = "closed_confirmed"
     CLOSED_FALSE_POSITIVE = "closed_false_positive"
+    SAR_FILED = "sar_filed"
 
 
 class CasePriority(StrEnum):

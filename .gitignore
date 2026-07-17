@@ -88,6 +88,7 @@ logs/
 mlruns/
 
 # Model registry & storage (runtime data)
+backend/storage/
 backend/app/storage/
 
 # Ruff

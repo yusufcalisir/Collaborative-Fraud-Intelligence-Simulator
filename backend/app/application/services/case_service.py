@@ -9,7 +9,9 @@ complexity.
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
 from datetime import UTC, datetime
 from typing import Any
 
@@ -18,6 +20,12 @@ from app.domain.enums import CasePriority, CaseStatus
 from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
+
+
+def _hash_event(event: CaseEvent, parent_hash: str) -> str:
+    """Generate SHA-256 block hash for timeline event signing."""
+    event_str = f"{event.timestamp.isoformat()}|{event.event_type}|{event.description}|{event.actor}|{parent_hash}"
+    return hashlib.sha256(event_str.encode("utf-8")).hexdigest()
 
 
 def _case_to_dict(c: Case) -> dict[str, Any]:
@@ -116,7 +124,12 @@ _VALID_TRANSITIONS: dict[CaseStatus, set[CaseStatus]] = {
         CaseStatus.CLOSED_CONFIRMED,
         CaseStatus.CLOSED_FALSE_POSITIVE,
     },
-    CaseStatus.ESCALATED: {CaseStatus.INVESTIGATING, CaseStatus.CLOSED_CONFIRMED},
+    CaseStatus.ESCALATED: {
+        CaseStatus.INVESTIGATING,
+        CaseStatus.CLOSED_CONFIRMED,
+        CaseStatus.SAR_FILED,
+    },
+    CaseStatus.SAR_FILED: {CaseStatus.CLOSED_CONFIRMED},
     CaseStatus.CLOSED_CONFIRMED: set(),
     CaseStatus.CLOSED_FALSE_POSITIVE: set(),
 }
@@ -133,6 +146,31 @@ class CaseManagementService:
     def __init__(self) -> None:
         self._cases = RedisStore("case")
 
+    def _add_event(
+        self,
+        case: Case,
+        event_type: str,
+        description: str,
+        actor: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Add a cryptographically signed event to the case timeline."""
+        parent_hash = "0" * 64
+        if case.timeline:
+            last_event = case.timeline[-1]
+            parent_hash = last_event.metadata.get("hash") or "0" * 64
+
+        event = CaseEvent(
+            event_type=event_type,
+            description=description,
+            actor=actor,
+            timestamp=datetime.now(UTC),
+            metadata=metadata or {},
+        )
+        event.metadata["parent_hash"] = parent_hash
+        event.metadata["hash"] = _hash_event(event, parent_hash)
+        case.timeline.append(event)
+
     def create_case(
         self,
         title: str,
@@ -146,13 +184,7 @@ class CaseManagementService:
             alert_ids=alert_ids or [],
         )
 
-        case.timeline.append(
-            CaseEvent(
-                event_type="created",
-                description=f"Case created: {title}",
-                actor="system",
-            )
-        )
+        self._add_event(case, "created", f"Case created: {title}", "system")
 
         self._cases.set(case.id, _case_to_dict(case))
         logger.info("Created case %s: %s (priority=%s)", case.id[:8], title, priority.value)
@@ -166,13 +198,11 @@ class CaseManagementService:
         case.status = CaseStatus.ASSIGNED
         case.updated_at = datetime.now(UTC)
 
-        case.timeline.append(
-            CaseEvent(
-                event_type="assigned",
-                description=f"Assigned to {investigator}"
-                + (f" (from {old_assignee})" if old_assignee else ""),
-                actor="system",
-            )
+        self._add_event(
+            case,
+            "assigned",
+            f"Assigned to {investigator}" + (f" (from {old_assignee})" if old_assignee else ""),
+            "system",
         )
 
         logger.info("Assigned case %s to %s", case_id[:8], investigator)
@@ -187,12 +217,11 @@ class CaseManagementService:
         case.notes.append(note)
         case.updated_at = datetime.now(UTC)
 
-        case.timeline.append(
-            CaseEvent(
-                event_type="note_added",
-                description=f"Note by {author}: {content[:80]}{'...' if len(content) > 80 else ''}",
-                actor=author,
-            )
+        self._add_event(
+            case,
+            "note_added",
+            f"Note by {author}: {content[:80]}{'...' if len(content) > 80 else ''}",
+            author,
         )
 
         self._cases.set(case.id, _case_to_dict(case))
@@ -220,13 +249,39 @@ class CaseManagementService:
         if new_status in (CaseStatus.CLOSED_CONFIRMED, CaseStatus.CLOSED_FALSE_POSITIVE):
             case.closed_at = datetime.now(UTC)
 
-        case.timeline.append(
-            CaseEvent(
-                event_type="status_changed",
-                description=f"Status: {old_status.value} → {new_status.value}",
-                actor=actor,
-                metadata={"from": old_status.value, "to": new_status.value},
-            )
+        metadata = {"from": old_status.value, "to": new_status.value}
+
+        if new_status == CaseStatus.SAR_FILED:
+            from app.application.services.alert_service import AlertIntelligenceService
+            from app.application.services.regulatory_reporter import RegulatoryReporterService
+
+            # Fetch alerts linked to the case
+            alert_service = AlertIntelligenceService()
+            alerts = []
+            for alert_id in case.alert_ids:
+                alert = alert_service.get_alert(alert_id)
+                if alert:
+                    alerts.append(alert)
+
+            # Generate XML report
+            xml_content = RegulatoryReporterService.generate_fincen_sar_xml(case, alerts)
+
+            # Save report
+            report_dir = "storage/regulatory_filings"
+            os.makedirs(report_dir, exist_ok=True)
+            report_path = os.path.join(report_dir, f"sar_{case.id}.xml").replace("\\", "/")
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(xml_content)
+
+            # Log the path in timeline metadata
+            metadata["sar_report_path"] = report_path
+
+        self._add_event(
+            case,
+            "status_changed",
+            f"Status: {old_status.value} → {new_status.value}",
+            actor,
+            metadata,
         )
 
         logger.info("Case %s status: %s → %s", case_id[:8], old_status.value, new_status.value)
@@ -241,13 +296,7 @@ class CaseManagementService:
             case.alert_ids.append(alert_id)
             case.updated_at = datetime.now(UTC)
 
-            case.timeline.append(
-                CaseEvent(
-                    event_type="alert_linked",
-                    description=f"Alert {alert_id[:8]} linked to case",
-                    actor="system",
-                )
-            )
+            self._add_event(case, "alert_linked", f"Alert {alert_id[:8]} linked to case", "system")
 
         self._cases.set(case.id, _case_to_dict(case))
         return case
