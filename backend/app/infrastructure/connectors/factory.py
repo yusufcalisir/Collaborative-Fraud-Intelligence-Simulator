@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.infrastructure.connectors.mock_connector import MockBankConnector
 from app.infrastructure.connectors.mq_skeleton_connector import MQSkeletonBankConnector
+from app.infrastructure.connectors.rabbitmq_connector import RabbitMQBankConnector
 from app.infrastructure.connectors.redis_connector import RedisBankConnector
 from app.infrastructure.connectors.rest_connector import RESTBankConnector
 
@@ -58,6 +59,17 @@ class BankConnectorFactory:
         elif connector_type == "mq_skeleton":
             broker_uri = getattr(settings, "mq_broker_uri", "amqp://guest:guest@localhost:5672//")
             return MQSkeletonBankConnector(broker_uri=broker_uri)
+        elif connector_type == "rabbitmq":
+            mock_fallback = None
+            if model_service is not None and data_generator is not None:
+                mock_fallback = MockBankConnector(model_service=model_service, data_generator=data_generator)
+            return RabbitMQBankConnector(
+                host=getattr(settings, "rabbitmq_host", "localhost"),
+                port=getattr(settings, "rabbitmq_port", 5672),
+                username=getattr(settings, "rabbitmq_user", "guest"),
+                password=getattr(settings, "rabbitmq_password", "guest"),
+                fallback_connector=mock_fallback,
+            )
         else:
             if model_service is None or data_generator is None:
                 raise ValueError(

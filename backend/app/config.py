@@ -93,9 +93,16 @@ class Settings(BaseSettings):
     bank_c_api_key: str = ""
 
     oauth_token_url: str = "http://localhost:8000/oauth/token"
+    oauth_client_id: str = "cfi_coordinator_client"
+    oauth_client_secret: str = "cfi_coordinator_secret_change_me"
+    psd2_jwt_secret: str = "psd2_signing_secret_key_change_me"
     client_cert_path: str = ""
     client_key_path: str = ""
     mq_broker_uri: str = "amqp://guest:guest@localhost:5672//"
+    rabbitmq_host: str = "localhost"
+    rabbitmq_port: int = 5672
+    rabbitmq_user: str = "guest"
+    rabbitmq_password: str = "guest"
 
     # ── Distributed Streaming & DBs ───────────
     database_type: str = "postgres"  # "postgres", "cockroachdb", "sqlite"

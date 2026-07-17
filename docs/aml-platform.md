@@ -82,3 +82,23 @@ To handle production scale and meet strict SLA latency bounds (<50ms), the platf
   - `rolling_velocity_1h`: Counts customer transactions in the last hour.
   - `avg_amount_24h`: Running average amount of customer transactions in the last 24 hours.
 - Updates are pushed instantly to the Online Store to protect downstream scoring from high-velocity rings.
+
+---
+
+## 🏦 Real-Bank Connector Integrations (Phase 2 Task 6)
+
+To interface with live production financial systems, the platform provides three concrete connector implementations and parsing services:
+
+### 1. Core Banking System (CBS) Adapters
+- **REST Connector (`RESTBankConnector`)**: Dynamically initiates an OAuth2 Client Credentials flow, retrieves, caches, and automatically refreshes access tokens, and uses mutual TLS (mTLS) client certificate verification to authenticate calls to partner bank REST APIs.
+
+### 2. Message Queue AMQP Connector
+- **RabbitMQ Connector (`RabbitMQBankConnector`)**: Subscribes asynchronously to CBS message queues (using `pika`) to ingest live transactions, with automatic fallback to a local mock interface if the message broker is unreachable.
+
+### 3. Open Banking PSD2 Interface
+- Exposes standard AISP endpoints (`/api/v1/psd2/accounts` and `/api/v1/psd2/transactions`) using Bearer JWT authentication for third-party access, validating user consent records prior to data dispatch.
+
+### 4. Financial Message Parsers
+- **ISO 20022 XML (`pacs.008.001.08`)**: Extracts transaction values, currencies, senders, and receivers from structured XML payment instructions.
+- **SWIFT MT103**: Parses legacy text-based SWIFT blocks, fields (e.g. `:32A:` for amounts/currencies), and sender/receiver accounts.
+- **SEPA Credit Transfers**: Ingests European credit transfer payloads mapped to standard transaction fields.

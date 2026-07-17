@@ -199,6 +199,9 @@ To transform the prototype into a production-oriented distributed system:
 4.  **Decentralized Networks & Database Isolation**: Simulates strict enterprise security zones (VPCs). Each bank client runs in its own private network (`net-bank-a`, `net-bank-b`, `net-bank-c`) with an isolated PostgreSQL database. The host exposes no database ports, eliminating cross-bank data leakage vectors.
 5.  **Cryptographic Payload Signing & Verification**: Secures communication over the shared `net-federation` bridge. The FL coordinator and bank clients mutually sign and verify REST payloads using HMAC-SHA256 headers (`X-Payload-Signature`, `X-Payload-Timestamp`) with a 5-minute replay-prevention window.
 6.  **Enterprise Feature Store Integration (Feast / Hopsworks)**: Decoupled online features serving (<50ms from Redis) and offline point-in-time joins (preventing training data leakage) with dynamic sliding window streaming ingestion (Flink/Spark simulator).
+7.  **Real-Bank Connectors**: Concrete adapters (REST and RabbitMQ/AMQP) implementing `BankConnectorInterface` to connect with Core Banking Systems (CBS) using mTLS, OAuth2 client credentials, and message queue event pipelines.
+8.  **Open Banking PSD2 Interface**: A standardized XS2A API (`/api/v1/psd2`) that validates Bearer JWT signatures and manages dynamic user consent configurations.
+9.  **Financial Message Standard Parsers**: Built-in parsers for standard formats, including ISO 20022 XML (`pacs.008.001.08`), SWIFT MT103, and SEPA Credit Transfers.
 
 ### Track 4: MLOps, Explainability & Advanced Drift Detection (Phase 4)
 To bring the platform closer to production ML operations standards:
@@ -339,6 +342,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── data_generator.py # Synthetic Non-IID transaction generation
 │   │   │       ├── entity_resolution.py # Matches cross-bank users deterministic via HMACs
 │   │   │       ├── explainability_service.py # Explains risk indicator contributions
+│   │   │       ├── financial_message_parser.py # Normalizes ISO 20022, SWIFT MT103, and SEPA credit transfers
 │   │   │       ├── fl_engine.py     # Custom FedAvg simulator (latent simulation, secure aggregation, client dropout)
 │   │   │       ├── flower_engine.py # Flower framework adapter service using Ray simulation backend
 │   │   │       ├── graph_analytics_service.py # PageRank risk propagation, community analytics, and temporal velocity metrics
@@ -366,7 +370,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── mock_connector.py  # In-process simulator connector (default)
 │   │   │   │   ├── rest_connector.py  # HTTP REST connector with OAuth2, mTLS, API Key auth
 │   │   │   │   ├── redis_connector.py # Event-driven Redis pub/sub connector
-│   │   │   │   └── mq_skeleton_connector.py # AMQP/RabbitMQ skeleton connector (placeholder)
+│   │   │   │   └── rabbitmq_connector.py # Concrete AMQP/RabbitMQ message queue connector
 │   │   │   └── repositories/     # Data access layer implementing repository pattern
 │   │   │       ├── bank_repository.py # Performs DB operations for bank details
 │   │   │       ├── metrics_repository.py # Saves and fetches training round metrics
@@ -383,8 +387,9 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── graph.py      # Graph visualization queries for cross-bank accounts
 │   │   │   │   ├── health.py     # System service health checking
 │   │   │   │   ├── model_registry.py # Model versioning, rollback, and canary history endpoints
-│   │   │   │   ├── scenarios.py  # Controls AML scenario simulation streams
 │   │   │   │   ├── predict.py    # Real-time serving transaction inference, risk evaluations, and alert management
+│   │   │   │   ├── psd2.py       # Open Banking PSD2 XS2A interface endpoints
+│   │   │   │   ├── scenarios.py  # Controls AML scenario simulation streams
 │   │   │   │   ├── simulation.py # Handles creation, retrieval, and comparison of FL runs
 │   │   │   │   └── training.py   # Yields progress data on communication rounds (incl. canary_info)
 │   │   │   ├── messaging/

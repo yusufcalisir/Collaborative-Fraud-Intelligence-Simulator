@@ -31,6 +31,7 @@ from app.presentation.routers import (
     health,
     model_registry,
     predict,
+    psd2,
     scenarios,
     simulation,
     training,
@@ -348,6 +349,7 @@ elif service_name == "fraud-alert":
 elif service_name.startswith("bank-"):
     app.include_router(health.router)
     app.include_router(bank_client.router)
+    app.include_router(psd2.router)
 
 else:
     # Default/Monolith Mode: mount all routers
@@ -366,6 +368,7 @@ else:
     app.include_router(scenarios.router)
     app.include_router(dashboard.router)
     app.include_router(streaming_ws.router)
+    app.include_router(psd2.router)
 
 
 @app.get("/", tags=["root"])

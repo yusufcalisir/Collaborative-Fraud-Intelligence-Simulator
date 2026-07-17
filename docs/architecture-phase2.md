@@ -330,3 +330,51 @@ To protect the REST communication channel between the `fl-coordinator` and the `
    - The timestamp header is present and is within a $\pm 300\text{s}$ tolerance window (mitigating replay attacks).
    - The HMAC computed locally over the received raw request body matches the signature header.
 4. **Rejection**: If signature verification fails, the request is rejected with a `401 Unauthorized` response.
+
+---
+
+## Real-Bank Connector Integrations (Phase 6 Production Design)
+
+To support seamless transitions from simulation to production banking architectures, the platform implements standardized, production-ready interfaces for core banking systems (CBS), standard messaging formats, open banking APIs, and message queues.
+
+```mermaid
+graph TD
+    subgraph Core Banking Integration
+        REST[RESTBankConnector] -->|OAuth2 / mTLS| CBS[Core Banking System]
+        MQ[RabbitMQBankConnector] -->|AMQP / Pika| Queue[RabbitMQ Broker]
+    end
+
+    subgraph Standard Messaging
+        Parser[FinancialMessageParser]
+        Parser -->|Ingests| ISO[ISO 20022 XML pacs.008]
+        Parser -->|Ingests| SWIFT[SWIFT MT103]
+        Parser -->|Ingests| SEPA[SEPA Credit Transfer XML]
+    end
+
+    subgraph Open Banking PSD2 XS2A
+        Router[PSD2 Router] -->|Bearer JWT Auth| AISP[Third-Party AISP Client]
+        Router -->|Checks Consent| Consents[(Consent Store)]
+    end
+```
+
+### 1. Production-Grade CBS Adapters
+* **mTLS Integration**: The `RESTBankConnector` checks for configured client certificate files at runtime. If present, it establishes secure HTTPS connections using mutual TLS certificate verification.
+* **OAuth2 Authentication**: For systems requiring token-based access, the adapter dynamically requests OAuth2 Client Credentials tokens from the configured authorization server (`oauth_token_url`), caches them locally, and attaches them as Bearer tokens to outbound requests.
+
+### 2. Financial Message Parsers
+The `FinancialMessageParser` normalizes real-time and bulk financial messages into transaction entities:
+* **ISO 20022 (pacs.008)**: Parses structured XML schemas to extract end-to-end IDs, settlement amounts, currencies, debtor (sender) and creditor (receiver) names, IBANs, and BICs.
+* **SWIFT MT103**: Parses flat legacy SWIFT messages by scanning block 4 tags (e.g., `:20:` for reference, `:32A:` for value date/amount, `:50K:`/`:59:` for customer info).
+* **SEPA credit transfers**: Standardizes incoming instant and credit transfer pain.001 or pacs.008 messages into the platform's schema.
+
+### 3. Open Banking PSD2 API
+The platform exposes standardized endpoints compliant with the PSD2 XS2A (Access to Account) mandate:
+* **Consent Management (`/api/v1/psd2/consents`)**: Allows third-party providers (AISPs) to register account access scopes and expiration dates.
+* **Account Access (`/api/v1/psd2/accounts`)**: Retrieves details of accounts matching active consents.
+* **Transaction Ingestion (`/api/v1/psd2/accounts/{account_id}/transactions`)**: Exposes historical transactions under active AISP consents.
+* **Bearer JWT Security**: Endpoints require JWT validation signed with a secure secret, verifying standard claims (`sub`, `scope`, and expiration timestamp).
+
+### 4. Enterprise Message Queues (RabbitMQ)
+* **Concrete RabbitMQ Connector**: Implements `BankConnectorInterface` using the `pika` library. It publishes tasks to durable queues (`fl.queue.{bank_id}.train`, etc.) and consumes responses on dynamic, exclusive callback queues using matching correlation IDs.
+* **Resilient Failover**: If the RabbitMQ broker is unreachable, the connector falls back to local in-memory nodes (`MockBankConnector`), preventing orchestration failure during local testing.
+
