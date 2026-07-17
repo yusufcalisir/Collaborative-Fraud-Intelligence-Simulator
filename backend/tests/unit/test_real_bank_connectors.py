@@ -6,7 +6,7 @@ Tests FinancialMessageParser, PSD2 router, and RabbitMQ bank connector.
 from __future__ import annotations
 
 import time
-from typing import Any, Generator
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -17,10 +17,13 @@ from app.application.services.financial_message_parser import (
     FinancialMessageParser,
     FinancialMessageParserError,
 )
-from app.config import Settings, get_settings
+from app.config import get_settings
 from app.domain.value_objects import ModelWeights
 from app.infrastructure.connectors.rabbitmq_connector import RabbitMQBankConnector
 from app.main import app
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 # ── Sample Data for Testing ──────────────────────────────────────────────────
 

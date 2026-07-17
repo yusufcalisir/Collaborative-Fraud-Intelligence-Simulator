@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import time
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, Header, status
-from pydantic import BaseModel, Field
 
 import jwt
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from pydantic import BaseModel, Field
+
 from app.config import get_settings
 
 router = APIRouter(prefix="/api/v1/psd2", tags=["PSD2 Open Banking"])

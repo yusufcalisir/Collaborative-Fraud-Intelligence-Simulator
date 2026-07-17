@@ -108,11 +108,7 @@ class FinancialMessageParser:
 
         # Find block 4, which contains the transaction details
         block4_match = re.search(r"({4:(.*)-})", content, re.DOTALL)
-        if block4_match:
-            body = block4_match.group(2)
-        else:
-            # Fallback to scanning the whole string if it's just block 4 body
-            body = content
+        body = block4_match.group(2) if block4_match else content
 
         # Helper to extract tags like :XX:
         def get_tag_value(tag: str) -> str:
