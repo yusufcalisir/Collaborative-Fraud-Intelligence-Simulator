@@ -138,7 +138,7 @@ class KMSService:
 
     def list_tenants(self) -> list[str]:
         """List all tenants that have KMS vaults on disk."""
-        tenants = []
+        tenants: list[str] = []
         if not os.path.exists(self._storage_root):
             return tenants
         for entry in os.listdir(self._storage_root):

@@ -955,10 +955,9 @@ class SimulationService:
                 dataset_hash = hashlib.sha256(dataset_str.encode("utf-8")).hexdigest()
 
                 # Extract DP noise profile
+                pm = getattr(config, "privacy_mechanism", None)
                 dp_noise_profile = {
-                    "mechanism": config.privacy_mechanism.value
-                    if config.privacy_mechanism
-                    else "none",
+                    "mechanism": pm.value if pm else "none",
                     "epsilon": config.privacy_budget_epsilon
                     if hasattr(config, "privacy_budget_epsilon")
                     else 0.0,
