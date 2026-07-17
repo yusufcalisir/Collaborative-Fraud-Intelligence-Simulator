@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import logging
 import os
+import random
+import time
 import uuid
 from typing import Any
 
@@ -18,7 +20,7 @@ from pydantic import BaseModel, Field
 from app.application.services.alert_service import AlertIntelligenceService
 from app.application.services.explainability_service import ExplainabilityService
 from app.application.services.feature_store_service import FeatureStoreService
-from app.application.services.model_registry import ModelRegistry
+from app.application.services.model_registry import ModelEvaluationEngine, ModelRegistry
 from app.application.services.model_service import ModelService
 from app.application.services.risk_engine import RiskScoringEngine
 from app.config import get_settings
@@ -30,6 +32,7 @@ router = APIRouter(prefix="/api/v1", tags=["prediction"])
 _settings = get_settings()
 _model_service = ModelService(_settings)
 _registry = ModelRegistry()
+_eval_engine = ModelEvaluationEngine(_registry)
 _risk_engine = RiskScoringEngine()
 _alert_service = AlertIntelligenceService()
 _explainability_service = ExplainabilityService()
@@ -166,6 +169,7 @@ async def predict_transaction(
     """
     # 1. Resolve active model weights state dict
     state_dict = None
+    active_entry = None
     if payload.simulation_id:
         # Load from registry version
         active_entry = _registry.get_active_version(payload.simulation_id)
@@ -274,8 +278,66 @@ async def predict_transaction(
 
         input_tensor = preprocess_transaction(txn_dict).to(_model_service.device)
 
+        # Measure Champion Latency
+        champ_start = time.perf_counter()
         with torch.no_grad():
-            fraud_prob = float(model(input_tensor).item())
+            champ_prob = float(model(input_tensor).item())
+        champ_latency = (time.perf_counter() - champ_start) * 1000
+
+        # Measure Challenger Latency (Shadow Deployment)
+        chall_prob = None
+        chall_latency = None
+        challenger_ver = None
+        if payload.simulation_id:
+            manifest = _registry._load_manifest(payload.simulation_id)
+            challenger_entry = next((e for e in manifest if e.get("status") == "challenger"), None)
+            if challenger_entry:
+                challenger_ver = challenger_entry["version"]
+                try:
+                    chall_state_dict = _registry.load_version(payload.simulation_id, challenger_ver)
+                    chall_dp = True
+                    for key in chall_state_dict:
+                        if "running_mean" in key or "running_var" in key:
+                            chall_dp = False
+                            break
+                    chall_model = _model_service.create_model(dp_compatible=chall_dp)
+                    chall_model.load_state_dict(chall_state_dict)
+                    chall_model.eval()
+
+                    chall_start = time.perf_counter()
+                    with torch.no_grad():
+                        chall_prob = float(chall_model(input_tensor).item())
+                    chall_latency = (time.perf_counter() - chall_start) * 1000
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to run challenger model version %d: %s",
+                        challenger_ver,
+                        exc,
+                    )
+
+        # Traffic Routing: Route a portion of the traffic to the Challenger
+        routed_to = "champion"
+        fraud_prob = champ_prob
+        if payload.simulation_id and challenger_ver and chall_prob is not None:
+            traffic_share = _eval_engine.get_traffic_share(payload.simulation_id)
+            if random.random() < traffic_share:
+                fraud_prob = chall_prob
+                routed_to = "challenger"
+
+        # Log prediction for evaluation and rollback engine
+        if payload.simulation_id:
+            _eval_engine.log_prediction(
+                simulation_id=payload.simulation_id,
+                transaction_id=txn_id,
+                champion_version=active_entry["version"] if active_entry else 1,
+                champion_prob=champ_prob,
+                champion_latency_ms=champ_latency,
+                challenger_version=challenger_ver,
+                challenger_prob=chall_prob,
+                challenger_latency_ms=chall_latency,
+                routed_to=routed_to,
+            )
+
     except Exception as e:
         logger.error("Inference execution failed: %s", e)
         raise HTTPException(
@@ -373,3 +435,29 @@ async def predict_transaction(
         breakdown=breakdown,
         alert_details=alert_details,
     )
+
+
+class TransactionFeedbackRequest(BaseModel):
+    transaction_id: str
+    actual_label: int = Field(
+        ..., ge=0, le=1, description="Actual outcome (0 for legitimate, 1 for fraud)"
+    )
+    simulation_id: str
+
+
+@router.post("/predict/feedback")
+async def submit_transaction_feedback(payload: TransactionFeedbackRequest) -> dict[str, Any]:
+    """Ingest ground truth label feedback for evaluation of Champion/Challenger models."""
+    try:
+        metrics = _eval_engine.log_feedback(
+            simulation_id=payload.simulation_id,
+            transaction_id=payload.transaction_id,
+            actual_label=payload.actual_label,
+        )
+        return {"status": "success", "metrics": metrics}
+    except Exception as e:
+        logger.error("Failed to process transaction feedback: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record transaction feedback: {e}",
+        )

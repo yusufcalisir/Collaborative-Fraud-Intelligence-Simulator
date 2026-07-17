@@ -52,6 +52,58 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ── Tenant-Isolated Logging ──────────────────
+def _setup_tenant_logging() -> None:
+    """Add per-tenant file handlers that route logs to isolated files.
+
+    Each bank's logs are written to ``storage/logs/{bank_id}.log``.
+    System/coordinator logs go to ``storage/logs/system.log``.
+    """
+    import os
+
+    from app.infrastructure.database import active_tenant
+
+    logs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "storage", "logs"))
+    os.makedirs(logs_dir, exist_ok=True)
+
+    class TenantLogFilter(logging.Filter):
+        """Filter that only passes records matching the target tenant."""
+
+        def __init__(self, target_tenant: str | None) -> None:
+            super().__init__()
+            self.target_tenant = target_tenant
+
+        def filter(self, record: logging.LogRecord) -> bool:
+            current = active_tenant.get()
+            return current == self.target_tenant
+
+    fmt = logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # System log handler
+    sys_handler = logging.FileHandler(os.path.join(logs_dir, "system.log"), encoding="utf-8")
+    sys_handler.setFormatter(fmt)
+    sys_handler.addFilter(TenantLogFilter(None))
+    logging.getLogger().addHandler(sys_handler)
+
+    # Per-bank log handlers
+    for tenant in ("bank_a", "bank_b", "bank_c"):
+        handler = logging.FileHandler(os.path.join(logs_dir, f"{tenant}.log"), encoding="utf-8")
+        handler.setFormatter(fmt)
+        handler.addFilter(TenantLogFilter(tenant))
+        logging.getLogger().addHandler(handler)
+
+    logger.info("Tenant-isolated logging configured → %s", logs_dir)
+
+
+try:
+    _setup_tenant_logging()
+except Exception as exc:
+    logger.warning("Failed to set up tenant-isolated logging: %s", exc)
+
+
 # ── Lifecycle ─────────────────────────────────
 # ── Lifecycle ─────────────────────────────────
 def seed_mock_data() -> None:

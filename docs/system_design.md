@@ -67,11 +67,25 @@ CFI Simulator utilizes 4 decoupled microservices coordinated via Docker Compose:
 ### 3.2 State Management & Cache Resilience
 Services write states to `RedisStore`. If Redis goes offline, `RedisStore` catches the exception and routes reads/writes to a thread-safe, in-memory Python dictionary backend. This ensures the demo interface and local test suites remain stable under transient failures.
 
-### 3.3 Dynamic Model Registry & Canary Gates
-*   **Active Symlinking:** Active models (`global_model.pt`) are symlinked on disk. A rollback requests updates the symlink to the targeted historical manifest version atomically.
+### 3.3 Enterprise Model Registry & Governance (SR 11-7 Compliance)
+*   **Active Symlinking:** Active models (`global_model.pt`) are symlinked on disk. A rollback request updates the symlink to the targeted historical manifest version atomically.
+*   **Lineage Audits:** Each saved model tracks Git commit hashes, dataset hashes, and differential privacy noise configuration to guarantee chain-of-custody.
+*   **Dual Sign-off Workflow:** Promotion to Champion or Challenger is gated behind cryptographic approval from both an ML Engineer and a Compliance Officer.
+*   **Shadow Routing:** Routes 100% of live traffic to the Challenger model silently, logging performance statistics. A randomized 10% slice of decision-making traffic is exposed to Challenger predictions.
 *   **Canary Quality Gate:**
     $$\text{Candidate AUC-ROC} \ge \text{Active AUC-ROC} - 0.005$$
-    If a candidate fails this check, it remains registered but is rejected for promotion, preventing poisoned models from being deployed.
+    If a candidate fails this check, it remains registered but is rejected for promotion.
+*   **Automated Rollback Engine:** Tracks performance metrics on a sliding window. Automatically rolls back to the last stable version if the active model's:
+    - AUC-ROC drops below `0.65`
+    - Scoring latency exceeds `200ms`
+    - False Positive Rate (FPR) exceeds `5%` (0.05)
+
+### 3.4 Physical Multi-Tenancy & Cryptographic Key Isolation (SOC2 / PCI-DSS)
+To guarantee data sovereignty and strict database-level boundaries required by banking regulations (SOC2, PCI-DSS):
+*   **Database-per-Tenant:** Instead of logical routing via `bank_id` filters, the platform utilizes database-per-tenant isolation. A task-local context variable (`active_tenant`) selects the corresponding database engine (e.g. `cfi_bank_a.db`) dynamically. Table schemas are automatically initialized when a tenant is first accessed. The central coordinator only queries the coordinator database (`cfi_central.db`) and has zero direct SQL query access to bank vaults.
+*   **Isolated Key Management Service (KMS/HSM):** To isolate cryptographic keys, a per-tenant KMS service simulator partitions key material into isolated vaults (`storage/{bank_id}/kms/keys.json`). Per-bank HMAC keys (for entity hashing), DH-PSI private exponents, and secure aggregation seeds are generated lazily inside the bank boundary and are never shared.
+*   **Private Model Registry & Vaults:** During local training, intermediate PyTorch model weights and local GNN updates are saved strictly to the bank's local vault directory (`storage/{bank_id}/model_vault/`). Only the aggregated model gradients participating in active rounds are exposed temporarily to the central coordinator.
+*   **Tenant-Isolated Log files:** Application logs and transaction audit trails are filtered dynamically based on the active tenant context and written to bank-specific files (`storage/logs/{bank_id}.log`), preventing cross-tenant information leakage in centralized logging backends.
 
 ---
 

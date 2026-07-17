@@ -25,6 +25,7 @@ import type {
   ModelVersion,
   Evidence,
   InvestigatorAuditLog,
+  ShadowMetrics,
 } from './types';
 
 // ── Phase 1: Simulations ───────────────────
@@ -413,6 +414,52 @@ export function useLogSessionDuration() {
   return useMutation<unknown, Error, { investigator: string; duration_seconds: number }>({
     mutationFn: async (payload) => {
       const { data } = await apiClient.post('/api/v1/cases/audit/session', payload);
+      return data;
+    },
+  });
+}
+
+export function useSignOffModel() {
+  return useMutation<
+    ModelVersion,
+    Error,
+    {
+      simulationId: string;
+      version: number;
+      role: 'compliance' | 'ml_engineer';
+      user: string;
+      signature: string;
+      fairness_score: number;
+      bias_metric: number;
+      drift_divergence: number;
+    }
+  >({
+    mutationFn: async ({ simulationId, version, ...body }) => {
+      const { data } = await apiClient.post(
+        `/api/v1/registry/${simulationId}/versions/${version}/signoff`,
+        body
+      );
+      return data;
+    },
+  });
+}
+
+export function useShadowMetrics(simulationId: string | undefined) {
+  return useQuery<ShadowMetrics>({
+    queryKey: ['shadow-metrics', simulationId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/registry/${simulationId}/shadow/metrics`);
+      return data;
+    },
+    enabled: !!simulationId,
+    refetchInterval: 3000,
+  });
+}
+
+export function useSubmitFeedback() {
+  return useMutation<unknown, Error, { simulationId: string; transaction_id: string; actual_label: number }>({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/predict/feedback', payload);
       return data;
     },
   });

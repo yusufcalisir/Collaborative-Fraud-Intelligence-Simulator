@@ -132,8 +132,9 @@ class PrivacyPreservingIdentifier:
     at different banks produces the same hash, enabling entity resolution
     without exposing the underlying PII.
 
-    Security note: In production, the HMAC key would be managed by a
-    trusted third party or derived from a multi-party computation protocol.
+    Security note: In production, the HMAC key is managed by each tenant's
+    isolated KMS/HSM vault.  The ``compute_with_kms`` class method retrieves
+    the tenant-specific HMAC key automatically.
     """
 
     hash_value: str
@@ -154,6 +155,20 @@ class PrivacyPreservingIdentifier:
             salted.encode(),
             hashlib.sha256,
         ).hexdigest()[:16]  # Truncated for readability in UI
+
+    @classmethod
+    def compute_with_kms(cls, raw_value: str, entity_type: str, bank_id: str) -> str:
+        """Compute a privacy-preserving hash using the bank's KMS-managed HMAC key.
+
+        Retrieves the tenant-isolated HMAC key from the KMS vault and delegates
+        to the standard ``compute`` method.  This ensures each bank's hashing
+        is cryptographically independent.
+        """
+        from app.application.services.kms_service import get_kms_service
+
+        kms = get_kms_service()
+        hmac_key = kms.get_hmac_key(bank_id)
+        return cls.compute(raw_value, entity_type, hmac_key=hmac_key)
 
 
 @dataclass(frozen=True)

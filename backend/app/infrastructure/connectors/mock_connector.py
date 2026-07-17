@@ -141,6 +141,31 @@ class MockBankConnector(BankConnectorInterface):
             output_weights = self.model_service.get_parameters(trained_model)
             final_loss = loss_hist[-1] if loss_hist else 0.0
 
+            # Persist local weights to the bank's isolated model vault.
+            # Only the weight update (delta) participates in federated rounds;
+            # the full checkpoint stays within the tenant boundary.
+            try:
+                import os
+
+                import torch
+
+                vault_dir = os.path.abspath(
+                    os.path.join(
+                        os.path.dirname(
+                            os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                        ),
+                        "storage",
+                        bank_id,
+                        "model_vault",
+                    )
+                )
+                os.makedirs(vault_dir, exist_ok=True)
+                vault_path = os.path.join(vault_dir, "local_model_weights.pt")
+                torch.save(trained_model.state_dict(), vault_path)
+                logger.info("Saved local model checkpoint to %s", vault_path)
+            except Exception as vault_exc:
+                logger.warning("Failed to save local model to vault for %s: %s", bank_id, vault_exc)
+
             return {
                 "weights": {
                     "layer_shapes": [list(shape) for shape in output_weights.layer_shapes],

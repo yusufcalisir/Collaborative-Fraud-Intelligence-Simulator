@@ -6,8 +6,9 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
-from app.application.services.model_registry import ModelRegistry
+from app.application.services.model_registry import ModelEvaluationEngine, ModelRegistry
 from app.presentation.routers.simulation import _simulation_events
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api/v1/registry", tags=["registry"])
 
 # Shared registry instance
 registry = ModelRegistry()
+_eval_engine = ModelEvaluationEngine(registry)
 
 
 @router.get("/{simulation_id}/versions")
@@ -81,3 +83,52 @@ async def get_canary_history(simulation_id: str) -> list[dict[str, Any]]:
                     }
                 )
     return canary_history
+
+
+class ModelSignOffRequest(BaseModel):
+    role: str = Field(..., description="Role of the signer ('compliance' or 'ml_engineer')")
+    user: str = Field(..., description="Name/identifier of the user signing off")
+    signature: str = Field(..., description="Cryptographic signature string")
+    fairness_score: float = Field(1.0, description="Evaluated model fairness score")
+    bias_metric: float = Field(0.0, description="Evaluated model bias metric")
+    drift_divergence: float = Field(0.0, description="Evaluated dataset drift divergence")
+
+
+@router.post("/{simulation_id}/versions/{version}/signoff")
+async def sign_off_model(
+    simulation_id: str, version: int, payload: ModelSignOffRequest
+) -> dict[str, Any]:
+    """Approve and sign off on a new global model's metrics."""
+    try:
+        updated_entry = registry.sign_off(
+            simulation_id=simulation_id,
+            version=version,
+            role=payload.role,
+            user=payload.user,
+            signature=payload.signature,
+            fairness_score=payload.fairness_score,
+            bias_metric=payload.bias_metric,
+            drift_divergence=payload.drift_divergence,
+        )
+        return updated_entry
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Failed to sign off on model version: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit model sign-off: {e}",
+        )
+
+
+@router.get("/{simulation_id}/shadow/metrics")
+async def get_shadow_metrics(simulation_id: str) -> dict[str, Any]:
+    """Get real-time shadowing deployment and evaluation metrics."""
+    try:
+        return _eval_engine.get_shadow_metrics(simulation_id)
+    except Exception as e:
+        logger.error("Failed to retrieve shadow metrics: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load shadow metrics: {e}",
+        )

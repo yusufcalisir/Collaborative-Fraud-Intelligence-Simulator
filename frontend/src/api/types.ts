@@ -136,14 +136,31 @@ export interface ModelVersion {
   version: number;
   filename: string;
   metrics: {
-    accuracy: number;
-    precision: number;
-    recall: number;
+    accuracy?: number;
+    precision?: number;
+    recall?: number;
     f1_score: number;
     auc_roc: number;
     loss: number;
   };
   is_active: boolean;
+  status: string;
+  git_commit_hash: string;
+  dataset_hash: string;
+  dp_noise_profile: {
+    mechanism: string;
+    epsilon: number;
+    delta: number;
+  };
+  sign_offs: Array<{
+    role: string;
+    user: string;
+    signature: string;
+    timestamp: string;
+    fairness_score: number;
+    bias_metric: number;
+    drift_divergence: number;
+  }>;
   created_at: string;
 }
 
@@ -507,4 +524,18 @@ export interface InvestigatorAuditLog {
   timestamp: string;
   session_duration_sec: number | null;
   metadata: Record<string, unknown>;
+}
+
+export interface ShadowMetrics {
+  champion_version: number;
+  champion_auc: number;
+  champion_pr_auc: number;
+  champion_fpr: number;
+  champion_latency_ms: number;
+  challenger_auc: number;
+  challenger_pr_auc: number;
+  challenger_fpr: number;
+  challenger_latency_ms: number;
+  traffic_share: number;
+  sample_count: number;
 }

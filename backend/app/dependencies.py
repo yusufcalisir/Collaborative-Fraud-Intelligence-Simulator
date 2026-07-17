@@ -7,23 +7,63 @@ dependencies. Keeps route handlers thin and testable.
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.services.data_generator import DataGenerator
 from app.application.services.fl_engine import FederatedLearningEngine
+from app.application.services.kms_service import KMSService, get_kms_service
 from app.application.services.metrics_service import MetricsService
 from app.application.services.model_service import ModelService
 from app.application.services.privacy_service import PrivacyService
 from app.application.services.simulation_service import SimulationService
 from app.config import Settings, get_settings
-from app.infrastructure.database import get_async_session
+from app.infrastructure.database import active_tenant, get_async_session
 from app.infrastructure.repositories.bank_repository import BankRepository
 from app.infrastructure.repositories.metrics_repository import MetricsRepository
 from app.infrastructure.repositories.simulation_repository import SimulationRepository
 
 # ── Settings ──────────────────────────────────
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+# ── Tenant Resolution ────────────────────────
+async def resolve_tenant(request: Request) -> str | None:
+    """Extract the bank tenant from the request and bind it to the active context.
+
+    Resolution order:
+        1. ``X-Tenant-ID`` header (explicit override for internal services)
+        2. ``bank_id`` query parameter
+        3. API key metadata embedded in the ``X-API-Key`` header
+           (format: ``key_bank_a:bank_a:bank`` → tenant = ``bank_a``)
+
+    Returns the resolved tenant identifier or None for system-level access.
+    """
+    # 1. Explicit header
+    tenant = request.headers.get("X-Tenant-ID")
+
+    # 2. Query parameter fallback
+    if not tenant:
+        tenant = request.query_params.get("bank_id")
+
+    # 3. API key metadata
+    if not tenant:
+        api_key = request.headers.get("X-API-Key", "")
+        if api_key:
+            parts = api_key.split(":")
+            if len(parts) >= 2:
+                tenant = parts[1]
+
+    # Set the context variable for downstream database routing
+    if tenant:
+        active_tenant.set(tenant)
+    else:
+        active_tenant.set(None)
+
+    return tenant
+
+
+TenantDep = Annotated[str | None, Depends(resolve_tenant)]
 
 
 # ── Database Session ──────────────────────────
@@ -104,3 +144,6 @@ SimulationServiceDep = Annotated[SimulationService, Depends(get_simulation_servi
 DataGeneratorDep = Annotated[DataGenerator, Depends(get_data_generator)]
 MetricsServiceDep = Annotated[MetricsService, Depends(get_metrics_service)]
 FLEngineDep = Annotated[FederatedLearningEngine, Depends(get_fl_engine)]
+
+# ── KMS ───────────────────────────────────────
+KMSServiceDep = Annotated[KMSService, Depends(get_kms_service)]

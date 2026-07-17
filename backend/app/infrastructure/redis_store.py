@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Any
 
 import redis
 
@@ -68,7 +69,7 @@ class RedisStore:
     def _make_key(self, key: str) -> str:
         return f"{self.prefix}:{key}"
 
-    def get(self, key: str) -> dict | None:
+    def get(self, key: str) -> Any:
         c = self.client
         if c:
             try:
@@ -79,7 +80,7 @@ class RedisStore:
                 logger.error(f"Redis get failed for {key}: {e}")
         return self._fallback_store.get(key)
 
-    def set(self, key: str, value: dict, ex: int | None = None) -> None:
+    def set(self, key: str, value: Any, ex: int | None = None) -> None:
         c = self.client
         if c:
             try:

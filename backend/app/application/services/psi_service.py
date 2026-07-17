@@ -6,7 +6,6 @@ Simulates a zero-knowledge cross-institution client matching protocol.
 from __future__ import annotations
 
 import logging
-import secrets
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -113,9 +112,12 @@ class PSIService:
                 "attestation_verified": True,
             }
         else:
-            # 2. Generate private key scalars (simulated DH keys)
-            key_a = secrets.randbelow(PSI_PRIME - 2) + 2
-            key_b = secrets.randbelow(PSI_PRIME - 2) + 2
+            # 2. Retrieve persistent private key scalars from per-bank KMS vaults
+            from app.application.services.kms_service import get_kms_service
+
+            kms = get_kms_service()
+            key_a = kms.get_psi_private_exponent(bank_a_id)
+            key_b = kms.get_psi_private_exponent(bank_b_id)
 
             # 3. Pass 1: Local Encryption
             # Convert hex privacy_id to int, then raise to modular power

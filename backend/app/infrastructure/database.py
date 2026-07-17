@@ -1,15 +1,33 @@
-"""Async database engine and session management.
+"""Async database engine and session management with multi-tenant isolation.
 
 Uses SQLAlchemy 2.0 async API with asyncpg for non-blocking PostgreSQL/CockroachDB access.
 Sessions are scoped to FastAPI requests via dependency injection.
+
+Multi-Tenancy (SOC2/PCI-DSS Compliance):
+    Each bank institution operates against its own isolated database instance.
+    The ``active_tenant`` context variable determines which database engine
+    and session factory to use for the current request or task.  When no
+    tenant is set, the system-level "central" database is used.
+
+    SQLite mode:
+        storage/cfi_central.db   — coordinator / system tables
+        storage/cfi_bank_a.db    — Bank A's isolated tables
+        storage/cfi_bank_b.db    — Bank B's isolated tables
+        storage/cfi_bank_c.db    — Bank C's isolated tables
+
+    PostgreSQL/CockroachDB mode:
+        Separate database names suffixed per tenant (e.g. fraud_intelligence_bank_a).
 """
 
+import contextvars
 import logging
+import os
 from collections.abc import AsyncGenerator, Callable, Coroutine
 from typing import Any
 
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
@@ -27,38 +45,120 @@ class Base(DeclarativeBase):
     pass
 
 
+# ── Tenant Context ────────────────────────────
+# Set by middleware / simulation loops to route DB operations to the correct bank.
+active_tenant: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "active_tenant", default=None
+)
+
+# Valid tenant identifiers — extend as new banks are onboarded.
+VALID_TENANTS = {"bank_a", "bank_b", "bank_c"}
+
 settings = get_settings()
 
-# Configure engine options tailored for distributed high-write databases like CockroachDB
-engine_kwargs: dict[str, Any] = {
-    "echo": settings.app_debug,
-    "pool_size": 10 if settings.database_type == "cockroachdb" else 5,
-    "max_overflow": 20 if settings.database_type == "cockroachdb" else 10,
-    "pool_pre_ping": True,
-}
-
-# CockroachDB connection tuning arguments
-if settings.database_type == "cockroachdb":
-    engine_kwargs["connect_args"] = {
-        "application_name": "cfi_platform",
-    }
-
-engine = create_async_engine(settings.database_url, **engine_kwargs)
-
-async_session_factory = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
+# ── Storage root for SQLite databases ─────────
+_STORAGE_ROOT = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "storage",
+    )
 )
+os.makedirs(_STORAGE_ROOT, exist_ok=True)
+
+
+def _resolve_database_url(tenant: str | None) -> str:
+    """Return the async database URL for the given tenant.
+
+    * ``None`` → central/system database
+    * ``"bank_a"`` → bank_a's isolated database
+    """
+    if settings.database_type == "sqlite":
+        db_name = f"cfi_{tenant}.db" if tenant else "cfi_central.db"
+        db_path = os.path.join(_STORAGE_ROOT, db_name)
+        return f"sqlite+aiosqlite:///{db_path}"
+
+    # PostgreSQL / CockroachDB: append tenant suffix to database name
+    base_db = settings.postgres_db
+    db_name = f"{base_db}_{tenant}" if tenant else base_db
+    return (
+        f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}"
+        f"@{settings.postgres_host}:{settings.postgres_port}/{db_name}"
+    )
+
+
+def _make_engine_kwargs(tenant: str | None) -> dict[str, Any]:
+    """Build engine keyword arguments.  SQLite needs a minimal pool config."""
+    if settings.database_type == "sqlite":
+        return {"echo": settings.app_debug}
+
+    kwargs: dict[str, Any] = {
+        "echo": settings.app_debug,
+        "pool_size": 10 if settings.database_type == "cockroachdb" else 5,
+        "max_overflow": 20 if settings.database_type == "cockroachdb" else 10,
+        "pool_pre_ping": True,
+    }
+    if settings.database_type == "cockroachdb":
+        kwargs["connect_args"] = {"application_name": f"cfi_{tenant or 'central'}"}
+    return kwargs
+
+
+# ── Tenant Engine Registry ────────────────────
+# Lazily created engines and session factories, one per tenant.
+_tenant_engines: dict[str | None, AsyncEngine] = {}
+_tenant_sessions: dict[str | None, async_sessionmaker[AsyncSession]] = {}
+_tenant_initialized: set[str | None] = set()
+
+
+def _get_or_create_engine(tenant: str | None) -> AsyncEngine:
+    """Return (and cache) the async engine for a tenant, creating it on first access."""
+    if tenant not in _tenant_engines:
+        url = _resolve_database_url(tenant)
+        eng = create_async_engine(url, **_make_engine_kwargs(tenant))
+        _tenant_engines[tenant] = eng
+        _tenant_sessions[tenant] = async_sessionmaker(
+            eng, class_=AsyncSession, expire_on_commit=False
+        )
+        logger.info("Created database engine for tenant=%s url=%s", tenant or "central", url)
+    return _tenant_engines[tenant]
+
+
+async def init_tenant_tables(tenant: str | None) -> None:
+    """Create all ORM tables in the tenant's database if not already initialized.
+
+    Called lazily on first session access or eagerly at startup.
+    """
+    if tenant in _tenant_initialized:
+        return
+    eng = _get_or_create_engine(tenant)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    _tenant_initialized.add(tenant)
+    logger.info("Initialized tables for tenant=%s", tenant or "central")
+
+
+def get_session_factory(tenant: str | None = None) -> async_sessionmaker[AsyncSession]:
+    """Return the session factory for the given tenant, creating engine if needed."""
+    _get_or_create_engine(tenant)
+    return _tenant_sessions[tenant]
+
+
+# ── Backward-compatible default engine ────────
+# The module-level ``engine`` and ``async_session_factory`` remain available for
+# existing code that imports them directly.  They point to the *central* database.
+engine = _get_or_create_engine(None)
+async_session_factory = get_session_factory(None)
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async session scoped to the current request.
 
-    The session is automatically closed when the request completes.
-    Commits are managed by the service layer, not here.
+    Reads ``active_tenant`` to select the tenant-specific session factory.
+    Falls back to the central database when no tenant context is set.
     """
-    async with async_session_factory() as session:
+    tenant = active_tenant.get()
+    await init_tenant_tables(tenant)
+    factory = get_session_factory(tenant)
+    async with factory() as session:
         try:
             yield session
         finally:
@@ -94,3 +194,13 @@ async def run_cockroach_transaction(
                     )
                     continue
                 raise
+
+
+async def dispose_all_engines() -> None:
+    """Dispose all tenant engines on application shutdown."""
+    for tenant, eng in _tenant_engines.items():
+        logger.info("Disposing engine for tenant=%s", tenant or "central")
+        await eng.dispose()
+    _tenant_engines.clear()
+    _tenant_sessions.clear()
+    _tenant_initialized.clear()
