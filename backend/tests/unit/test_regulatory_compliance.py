@@ -69,7 +69,9 @@ def test_case_status_transitions_and_sar_filing(case_service, alert_service):
     assert last_event.metadata.get("sar_report_path") == report_path
 
     # Transition from SAR_FILED to CLOSED_CONFIRMED
-    case = case_service.change_status(case.id, CaseStatus.CLOSED_CONFIRMED)
+    case = case_service.change_status(
+        case.id, CaseStatus.CLOSED_CONFIRMED, supervisor_signature="supervisor_bob"
+    )
     assert case.status == CaseStatus.CLOSED_CONFIRMED
 
     # Clean up file

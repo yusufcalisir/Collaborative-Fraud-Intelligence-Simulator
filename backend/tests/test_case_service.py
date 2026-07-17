@@ -44,7 +44,9 @@ class TestStatusTransitions:
     def test_closed_case_cannot_transition(self, case_service: CaseManagementService) -> None:
         case = case_service.create_case("Test case")
         case_service.change_status(case.id, CaseStatus.INVESTIGATING)
-        case_service.change_status(case.id, CaseStatus.CLOSED_CONFIRMED)
+        case_service.change_status(
+            case.id, CaseStatus.CLOSED_CONFIRMED, supervisor_signature="supervisor_bob"
+        )
 
         with pytest.raises(ValueError, match="Invalid transition"):
             case_service.change_status(case.id, CaseStatus.OPEN)
@@ -52,7 +54,9 @@ class TestStatusTransitions:
     def test_closing_sets_closed_at(self, case_service: CaseManagementService) -> None:
         case = case_service.create_case("Test case")
         case_service.change_status(case.id, CaseStatus.INVESTIGATING)
-        closed = case_service.change_status(case.id, CaseStatus.CLOSED_CONFIRMED)
+        closed = case_service.change_status(
+            case.id, CaseStatus.CLOSED_CONFIRMED, supervisor_signature="supervisor_bob"
+        )
         assert closed.closed_at is not None
         assert closed.is_open is False
 
