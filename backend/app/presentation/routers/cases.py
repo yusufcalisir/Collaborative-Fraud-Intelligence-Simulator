@@ -21,8 +21,16 @@ from app.application.schemas.phase2 import (
     CaseResponse,
     CaseStatusRequest,
     CaseSummaryResponse,
+    EvidenceRequest,
+    EvidenceResponse,
+    InvestigatorAuditLogResponse,
+    SessionDurationRequest,
 )
-from app.application.services.case_service import CaseManagementService
+from app.application.services.case_service import (
+    AuditService,
+    CaseManagementService,
+    EvidenceRegistryService,
+)
 from app.domain.enums import CasePriority, CaseStatus
 
 logger = logging.getLogger(__name__)
@@ -61,6 +69,29 @@ async def list_cases(
     ]
 
 
+@router.get("/audit/logs", response_model=list[InvestigatorAuditLogResponse])
+async def get_audit_logs(
+    limit: int = Query(100, ge=1, le=500),
+) -> list[InvestigatorAuditLogResponse]:
+    """Retrieve investigator activity logs."""
+    audit_svc = AuditService()
+    logs = audit_svc.get_logs(limit=limit)
+    return [InvestigatorAuditLogResponse(**log) for log in logs]
+
+
+@router.post("/audit/session", response_model=dict)
+async def log_session_duration(req: SessionDurationRequest) -> dict:
+    """Log investigator session duration."""
+    audit_svc = AuditService()
+    log = audit_svc.log_action(
+        investigator=req.investigator,
+        action="session_duration",
+        target_id="session",
+        session_duration_sec=req.duration_seconds,
+    )
+    return {"status": "success", "log_id": log["id"]}
+
+
 @router.post("", response_model=CaseResponse)
 async def create_case(req: CaseCreateRequest) -> CaseResponse:
     """Create a new investigation case."""
@@ -74,11 +105,12 @@ async def create_case(req: CaseCreateRequest) -> CaseResponse:
 
 
 @router.get("/{case_id}", response_model=CaseResponse)
-async def get_case(case_id: str) -> CaseResponse:
+async def get_case(case_id: str, actor: str = Query("analyst")) -> CaseResponse:
     """Get case detail."""
     case = _case_service.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
+    AuditService().log_action(actor, "access_case", case_id)
     return _serialize_case(case)
 
 
@@ -87,7 +119,12 @@ async def update_case_status(case_id: str, req: CaseStatusRequest) -> CaseRespon
     """Update case status."""
     try:
         new_status = CaseStatus(req.status)
-        case = _case_service.change_status(case_id, new_status, actor=req.actor)
+        case = _case_service.change_status(
+            case_id,
+            new_status,
+            actor=req.actor,
+            supervisor_signature=req.supervisor_signature,
+        )
         return _serialize_case(case)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -166,6 +203,32 @@ async def download_sar_report(case_id: str) -> FileResponse:
     )
 
 
+@router.post("/{case_id}/evidence", response_model=EvidenceResponse)
+async def register_evidence(case_id: str, req: EvidenceRequest) -> EvidenceResponse:
+    """Register new case evidence with SHA-256 hash verification."""
+    try:
+        registry = EvidenceRegistryService()
+        ev = registry.register_evidence(
+            case_id=case_id,
+            evidence_type=req.evidence_type,
+            title=req.title,
+            file_path=req.file_path,
+            content=req.content,
+            uploaded_by=req.uploaded_by,
+        )
+        return EvidenceResponse(**ev)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{case_id}/evidence", response_model=list[EvidenceResponse])
+async def get_case_evidence(case_id: str) -> list[EvidenceResponse]:
+    """Retrieve all evidence registered for a case."""
+    registry = EvidenceRegistryService()
+    ev_list = registry.get_case_evidence(case_id)
+    return [EvidenceResponse(**ev) for ev in ev_list]
+
+
 def _serialize_case(case: Any) -> CaseResponse:
     return CaseResponse(
         id=case.id,
@@ -174,6 +237,7 @@ def _serialize_case(case: Any) -> CaseResponse:
         priority=case.priority.value,
         assigned_to=case.assigned_to,
         alert_ids=case.alert_ids,
+        evidence_ids=getattr(case, "evidence_ids", []),
         notes=[
             CaseNoteResponse(
                 id=n.id,

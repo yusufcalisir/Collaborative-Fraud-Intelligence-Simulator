@@ -73,6 +73,7 @@ class CaseNoteRequest(BaseModel):
 class CaseStatusRequest(BaseModel):
     status: str
     actor: str = "analyst"
+    supervisor_signature: str | None = None
 
 
 class CaseLinkAlertRequest(BaseModel):
@@ -102,6 +103,7 @@ class CaseResponse(BaseModel):
     priority: str
     assigned_to: str | None = None
     alert_ids: list[str]
+    evidence_ids: list[str] = []
     notes: list[CaseNoteResponse] = []
     timeline: list[CaseEventResponse] = []
     created_at: str
@@ -339,4 +341,41 @@ class TemporalAnomalyResponse(BaseModel):
     edges_count: int
     velocity_score: float
     time_window_start: str
+
+
+# ── Evidence & Audit ──────────────────────────
+
+
+class EvidenceRequest(BaseModel):
+    evidence_type: str  # "document" | "kyc_profile" | "ledger_proof"
+    title: str
+    file_path: str
+    content: str
+    uploaded_by: str = "analyst"
+
+
+class EvidenceResponse(BaseModel):
+    id: str
+    case_id: str
+    evidence_type: str
+    title: str
+    file_path: str
+    content_hash: str
+    uploaded_by: str
+    uploaded_at: str
+
+
+class InvestigatorAuditLogResponse(BaseModel):
+    id: str
+    investigator: str
+    action: str
+    target_id: str
+    timestamp: str
+    session_duration_sec: float | None = None
+    metadata: dict = {}
+
+
+class SessionDurationRequest(BaseModel):
+    investigator: str
+    duration_seconds: float
     time_window_end: str

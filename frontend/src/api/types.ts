@@ -283,6 +283,7 @@ export interface Case {
   priority: string;
   assigned_to: string | null;
   alert_ids: string[];
+  evidence_ids: string[];
   notes: CaseNote[];
   timeline: CaseEvent[];
   created_at: string;
@@ -486,3 +487,24 @@ export const CASE_STATUS_LABELS: Record<string, string> = {
   closed_confirmed: 'Closed (Confirmed)',
   closed_false_positive: 'Closed (FP)',
 };
+
+export interface Evidence {
+  id: string;
+  case_id: string;
+  evidence_type: 'document' | 'kyc_profile' | 'ledger_proof';
+  title: string;
+  file_path: string;
+  content_hash: string;
+  uploaded_by: string;
+  uploaded_at: string;
+}
+
+export interface InvestigatorAuditLog {
+  id: string;
+  investigator: string;
+  action: string;
+  target_id: string;
+  timestamp: string;
+  session_duration_sec: number | null;
+  metadata: Record<string, unknown>;
+}

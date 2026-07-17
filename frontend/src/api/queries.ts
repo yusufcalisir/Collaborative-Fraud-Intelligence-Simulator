@@ -23,6 +23,8 @@ import type {
   SimulationSummary,
   TrainingRound,
   ModelVersion,
+  Evidence,
+  InvestigatorAuditLog,
 } from './types';
 
 // ── Phase 1: Simulations ───────────────────
@@ -205,7 +207,7 @@ export function useCreateCase() {
 }
 
 export function useUpdateCaseStatus() {
-  return useMutation<Case, Error, { caseId: string; status: string; actor?: string }>({
+  return useMutation<Case, Error, { caseId: string; status: string; actor?: string; supervisor_signature?: string }>({
     mutationFn: async ({ caseId, ...body }) => {
       const { data } = await apiClient.patch(`/api/v1/cases/${caseId}`, body);
       return data;
@@ -371,5 +373,47 @@ export function useCanaryHistory(simulationId: string | undefined) {
     },
     enabled: !!simulationId,
     refetchInterval: 3000,
+  });
+}
+
+
+export function useCaseEvidence(caseId: string | undefined) {
+  return useQuery<Evidence[]>({
+    queryKey: ['case-evidence', caseId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/cases/${caseId}/evidence`);
+      return data;
+    },
+    enabled: !!caseId,
+    refetchInterval: 5000,
+  });
+}
+
+export function useAddEvidence() {
+  return useMutation<Evidence, Error, { caseId: string; evidence_type: string; title: string; file_path: string; content: string; uploaded_by?: string }>({
+    mutationFn: async ({ caseId, ...body }) => {
+      const { data } = await apiClient.post(`/api/v1/cases/${caseId}/evidence`, body);
+      return data;
+    },
+  });
+}
+
+export function useAuditLogs() {
+  return useQuery<InvestigatorAuditLog[]>({
+    queryKey: ['audit-logs'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/cases/audit/logs');
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
+
+export function useLogSessionDuration() {
+  return useMutation<unknown, Error, { investigator: string; duration_seconds: number }>({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/cases/audit/session', payload);
+      return data;
+    },
   });
 }

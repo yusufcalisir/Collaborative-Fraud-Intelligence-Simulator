@@ -13,6 +13,7 @@ from app.application.schemas.phase2 import (
     PSIRequest,
     PSIResponse,
 )
+from app.application.services.case_service import AuditService
 from app.application.services.entity_resolution import EntityResolutionService
 from app.application.services.psi_service import PSIService
 from app.domain.enums import EntityType, RiskLevel
@@ -62,10 +63,13 @@ async def list_entities(
 
 
 @router.get("/{entity_id}", response_model=EntityProfileResponse)
-async def get_entity_profile(entity_id: str) -> EntityProfileResponse:
+async def get_entity_profile(
+    entity_id: str, actor: str = Query("analyst")
+) -> EntityProfileResponse:
     """Get entity profile with cross-institution data."""
     try:
         profile = _entity_service.build_entity_profile(entity_id)
+        AuditService().log_action(actor, "query_entity", entity_id)
         return EntityProfileResponse(**profile)
     except ValueError:
         raise HTTPException(status_code=404, detail="Entity not found")
@@ -98,9 +102,12 @@ async def get_entity_relationships(entity_id: str) -> list[dict]:
 
 
 @router.post("/resolve", response_model=list[EntityResponse])
-async def resolve_entity(req: EntityResolveRequest) -> list[EntityResponse]:
+async def resolve_entity(
+    req: EntityResolveRequest, actor: str = Query("analyst")
+) -> list[EntityResponse]:
     """Find entities matching a privacy hash across institutions."""
     entities = _entity_service.resolve_cross_institution(req.privacy_hash)
+    AuditService().log_action(actor, "cross_bank_resolve", req.privacy_hash)
     return [
         EntityResponse(
             id=e.id,
@@ -122,8 +129,9 @@ _psi_service = PSIService(_entity_service)
 
 
 @router.post("/psi", response_model=PSIResponse)
-async def run_entities_psi(req: PSIRequest) -> PSIResponse:
+async def run_entities_psi(req: PSIRequest, actor: str = Query("analyst")) -> PSIResponse:
     """Run simulated Private Set Intersection (PSI) protocol between two banks."""
     et = EntityType(req.entity_type) if req.entity_type else None
     result = _psi_service.run_psi(req.bank_a_id, req.bank_b_id, entity_type=et)
+    AuditService().log_action(actor, "cross_bank_psi", f"{req.bank_a_id}<->{req.bank_b_id}")
     return PSIResponse(**result)

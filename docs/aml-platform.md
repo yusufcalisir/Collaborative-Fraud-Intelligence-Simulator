@@ -121,3 +121,23 @@ To satisfy national Financial Intelligence Unit (FIU) standards (e.g. FinCEN, MA
 - Implemented sequential SHA-256 block hashing over case events:
   $$H_i = \text{SHA-256}(timestamp \mathbin{\Vert} type \mathbin{\Vert} description \mathbin{\Vert} actor \mathbin{\Vert} H_{i-1})$$
 - Enforces an append-only, tamper-proof log of all investigator movements and status transitions. Changing or deleting any event breaks downstream block verification, ensuring audit credibility.
+
+---
+
+## 🔍 Full-Fledged AML Investigation Lifecycle (Phase 2 Task 8)
+
+To support full-lineage auditing, secure dual-authorization, and role-based tracking:
+
+### 1. Case Evidence Registry
+- **Immutable Evidence Store**: Exposes a dedicated storage layer (`RedisStore("evidence")`) for document files, KYC profiles, and ledger proofs linked to investigation cases.
+- **Cryptographic Content Hashing**: Enforces SHA-256 hashing of evidence contents upon registration. The hash is saved directly in the registry to guarantee chain-of-custody and prevent unauthorized modifications to investigation files.
+- Exposed in the user interface under the Case Details page, allowing investigators to upload documents and view registered records with their hashes.
+
+### 2. Multi-Signature Gating (Four-Eyes Principle)
+- **Closure Validation**: Gated final case closure statuses (`CLOSED_CONFIRMED` and `CLOSED_FALSE_POSITIVE`) behind supervisor approval.
+- **Secondary Signature Verification**: Status change API requests require a valid `supervisor_signature` key that must not be empty and must be different from the analyst actor's name.
+
+### 3. Investigator Role Auditing
+- **Compliance Activity Logging**: Active logs track analyst actions including case accesses (`access_case`), entity profile queries (`query_entity`), cross-bank resolution requests (`cross_bank_resolve`), and Private Set Intersection matching (`cross_bank_psi`).
+- **Session Duration Tracking**: Logs session durations to detect anomalous queries or internal threats.
+- Exposed in a real-time investigator activity audit trail grid at the bottom of the main Investigation Dashboard.

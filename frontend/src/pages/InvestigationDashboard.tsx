@@ -5,6 +5,7 @@ import {
   useAlertsBySeverity,
   useAlertsByBank,
   useIntelligenceStats,
+  useAuditLogs,
 } from '../api/queries';
 import { BANK_NAMES, SEVERITY_COLORS } from '../api/types';
 
@@ -13,6 +14,7 @@ export default function InvestigationDashboard() {
   const { data: alertsBySeverity } = useAlertsBySeverity();
   const { data: alertsByBank } = useAlertsByBank();
   const { data: intelStats } = useIntelligenceStats();
+  const { data: auditLogs } = useAuditLogs();
 
   const statCards = stats ? [
     { label: 'Total Alerts', value: stats.total_alerts, icon: '🚨', color: '#f59e0b', href: '/alerts' },
@@ -245,6 +247,52 @@ export default function InvestigationDashboard() {
               {link.label}
             </Link>
           ))}
+        </div>
+      </motion.div>
+
+      {/* Audit Logs */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="glass-card p-5 mt-6"
+      >
+        <h3 className="text-sm font-bold uppercase text-[var(--color-text-muted)] mb-4 flex items-center gap-2">
+          🕵️ Investigator Activity Audit Trail (Compliance Log)
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                <th className="py-2">Investigator</th>
+                <th className="py-2">Action</th>
+                <th className="py-2">Target ID</th>
+                <th className="py-2">Timestamp</th>
+                <th className="py-2 text-right">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!auditLogs || auditLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-[var(--color-text-muted)]">
+                    No activity logs recorded yet.
+                  </td>
+                </tr>
+              ) : (
+                auditLogs.map((log: any) => (
+                  <tr key={log.id} className="border-b border-[var(--color-border)]/50 hover:bg-[var(--color-surface-alt)]/20 transition-colors">
+                    <td className="py-2 font-semibold text-[var(--color-primary)]">{log.investigator}</td>
+                    <td className="py-2 uppercase font-mono text-[10px]">{log.action.replace(/_/g, ' ')}</td>
+                    <td className="py-2 font-mono text-gray-500">{log.target_id.slice(0, 8)}...</td>
+                    <td className="py-2 text-[var(--color-text-muted)]">{new Date(log.timestamp).toLocaleString()}</td>
+                    <td className="py-2 text-right text-[10px] text-gray-400 max-w-xs truncate">
+                      {JSON.stringify(log.metadata)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </motion.div>
     </div>

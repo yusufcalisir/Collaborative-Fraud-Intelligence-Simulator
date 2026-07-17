@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useCase, useAddCaseNote, useUpdateCaseStatus } from '../api/queries';
+import { useCase, useAddCaseNote, useUpdateCaseStatus, useCaseEvidence, useAddEvidence } from '../api/queries';
 import { CASE_STATUS_LABELS, PRIORITY_LABELS } from '../api/types';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -31,6 +31,14 @@ export default function CaseDetailPage() {
   const updateStatus = useUpdateCaseStatus();
   const queryClient = useQueryClient();
   const [noteContent, setNoteContent] = useState('');
+  const [supervisorSig, setSupervisorSig] = useState('');
+  const [evType, setEvType] = useState('document');
+  const [evTitle, setEvTitle] = useState('');
+  const [evFilePath, setEvFilePath] = useState('');
+  const [evContent, setEvContent] = useState('');
+
+  const { data: evidenceList } = useCaseEvidence(caseId);
+  const addEvidence = useAddEvidence();
 
   const handleAddNote = async () => {
     if (!noteContent.trim() || !caseId) return;
@@ -42,11 +50,36 @@ export default function CaseDetailPage() {
   const handleStatusChange = async (newStatus: string) => {
     if (!caseId) return;
     try {
-      await updateStatus.mutateAsync({ caseId, status: newStatus });
+      const isClosure = newStatus.startsWith('closed_');
+      await updateStatus.mutateAsync({
+        caseId,
+        status: newStatus,
+        actor: 'analyst',
+        ...(isClosure ? { supervisor_signature: supervisorSig } : {}),
+      });
+      setSupervisorSig('');
       queryClient.invalidateQueries({ queryKey: ['case', caseId] });
     } catch {
       // Status transition error handled by API
     }
+  };
+
+  const handleAddEvidence = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!caseId || !evTitle.trim() || !evFilePath.trim() || !evContent.trim()) return;
+    await addEvidence.mutateAsync({
+      caseId,
+      evidence_type: evType,
+      title: evTitle,
+      file_path: evFilePath,
+      content: evContent,
+      uploaded_by: 'analyst',
+    });
+    setEvTitle('');
+    setEvFilePath('');
+    setEvContent('');
+    queryClient.invalidateQueries({ queryKey: ['case', caseId] });
+    queryClient.invalidateQueries({ queryKey: ['case-evidence', caseId] });
   };
 
   if (isLoading) {
@@ -147,6 +180,19 @@ export default function CaseDetailPage() {
               >
                 📥 Download SAR XML
               </a>
+            )}
+            {/* Supervisor Signature for Case Closure */}
+            {['investigating', 'pending_review', 'escalated', 'sar_filed'].includes(caseData.status) && (
+              <div className="flex gap-2 items-center w-full max-w-sm mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <span className="text-[10px] text-yellow-500 font-bold uppercase whitespace-nowrap">Supervisor Signature:</span>
+                <input
+                  type="text"
+                  value={supervisorSig}
+                  onChange={(e) => setSupervisorSig(e.target.value)}
+                  placeholder="Secondary authorization key..."
+                  className="px-2 py-1 text-xs rounded bg-[var(--color-surface-alt)] border border-[var(--color-border)] text-[var(--color-text)] flex-1 focus:outline-none focus:border-yellow-500/50"
+                />
+              </div>
             )}
           </div>
         )}
@@ -267,6 +313,114 @@ export default function CaseDetailPage() {
             ))}
           </div>
         )}
+      </motion.div>
+
+      {/* Evidence Registry */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="glass-card p-5 mt-6"
+      >
+        <h2 className="text-sm font-bold uppercase text-[var(--color-text-muted)] mb-4 flex items-center gap-2">
+          📁 Case Evidence Registry (Chain-of-Custody)
+        </h2>
+
+        {/* Register Evidence Form */}
+        <form onSubmit={handleAddEvidence} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 p-4 rounded-lg bg-[var(--color-surface-alt)]/50 border border-[var(--color-border)]/50">
+          <div>
+            <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">Type</label>
+            <select
+              value={evType}
+              onChange={(e) => setEvType(e.target.value)}
+              className="w-full px-2 py-1 text-xs rounded bg-[var(--color-surface-alt)] border border-[var(--color-border)] text-[var(--color-text)]"
+            >
+              <option value="document">📄 Document File</option>
+              <option value="kyc_profile">👤 KYC Profile</option>
+              <option value="ledger_proof">⛓️ Ledger Proof</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">Title</label>
+            <input
+              type="text"
+              value={evTitle}
+              onChange={(e) => setEvTitle(e.target.value)}
+              placeholder="e.g. Identity Proof"
+              className="w-full px-2 py-1 text-xs rounded bg-[var(--color-surface-alt)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">File Path / Reference</label>
+            <input
+              type="text"
+              value={evFilePath}
+              onChange={(e) => setEvFilePath(e.target.value)}
+              placeholder="e.g. uploads/id.pdf"
+              className="w-full px-2 py-1 text-xs rounded bg-[var(--color-surface-alt)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+              required
+            />
+          </div>
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">File Content (for SHA-256)</label>
+              <input
+                type="text"
+                value={evContent}
+                onChange={(e) => setEvContent(e.target.value)}
+                placeholder="Content string to hash..."
+                className="w-full px-2 py-1 text-xs rounded bg-[var(--color-surface-alt)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={addEvidence.isPending}
+              className="px-3 py-1 bg-[var(--color-primary)] text-white text-xs font-semibold rounded hover:opacity-90 disabled:opacity-50"
+            >
+              {addEvidence.isPending ? 'Registering...' : 'Register'}
+            </button>
+          </div>
+        </form>
+
+        {/* Evidence List */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                <th className="py-2">Type</th>
+                <th className="py-2">Title</th>
+                <th className="py-2 font-mono">Reference Path</th>
+                <th className="py-2 font-mono">Cryptographic Hash (SHA-256)</th>
+                <th className="py-2">Registered By</th>
+                <th className="py-2 text-right">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!evidenceList || evidenceList.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center text-[var(--color-text-muted)] text-gray-500">
+                    No evidence registered for this case.
+                  </td>
+                </tr>
+              ) : (
+                evidenceList.map((ev) => (
+                  <tr key={ev.id} className="border-b border-[var(--color-border)]/50 hover:bg-[var(--color-surface-alt)]/20 transition-colors">
+                    <td className="py-2 capitalize font-medium">{ev.evidence_type.replace('_', ' ')}</td>
+                    <td className="py-2 font-semibold">{ev.title}</td>
+                    <td className="py-2 font-mono text-gray-500">{ev.file_path}</td>
+                    <td className="py-2 font-mono text-[var(--color-primary)] text-[10px] break-all">{ev.content_hash}</td>
+                    <td className="py-2 text-[var(--color-text-muted)]">{ev.uploaded_by}</td>
+                    <td className="py-2 text-right text-[var(--color-text-muted)]">
+                      {new Date(ev.uploaded_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </motion.div>
     </div>
   );

@@ -156,6 +156,9 @@ To provide real-time transaction screening and investigation capabilities:
 5.  **Model Explainability via SHAP (SHapley Additive exPlanations):** Replaces static mock heuristics with a mathematically rigorous SHAP Kernel Explainer. This analyzes individual transaction anomalies directly using the collaboratively trained global model weight files, listing contribution importances dynamically for risk analysis.
 6.  **Regulatory SAR E-Filing Integration:** Automatically compiles and serializes a fully structured Suspicious Activity Report (SAR) XML file conforming to FinCEN BSA e-filing schemas upon case escalation to `SAR Filed`.
 7.  **Cryptographic Event Hash Chaining:** Timeline events are chained sequentially using SHA-256 block hashing ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) to establish a tamper-proof audit trail of analyst actions for judicial admissibility.
+8.  **Evidence Registry & Hashing:** Integrates a case evidence registry compiling KYC profiles, document references, and ledger proofs, validated with SHA-256 content hashes to establish chain-of-custody.
+9.  **Supervisor Dual-Authorization (Four-Eyes Principle):** Enforces a multi-signature supervisor signature verification check to validate and approve all final case closure status changes.
+10. **Investigator Role Activity Audits:** Logs analyst session durations, case accesses, entity views, and cross-bank search queries in an immutable compliance audit trail.
 
 #### 🧬 Diffie-Hellman Private Set Intersection (DH-PSI) Protocol
 

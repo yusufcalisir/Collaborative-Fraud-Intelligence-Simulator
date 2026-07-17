@@ -118,6 +118,7 @@ class CaseModel(Base):
     priority: Mapped[str] = mapped_column(String(20), nullable=False, default="p3_medium")
     assigned_to: Mapped[str | None] = mapped_column(String(100), nullable=True)
     alert_ids: Mapped[list] = mapped_column(JSON, default=list)
+    evidence_ids: Mapped[list] = mapped_column(JSON, default=list)
     notes: Mapped[list] = mapped_column(JSON, default=list)
     timeline: Mapped[list] = mapped_column(JSON, default=list)
     total_risk_score: Mapped[float] = mapped_column(Float, default=0.0)
@@ -187,3 +188,38 @@ class SharedIntelligenceModel(Base):
         default=lambda: datetime.now(UTC),
     )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EvidenceModel(Base):
+    """Persistent record of case evidence."""
+
+    __tablename__ = "evidence"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    evidence_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    uploaded_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+    )
+
+
+class InvestigatorAuditLogModel(Base):
+    """Persistent record of investigator audit logs."""
+
+    __tablename__ = "investigator_audit_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    investigator: Mapped[str] = mapped_column(String(100), nullable=False)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+    )
+    session_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)

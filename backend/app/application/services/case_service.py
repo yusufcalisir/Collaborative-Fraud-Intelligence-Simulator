@@ -36,6 +36,7 @@ def _case_to_dict(c: Case) -> dict[str, Any]:
         "priority": c.priority.value,
         "assigned_to": c.assigned_to,
         "alert_ids": c.alert_ids,
+        "evidence_ids": getattr(c, "evidence_ids", []),
         "notes": [
             {
                 "id": n.id,
@@ -69,6 +70,8 @@ def _dict_to_case(d: dict[str, Any]) -> Case:
     d_copy = d.copy()
     d_copy["status"] = CaseStatus(d_copy["status"])
     d_copy["priority"] = CasePriority(d_copy["priority"])
+    if "evidence_ids" not in d_copy:
+        d_copy["evidence_ids"] = []
     d_copy["created_at"] = datetime.fromisoformat(d_copy["created_at"])
     if d_copy.get("updated_at"):
         d_copy["updated_at"] = datetime.fromisoformat(d_copy["updated_at"])
@@ -227,11 +230,17 @@ class CaseManagementService:
         self._cases.set(case.id, _case_to_dict(case))
         return note
 
-    def change_status(self, case_id: str, new_status: CaseStatus, actor: str = "analyst") -> Case:
+    def change_status(
+        self,
+        case_id: str,
+        new_status: CaseStatus,
+        actor: str = "analyst",
+        supervisor_signature: str | None = None,
+    ) -> Case:
         """Change case status with transition validation.
 
         Raises:
-            ValueError: If the transition is not valid.
+            ValueError: If the transition is not valid or supervisor signature is missing/invalid.
         """
         case = self._get_case(case_id)
         old_status = case.status
@@ -243,13 +252,23 @@ class CaseManagementService:
                 f"Valid targets: {', '.join(s.value for s in valid)}"
             )
 
+        if new_status in (CaseStatus.CLOSED_CONFIRMED, CaseStatus.CLOSED_FALSE_POSITIVE):
+            if not supervisor_signature or not supervisor_signature.strip():
+                raise ValueError(
+                    "Case closure requires secondary supervisor signature (Four-Eyes Principle)."
+                )
+            if supervisor_signature == actor:
+                raise ValueError(
+                    "Supervisor signature must be different from the analyst actor (Four-Eyes Principle)."
+                )
+            case.closed_at = datetime.now(UTC)
+
         case.status = new_status
         case.updated_at = datetime.now(UTC)
 
-        if new_status in (CaseStatus.CLOSED_CONFIRMED, CaseStatus.CLOSED_FALSE_POSITIVE):
-            case.closed_at = datetime.now(UTC)
-
         metadata = {"from": old_status.value, "to": new_status.value}
+        if supervisor_signature:
+            metadata["supervisor_signature"] = supervisor_signature
 
         if new_status == CaseStatus.SAR_FILED:
             from app.application.services.alert_service import AlertIntelligenceService
@@ -378,3 +397,110 @@ class CaseManagementService:
         if not val:
             raise ValueError(f"Case not found: {case_id}")
         return _dict_to_case(val)
+
+
+class AuditService:
+    """Audit logging service for tracking investigator actions and session durations."""
+
+    def __init__(self) -> None:
+        self._audit_store = RedisStore("investigator_audit")
+
+    def log_action(
+        self,
+        investigator: str,
+        action: str,
+        target_id: str,
+        session_duration_sec: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Log investigator action."""
+        import uuid
+        from datetime import UTC, datetime
+
+        log_id = str(uuid.uuid4())
+        log_dict = {
+            "id": log_id,
+            "investigator": investigator or "analyst",
+            "action": action,
+            "target_id": target_id,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "session_duration_sec": session_duration_sec,
+            "metadata": metadata or {},
+        }
+        self._audit_store.set(log_id, log_dict)
+        return log_dict
+
+    def get_logs(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Retrieve audit logs sorted by timestamp descending."""
+        raw_vals = self._audit_store.list_values()
+        logs = sorted(raw_vals, key=lambda x: x.get("timestamp", ""), reverse=True)
+        return logs[:limit]
+
+
+class EvidenceRegistryService:
+    """Registry service for immutable evidence documentation and cryptographic content hashing."""
+
+    def __init__(self) -> None:
+        self._evidence_store = RedisStore("evidence")
+        self._case_service = CaseManagementService()
+
+    def register_evidence(
+        self,
+        case_id: str,
+        evidence_type: str,
+        title: str,
+        file_path: str,
+        content: str,
+        uploaded_by: str = "analyst",
+    ) -> dict[str, Any]:
+        """Register new evidence and link to a case with cryptographic hash verification."""
+        import hashlib
+        import uuid
+        from datetime import UTC, datetime
+
+        # Ensure case exists
+        case = self._case_service.get_case(case_id)
+        if not case:
+            raise ValueError(f"Case not found: {case_id}")
+
+        # Compute SHA-256 content hash
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+        evidence_id = str(uuid.uuid4())
+        evidence_dict = {
+            "id": evidence_id,
+            "case_id": case_id,
+            "evidence_type": evidence_type,
+            "title": title,
+            "file_path": file_path,
+            "content_hash": content_hash,
+            "uploaded_by": uploaded_by,
+            "uploaded_at": datetime.now(UTC).isoformat(),
+        }
+
+        # Save evidence
+        self._evidence_store.set(evidence_id, evidence_dict)
+
+        # Update case evidence listing
+        if not hasattr(case, "evidence_ids") or case.evidence_ids is None:
+            case.evidence_ids = []
+        case.evidence_ids.append(evidence_id)
+
+        # Record event in case timeline
+        self._case_service._add_event(
+            case,
+            "evidence_added",
+            f"Evidence '{title}' ({evidence_type}) registered. Content SHA-256: {content_hash[:8]}...",
+            uploaded_by,
+            {"evidence_id": evidence_id, "content_hash": content_hash},
+        )
+
+        # Save case
+        self._case_service._cases.set(case.id, _case_to_dict(case))
+        return evidence_dict
+
+    def get_case_evidence(self, case_id: str) -> list[dict[str, Any]]:
+        """Retrieve all evidence registered for a case."""
+        raw_vals = self._evidence_store.list_values()
+        case_ev = [ev for ev in raw_vals if ev.get("case_id") == case_id]
+        return sorted(case_ev, key=lambda x: x.get("uploaded_at", ""))

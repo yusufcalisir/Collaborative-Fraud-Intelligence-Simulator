@@ -78,6 +78,7 @@ class Case:
     updated_at: datetime | None = None
     closed_at: datetime | None = None
     total_risk_score: float = 0.0
+    evidence_ids: list[str] = field(default_factory=list)
 
     @property
     def is_open(self) -> bool:
@@ -206,3 +207,30 @@ class Scenario:
     events: list[StreamingEvent] = field(default_factory=list)
     duration_seconds: float = 0.0
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass
+class Evidence:
+    """An evidence registry entry linked to a case."""
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    case_id: str = ""
+    evidence_type: str = ""  # "document", "kyc_profile", "ledger_proof"
+    title: str = ""
+    file_path: str = ""
+    content_hash: str = ""  # SHA-256 hash of the evidence details/content
+    uploaded_by: str = ""
+    uploaded_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass
+class InvestigatorAuditLog:
+    """An audit log entry for investigator query operations."""
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    investigator: str = ""
+    action: str = ""  # "access_case", "query_entity", "cross_bank_resolve", etc.
+    target_id: str = ""
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    session_duration_sec: float | None = None
+    metadata: dict = field(default_factory=dict)
