@@ -62,7 +62,9 @@ class BankConnectorFactory:
         elif connector_type == "rabbitmq":
             mock_fallback = None
             if model_service is not None and data_generator is not None:
-                mock_fallback = MockBankConnector(model_service=model_service, data_generator=data_generator)
+                mock_fallback = MockBankConnector(
+                    model_service=model_service, data_generator=data_generator
+                )
             return RabbitMQBankConnector(
                 host=getattr(settings, "rabbitmq_host", "localhost"),
                 port=getattr(settings, "rabbitmq_port", 5672),

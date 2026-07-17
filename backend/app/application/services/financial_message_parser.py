@@ -12,6 +12,7 @@ from typing import Any
 
 class FinancialMessageParserError(Exception):
     """Raised when parsing fails or input is malformed."""
+
     pass
 
 
@@ -51,7 +52,9 @@ class FinancialMessageParser:
         # pacs.008 message structures nested under Document/FIToFICstmrCdtTrf/CdtTrfTxInf
         tx_info = root.find(f".//{ns}CdtTrfTxInf")
         if tx_info is None:
-            raise FinancialMessageParserError("CdtTrfTxInf (Credit Transfer Transaction Information) block not found in XML")
+            raise FinancialMessageParserError(
+                "CdtTrfTxInf (Credit Transfer Transaction Information) block not found in XML"
+            )
 
         # Amount and Currency
         amt_elem = tx_info.find(f"{ns}IntrBkSttlmAmt")
@@ -64,20 +67,32 @@ class FinancialMessageParser:
         currency = amt_elem.attrib.get("Ccy", "EUR")
 
         # Basic fields
-        tx_id = find_text(tx_info, "PmtId/EndToEndId") or find_text(tx_info, "PmtId/TxId") or "unknown_tx_id"
+        tx_id = (
+            find_text(tx_info, "PmtId/EndToEndId")
+            or find_text(tx_info, "PmtId/TxId")
+            or "unknown_tx_id"
+        )
         settlement_date = find_text(tx_info, "IntrBkSttlmDt")
 
         # Debtor (Sender)
         dbtr_name = find_text(tx_info, "Dbtr/Nm")
-        dbtr_iban = find_text(tx_info, "DbtrAcct/Id/Othr/Id") or find_text(tx_info, "DbtrAcct/Id/IBAN")
+        dbtr_iban = find_text(tx_info, "DbtrAcct/Id/Othr/Id") or find_text(
+            tx_info, "DbtrAcct/Id/IBAN"
+        )
         dbtr_bic = find_text(tx_info, "DbtrAgt/FinInstnId/BICFI")
-        dbtr_country = find_text(tx_info, "Dbtr/PstlAdr/Ctry") or (dbtr_iban[:2] if dbtr_iban else "")
+        dbtr_country = find_text(tx_info, "Dbtr/PstlAdr/Ctry") or (
+            dbtr_iban[:2] if dbtr_iban else ""
+        )
 
         # Creditor (Receiver)
         cdtr_name = find_text(tx_info, "Cdtr/Nm")
-        cdtr_iban = find_text(tx_info, "CdtrAcct/Id/Othr/Id") or find_text(tx_info, "CdtrAcct/Id/IBAN")
+        cdtr_iban = find_text(tx_info, "CdtrAcct/Id/Othr/Id") or find_text(
+            tx_info, "CdtrAcct/Id/IBAN"
+        )
         cdtr_bic = find_text(tx_info, "CdtrAgt/FinInstnId/BICFI")
-        cdtr_country = find_text(tx_info, "Cdtr/PstlAdr/Ctry") or (cdtr_iban[:2] if cdtr_iban else "")
+        cdtr_country = find_text(tx_info, "Cdtr/PstlAdr/Ctry") or (
+            cdtr_iban[:2] if cdtr_iban else ""
+        )
 
         # Remittance info
         remittance = find_text(tx_info, "RmtInf/Ustrd")
@@ -137,7 +152,9 @@ class FinancialMessageParser:
                 try:
                     amount = float(amt_str)
                 except ValueError as exc:
-                    raise FinancialMessageParserError(f"Invalid MT103 amount format in 32A: {exc}") from exc
+                    raise FinancialMessageParserError(
+                        f"Invalid MT103 amount format in 32A: {exc}"
+                    ) from exc
 
         # Tag 50A, 50F, or 50K (Debtor/Ordering Customer)
         tag50 = get_tag_value("50K") or get_tag_value("50A") or get_tag_value("50F")
@@ -181,7 +198,9 @@ class FinancialMessageParser:
             "transaction_id": tx_id,
             "amount": amount,
             "currency": currency,
-            "date": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}" if len(date_str) == 8 else date_str,
+            "date": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+            if len(date_str) == 8
+            else date_str,
             "sender_name": sender_name,
             "sender_account": sender_account,
             "sender_country": sender_country,
@@ -226,7 +245,9 @@ class FinancialMessageParser:
             # Check if pain.001 structure
             tx_info = root.find(f".//{ns}CdtTrfTxInf")
             if tx_info is None:
-                raise FinancialMessageParserError("Could not parse XML payload as SEPA Credit Transfer")
+                raise FinancialMessageParserError(
+                    "Could not parse XML payload as SEPA Credit Transfer"
+                )
 
             amt_elem = tx_info.find(f"{ns}Amt/{ns}InstdAmt")
             if amt_elem is None:

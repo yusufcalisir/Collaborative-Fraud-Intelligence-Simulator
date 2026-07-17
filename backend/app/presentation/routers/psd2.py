@@ -130,7 +130,9 @@ async def list_consented_accounts(
     return [
         AccountResponse(
             account_id=consent["account_id"],
-            iban="DE89370400440532013000" if consent["account_id"] == "acc_1" else "FR7630006000011234567890123",
+            iban="DE89370400440532013000"
+            if consent["account_id"] == "acc_1"
+            else "FR7630006000011234567890123",
             currency="EUR",
             balance=42000.50,
             bank_name="Nexus Digital" if consent["account_id"] == "acc_1" else "Meridian National",

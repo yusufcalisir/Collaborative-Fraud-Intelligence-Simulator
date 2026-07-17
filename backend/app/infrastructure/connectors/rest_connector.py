@@ -92,19 +92,20 @@ class RESTBankConnector(BankConnectorInterface):
                         return self._token
                 logger.warning(
                     "OAuth2 server returned status %d. Falling back to placeholder token.",
-                    resp.status_code
+                    resp.status_code,
                 )
         except Exception as exc:
             logger.warning(
                 "Failed to fetch OAuth2 token from %s: %s. Falling back to placeholder token.",
                 self.oauth_token_url,
-                exc
+                exc,
             )
         self._token = "mock_oauth2_access_token_placeholder"
         return self._token
 
     def _get_client(self) -> httpx.Client:
         import os
+
         # Mutual TLS support hook
         if self.auth_type == "mtls" and self.client_cert_path and self.client_key_path:
             if os.path.exists(self.client_cert_path) and os.path.exists(self.client_key_path):
@@ -114,7 +115,7 @@ class RESTBankConnector(BankConnectorInterface):
                 logger.warning(
                     "mTLS configured but certificate/key files do not exist: %s, %s. Using default client.",
                     self.client_cert_path,
-                    self.client_key_path
+                    self.client_key_path,
                 )
         return httpx.Client()
 

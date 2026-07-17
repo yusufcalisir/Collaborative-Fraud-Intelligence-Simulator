@@ -81,9 +81,12 @@ class RabbitMQBankConnector(BankConnectorInterface):
                     )
                 elif "train" in routing_key:
                     from app.domain.value_objects import ModelWeights
+
                     weights_data = payload.get("weights", {})
                     weights = ModelWeights(
-                        layer_shapes=[tuple(shape) for shape in weights_data.get("layer_shapes", [])],
+                        layer_shapes=[
+                            tuple(shape) for shape in weights_data.get("layer_shapes", [])
+                        ],
                         flat_weights=weights_data.get("flat_weights", []),
                     )
                     return self.fallback_connector.train(
@@ -101,9 +104,12 @@ class RabbitMQBankConnector(BankConnectorInterface):
                     )
                 elif "evaluate" in routing_key:
                     from app.domain.value_objects import ModelWeights
+
                     weights_data = payload.get("weights", {})
                     weights = ModelWeights(
-                        layer_shapes=[tuple(shape) for shape in weights_data.get("layer_shapes", [])],
+                        layer_shapes=[
+                            tuple(shape) for shape in weights_data.get("layer_shapes", [])
+                        ],
                         flat_weights=weights_data.get("flat_weights", []),
                     )
                     return self.fallback_connector.evaluate(
@@ -162,7 +168,9 @@ class RabbitMQBankConnector(BankConnectorInterface):
             # Since BlockingConnection.process_data_events blocks, we run in a loop with check
             connection.process_data_events(time_limit=timeout)
             if response_payload is None:
-                raise TimeoutError(f"Timed out waiting for response from bank node queue {dest_queue}")
+                raise TimeoutError(
+                    f"Timed out waiting for response from bank node queue {dest_queue}"
+                )
 
             return response_payload
         finally:

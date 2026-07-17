@@ -134,6 +134,7 @@ PAIN_001_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 # ── Financial Message Parser Tests ──────────────────────────────────────────
 
+
 def test_parse_iso_20022_pacs008_success() -> None:
     result = FinancialMessageParser.parse_iso_20022_pacs008(PACS_008_XML)
     assert result["message_type"] == "ISO20022_PACS008"
@@ -193,6 +194,7 @@ def test_parse_sepa_credit_transfer_success() -> None:
 
 
 # ── Open Banking PSD2 Router Tests ───────────────────────────────────────────
+
 
 @pytest.fixture
 def psd2_client() -> Generator[TestClient, None, None]:
@@ -264,6 +266,7 @@ def test_psd2_flow_forbidden_no_consent(psd2_client: TestClient, valid_jwt_token
 
 # ── RabbitMQ Connector Tests ─────────────────────────────────────────────────
 
+
 def test_rabbitmq_fallback_to_mock() -> None:
     # Setup mock fallback connector
     mock_fallback = MagicMock()
@@ -278,7 +281,9 @@ def test_rabbitmq_fallback_to_mock() -> None:
 
     res = connector.initialize(bank_id="bank-a", num_transactions=100, seed=42)
     assert res["status"] == "initialized"
-    mock_fallback.initialize.assert_called_once_with(bank_id="bank-a", num_transactions=100, seed=42)
+    mock_fallback.initialize.assert_called_once_with(
+        bank_id="bank-a", num_transactions=100, seed=42
+    )
 
 
 @patch("pika.BlockingConnection")
