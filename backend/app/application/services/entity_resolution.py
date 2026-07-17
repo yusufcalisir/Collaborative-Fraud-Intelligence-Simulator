@@ -18,7 +18,12 @@ from typing import Any, cast
 
 from app.domain.entities_phase2 import Entity, Relationship
 from app.domain.enums import EntityType, RelationshipType, RiskLevel
-from app.domain.value_objects_phase2 import PrivacyPreservingIdentifier
+from app.domain.value_objects_phase2 import (
+    PrivacyPreservingIdentifier,
+    calculate_jaccard_similarity,
+    compute_minhash_signature,
+    standardize_input,
+)
 from app.infrastructure.redis_store import RedisStore
 
 logger = logging.getLogger(__name__)
@@ -97,6 +102,14 @@ class EntityResolutionService:
         the raw value is discarded. The entity's display_label is a
         short, non-PII label for UI display.
         """
+        attributes_copy = (attributes or {}).copy()
+        standardized = standardize_input(raw_identifier, entity_type.value)
+
+        # If customer or merchant, calculate MinHash signature for fuzzy entity resolution
+        if entity_type in (EntityType.CUSTOMER, EntityType.MERCHANT):
+            attributes_copy["minhash_signature"] = compute_minhash_signature(standardized)
+            attributes_copy["raw_standardized"] = standardized
+
         privacy_id = PrivacyPreservingIdentifier.compute(raw_identifier, entity_type.value)
 
         # Check if we already have this entity for this bank
@@ -124,7 +137,7 @@ class EntityResolutionService:
             privacy_id=privacy_id,
             bank_id=bank_id,
             display_label=display_label,
-            attributes=attributes or {},
+            attributes=attributes_copy,
         )
 
         self._entities.set(entity.id, _entity_to_dict(entity))
@@ -306,3 +319,35 @@ class EntityResolutionService:
             if entity and entity.bank_id == bank_id:
                 return entity
         return None
+
+    def resolve_fuzzy_entities(
+        self,
+        query_name: str,
+        entity_type: EntityType = EntityType.CUSTOMER,
+        threshold: float = 0.70,
+    ) -> list[dict[str, Any]]:
+        """Find entities matching a raw name fuzzily using MinHash LSH similarities.
+
+        Computes the MinHash signature of the query_name, Jaccard-compares
+        it against all registered entities of the target entity_type,
+        and returns matching entities with their similarity scores.
+        """
+        standardized_query = standardize_input(query_name, entity_type.value)
+        query_sig = compute_minhash_signature(standardized_query)
+
+        raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
+        results = []
+
+        for e in raw_entities:
+            if e.entity_type != entity_type:
+                continue
+            sig = e.attributes.get("minhash_signature")
+            if not sig:
+                continue
+            sim = calculate_jaccard_similarity(query_sig, sig)
+            if sim >= threshold:
+                results.append({"entity": e, "similarity_score": round(sim, 2)})
+
+        # Sort by similarity score descending
+        results.sort(key=lambda x: x["similarity_score"], reverse=True)
+        return results

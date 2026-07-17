@@ -15,6 +15,7 @@ const NAV_SECTIONS = [
       { path: '/alerts', label: 'Alerts', icon: '🚨' },
       { path: '/cases', label: 'Cases', icon: '📋' },
       { path: '/rules', label: 'Policy Rules', icon: '🛡️' },
+      { path: '/psi', label: 'Fuzzy PSI Matching', icon: '🤝' },
       { path: '/scenarios', label: 'Scenarios', icon: '▶️' },
       { path: '/graph', label: 'Entity Graph', icon: '🕸️' },
     ],

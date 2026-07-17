@@ -160,9 +160,13 @@ To provide real-time transaction screening and investigation capabilities:
 9.  **Supervisor Dual-Authorization (Four-Eyes Principle):** Enforces a multi-signature supervisor signature verification check to validate and approve all final case closure status changes.
 10. **Investigator Role Activity Audits:** Logs analyst session durations, case accesses, entity views, and cross-bank search queries in an immutable compliance audit trail.
 
-#### 🧬 Diffie-Hellman Private Set Intersection (DH-PSI) Protocol
+#### 🧬 Diffie-Hellman Private Set Intersection (DH-PSI) & Fuzzy Matching (LSH)
 
-To match shared entities without exposing non-overlapping customer databases, a zero-knowledge Diffie-Hellman Private Set Intersection (DH-PSI) simulation is used:
+To match shared entities without exposing non-overlapping customer databases, the platform supports both zero-knowledge Diffie-Hellman Private Set Intersection (DH-PSI) and Fuzzy Entity Resolution:
+
+*   **Exact DH-PSI:** Elements are hashed and commutative double-encrypted ($x^{ab} \equiv x^{ba} \pmod p$) across bank clients. A match indicates identical identifiers.
+*   **Locality-Sensitive Hashing (LSH):** Character 3-gram shingles of names are projected to 16-hash MinHash signatures. The Jaccard similarity is computed privately locally to resolve name spelling variations (e.g., "Yusuf Çalışır" vs "Yusuf Calisir") without disclosing PII.
+*   **Multi-Attribute Fuzzy PSI:** Intersects double-encrypted values of 5 attributes (Phone, Email, Device ID, Birthdate, Surname). A cross-bank match is flagged if at least $k \ge 3$ attributes match.
 
 ```mermaid
 sequenceDiagram

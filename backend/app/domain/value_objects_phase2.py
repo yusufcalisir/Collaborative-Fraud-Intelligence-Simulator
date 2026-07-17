@@ -8,7 +8,100 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
+import unicodedata
 from dataclasses import dataclass, field
+
+
+def standardize_input(raw_value: str, entity_type: str) -> str:
+    """Standardizes inputs depending on entity type to improve matching accuracy.
+
+    - Names: NFC normalize, strip accents/diacritics, lowercase, remove non-alphanumeric except spaces, trim multiple spaces.
+    - Phones: Remove non-digits except initial '+'. Normalize to E.164-like (+[country][number]).
+    - Emails: Strip, lowercase, remove spaces.
+    - Other: Strip, lowercase.
+    """
+    if not raw_value:
+        return ""
+
+    val = raw_value.strip()
+
+    # Simple transliteration mapping for common accented chars that don't decompose nicely
+    trans_map = {
+        "ı": "i",
+        "İ": "i",
+        "ö": "o",
+        "Ö": "o",
+        "ü": "u",
+        "Ü": "u",
+        "ş": "s",
+        "Ş": "s",
+        "ç": "c",
+        "Ç": "c",
+        "ğ": "g",
+        "Ğ": "g",
+        "ß": "ss",
+    }
+    for k, v in trans_map.items():
+        val = val.replace(k, v)
+
+    # Unicode NFC normalization & accent stripping
+    val = unicodedata.normalize("NFC", val)
+    # Strip diacritics
+    val = "".join(c for c in unicodedata.normalize("NFD", val) if not unicodedata.combining(c))
+
+    entity_type_lower = entity_type.lower()
+    if entity_type_lower in ("customer", "merchant"):
+        # Lowercase, remove special characters except basic letters, numbers, and spaces
+        val = val.lower()
+        val = re.sub(r"[^a-z0-9\s]", "", val)
+        # Normalize internal whitespaces
+        val = re.sub(r"\s+", " ", val).strip()
+    elif entity_type_lower == "phone":
+        # Keep initial '+' and all digit characters, remove everything else
+        is_plus = val.startswith("+")
+        digits = "".join(c for c in val if c.isdigit())
+        val = "+" + digits if is_plus else digits
+    elif entity_type_lower == "email":
+        val = val.lower().replace(" ", "")
+    else:
+        val = val.lower()
+
+    return val
+
+
+def compute_minhash_signature(text: str, num_hashes: int = 16) -> list[int]:
+    """Generates a MinHash signature for a text based on character 3-grams.
+
+    Calculates num_hashes minimum values using simple, deterministic hash functions.
+    The Jaccard similarity between two texts can be approximated by comparing
+    their MinHash signatures.
+    """
+    if not text:
+        return [0] * num_hashes
+
+    # Compute character 3-grams
+    shingles = {text} if len(text) < 3 else {text[i : i + 3] for i in range(len(text) - 2)}
+
+    signature = []
+    for i in range(num_hashes):
+        min_val = float("inf")
+        for shingle in shingles:
+            h_str = f"{shingle}:{i}"
+            h_val = int(hashlib.sha256(h_str.encode()).hexdigest(), 16)
+            if h_val < min_val:
+                min_val = h_val
+        signature.append(int(min_val % 1000000))
+
+    return signature
+
+
+def calculate_jaccard_similarity(sig1: list[int], sig2: list[int]) -> float:
+    """Estimates Jaccard similarity between two MinHash signatures."""
+    if not sig1 or not sig2 or len(sig1) != len(sig2):
+        return 0.0
+    matches = sum(1 for x, y in zip(sig1, sig2) if x == y)
+    return matches / len(sig1)
 
 
 @dataclass(frozen=True)
@@ -145,11 +238,13 @@ class PrivacyPreservingIdentifier:
     def compute(raw_value: str, entity_type: str, hmac_key: str = "fraud-intel-simulator") -> str:
         """Compute a deterministic privacy-preserving hash.
 
+        Standardizes the input first using standardize_input.
         The hash is deterministic: same input → same output across all banks.
         This enables entity matching without exposing the raw identifier.
         """
+        standardized = standardize_input(raw_value, entity_type)
         # Type-specific salt prevents cross-type collisions
-        salted = f"{entity_type}:{raw_value.strip().lower()}"
+        salted = f"{entity_type}:{standardized}"
         return hmac.new(
             hmac_key.encode(),
             salted.encode(),

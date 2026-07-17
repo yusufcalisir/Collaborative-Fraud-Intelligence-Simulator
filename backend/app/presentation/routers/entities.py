@@ -7,6 +7,9 @@ import logging
 from fastapi import APIRouter, HTTPException, Query
 
 from app.application.schemas.phase2 import (
+    EntityFuzzyResolveMatch,
+    EntityFuzzyResolveRequest,
+    EntityFuzzyResolveResponse,
     EntityProfileResponse,
     EntityResolveRequest,
     EntityResponse,
@@ -132,6 +135,47 @@ _psi_service = PSIService(_entity_service)
 async def run_entities_psi(req: PSIRequest, actor: str = Query("analyst")) -> PSIResponse:
     """Run simulated Private Set Intersection (PSI) protocol between two banks."""
     et = EntityType(req.entity_type) if req.entity_type else None
-    result = _psi_service.run_psi(req.bank_a_id, req.bank_b_id, entity_type=et)
+    result = _psi_service.run_psi(
+        req.bank_a_id,
+        req.bank_b_id,
+        entity_type=et,
+        enable_fuzzy=req.enable_fuzzy,
+        fuzzy_threshold=req.fuzzy_threshold,
+    )
     AuditService().log_action(actor, "cross_bank_psi", f"{req.bank_a_id}<->{req.bank_b_id}")
     return PSIResponse(**result)
+
+
+@router.post("/fuzzy-resolve", response_model=EntityFuzzyResolveResponse)
+async def run_fuzzy_resolve(
+    req: EntityFuzzyResolveRequest, actor: str = Query("analyst")
+) -> EntityFuzzyResolveResponse:
+    """Find entities matching a raw name fuzzily using MinHash LSH similarities."""
+    et = EntityType(req.entity_type) if req.entity_type else EntityType.CUSTOMER
+    matches = _entity_service.resolve_fuzzy_entities(
+        query_name=req.query_name,
+        entity_type=et,
+        threshold=req.threshold,
+    )
+
+    response_matches = []
+    for m in matches:
+        e = m["entity"]
+        ent_resp = EntityResponse(
+            id=e.id,
+            entity_type=e.entity_type.value,
+            privacy_id=e.privacy_id,
+            bank_id=e.bank_id,
+            display_label=e.display_label,
+            attributes=e.attributes,
+            risk_level=e.risk_level.value,
+            alert_count=e.alert_count,
+            first_seen=e.first_seen.isoformat(),
+            last_seen=e.last_seen.isoformat(),
+        )
+        response_matches.append(
+            EntityFuzzyResolveMatch(entity=ent_resp, similarity_score=m["similarity_score"])
+        )
+
+    AuditService().log_action(actor, "cross_bank_fuzzy_resolve", req.query_name)
+    return EntityFuzzyResolveResponse(matches=response_matches)

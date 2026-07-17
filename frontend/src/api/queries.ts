@@ -27,6 +27,10 @@ import type {
   InvestigatorAuditLog,
   ShadowMetrics,
   BusinessRule,
+  PSIRequest,
+  PSIResponse,
+  EntityFuzzyResolveRequest,
+  EntityFuzzyResolveResponse,
 } from './types';
 
 // ── Phase 1: Simulations ───────────────────
@@ -511,4 +515,23 @@ export function useTestRule() {
     },
   });
 }
+
+export function useRunPSI() {
+  return useMutation<PSIResponse, Error, PSIRequest>({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/entities/psi', payload);
+      return data;
+    },
+  });
+}
+
+export function useFuzzyResolve() {
+  return useMutation<EntityFuzzyResolveResponse, Error, EntityFuzzyResolveRequest>({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/entities/fuzzy-resolve', payload);
+      return data;
+    },
+  });
+}
+
 

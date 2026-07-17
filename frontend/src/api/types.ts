@@ -550,3 +550,53 @@ export interface BusinessRule {
   updated_at?: string;
 }
 
+export interface PSIRequest {
+  bank_a_id: string;
+  bank_b_id: string;
+  entity_type?: string;
+  enable_fuzzy?: boolean;
+  fuzzy_threshold?: number;
+}
+
+export interface PSIMatch {
+  privacy_hash: string;
+  entity_type: string;
+  display_label_a: string;
+  display_label_b: string;
+  risk_level_a: string;
+  risk_level_b: string;
+  matched_attributes?: string[];
+  similarity_score?: number;
+}
+
+export interface PSIProtocolStats {
+  computation_time_ms: number;
+  data_exchanged_bytes: number;
+  num_entities_a: number;
+  num_entities_b: number;
+  prime_bit_length: number;
+  enclave_execution?: boolean;
+  mrenclave?: string;
+  mrsigner?: string;
+  attestation_verified?: boolean;
+}
+
+export interface PSIResponse {
+  matches: PSIMatch[];
+  stats: PSIProtocolStats;
+}
+
+export interface EntityFuzzyResolveRequest {
+  query_name: string;
+  entity_type?: string;
+  threshold?: number;
+}
+
+export interface EntityFuzzyResolveMatch {
+  entity: Entity;
+  similarity_score: number;
+}
+
+export interface EntityFuzzyResolveResponse {
+  matches: EntityFuzzyResolveMatch[];
+}

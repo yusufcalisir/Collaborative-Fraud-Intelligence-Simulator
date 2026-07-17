@@ -254,6 +254,30 @@ sequenceDiagram
     Note over BA: Computes Z_A & Z_B intersection -> Matches
 ```
 
+### 1.1 Fuzzy & Probabilistic Private Set Intersection (LSH / Fuzzy PSI)
+
+Deterministic exact-string matching can fail when bank records differ slightly in spelling, accents, or formatting (e.g., "Yusuf Çalışır" vs "Yusuf Calisir"). To resolve this, Phase 2 implements a robust, privacy-preserving fuzzy entity matching pipeline:
+
+1. **Standardization Pipeline**:
+   - Converts strings to Unicode NFC normalization.
+   - Strips accents/diacritics and replaces non-ASCII localized symbols (e.g., `ı` → `i`, `ş` → `s`, `ç` → `c`).
+   - Normalizes phone numbers to E.164-like (`+[country][number]`) format.
+   - Normalizes emails (lowercases, strips spaces).
+
+2. **Locality-Sensitive Hashing (LSH) on Character n-grams**:
+   - Decomposes name fields into character 3-grams (e.g., "yusuf" -> `{"yus", "usu", "suf"}`).
+   - Computes MinHash signatures of length $H=16$ using $H$ independent hash functions:
+     $$h_i(s) = \text{hash}(s \parallel i) \pmod M$$
+   - The Jaccard similarity is approximated locally as:
+     $$\text{Sim}(S_1, S_2) = \frac{|\{ i \mid \text{sig}_1[i] = \text{sig}_2[i] \}|}{H}$$
+   - Allows banks to calculate Jaccard similarities privately without exposing raw names.
+
+3. **Multi-Attribute Fuzzy PSI**:
+   - Extracts 5 key identifiers: Phone, Email, Device ID, Birthdate, Surname.
+   - Executes standard Diffie-Hellman Commutative PSI independently on all 5 attributes.
+   - Intersects double-encrypted attributes for each customer pair.
+   - Matches customers if at least $k \ge 3$ out of 5 attributes match.
+
 ### 2. Graph Analytics & Risk Propagation
 
 Once matches are resolved, a multi-bank transaction graph is constructed. The engine executes three structural graph algorithms:

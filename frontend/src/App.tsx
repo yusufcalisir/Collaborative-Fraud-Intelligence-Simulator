@@ -9,6 +9,7 @@ import ScenariosPage from './pages/ScenariosPage';
 import GraphPage from './pages/GraphPage';
 import InvestigationDashboard from './pages/InvestigationDashboard';
 import PoliciesPage from './pages/PoliciesPage';
+import PsiPage from './pages/PsiPage';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/cases" element={<CasesPage />} />
           <Route path="/cases/:caseId" element={<CaseDetailPage />} />
           <Route path="/rules" element={<PoliciesPage />} />
+          <Route path="/psi" element={<PsiPage />} />
           <Route path="/scenarios" element={<ScenariosPage />} />
           <Route path="/graph" element={<GraphPage />} />
         </Route>

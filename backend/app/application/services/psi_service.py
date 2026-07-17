@@ -21,6 +21,59 @@ PSI_PRIME = 0xDEB00B9C694F4BE84A28B101E6A0F1D8B9646D0BF1A0F53FBAFF74205A405D021C
 PRIME_BIT_LENGTH = 512
 
 
+def _extract_fuzzy_features(e: Any) -> dict[str, str]:
+    """Extracts 5 standard attributes for Fuzzy PSI verification."""
+    attrs = e.attributes or {}
+
+    # Standard 5 attributes: phone, email, device_id, birthdate, surname
+    features = {
+        "phone": str(attrs.get("phone", "")),
+        "email": str(attrs.get("email", "")),
+        "device_id": str(attrs.get("device_id", "")),
+        "birthdate": str(attrs.get("birthdate", "")),
+        "surname": str(attrs.get("surname", "")),
+    }
+
+    # Fallback to e.privacy_id if it's the exact type
+    from app.domain.enums import EntityType
+
+    if e.entity_type == EntityType.EMAIL:
+        features["email"] = e.privacy_id
+    elif e.entity_type == EntityType.PHONE:
+        features["phone"] = e.privacy_id
+    elif e.entity_type == EntityType.DEVICE:
+        features["device_id"] = e.privacy_id
+
+    # If it's a customer and attributes are completely empty, derive stable mock values from privacy_id
+    if e.entity_type == EntityType.CUSTOMER:
+        if not features["phone"]:
+            features["phone"] = f"+1555{int(e.privacy_id[:8], 16) % 10000000:07d}"
+        if not features["email"]:
+            features["email"] = f"user_{e.privacy_id[:6]}@example.com"
+        if not features["device_id"]:
+            features["device_id"] = f"device_{e.privacy_id[:8]}"
+        if not features["birthdate"]:
+            birth_year = 1980 + (int(e.privacy_id[:4], 16) % 15)
+            birth_month = (int(e.privacy_id[4:6], 16) % 12) + 1
+            birth_day = (int(e.privacy_id[6:8], 16) % 28) + 1
+            features["birthdate"] = f"{birth_year}-{birth_month:02d}-{birth_day:02d}"
+        if not features["surname"]:
+            surnames = [
+                "Smith",
+                "Calisir",
+                "Demir",
+                "Jones",
+                "Taylor",
+                "Brown",
+                "Miller",
+                "Wilson",
+                "Davis",
+            ]
+            features["surname"] = surnames[int(e.privacy_id[:8], 16) % len(surnames)]
+
+    return features
+
+
 class PSIService:
     """Orchestrates DH-PSI simulation between two banks."""
 
@@ -33,17 +86,12 @@ class PSIService:
         bank_b_id: str,
         entity_type: EntityType | None = None,
         enable_tee: bool = False,
+        enable_fuzzy: bool = False,
+        fuzzy_threshold: int = 3,
     ) -> dict[str, Any]:
         """Execute simulated DH-PSI between Bank A and Bank B, with optional TEE enclave simulation.
 
-        Args:
-            bank_a_id: ID of the first bank.
-            bank_b_id: ID of the second bank.
-            entity_type: Optional filter on entity types (CUSTOMER, DEVICE, etc.).
-            enable_tee: If True, executes the matching inside a simulated Secure Hardware Enclave.
-
-        Returns:
-            Dict containing matched entities list and protocol stats.
+        Supports both Exact-string hashing matching and multi-attribute Fuzzy PSI.
         """
         start_time = time.perf_counter()
 
@@ -53,7 +101,6 @@ class PSIService:
         entities_b = [e for e in all_entities if e.bank_id == bank_b_id]
 
         if not entities_a or not entities_b:
-            # Return empty structure
             elapsed = (time.perf_counter() - start_time) * 1000.0
             return {
                 "matches": [],
@@ -67,105 +114,78 @@ class PSIService:
                 },
             }
 
-        if enable_tee:
-            # Simulated Secure Hardware Enclave (SGX/SEV) matching:
-            # Bypasses modular exponentiation overhead through hardware acceleration,
-            # performing secure entity resolution inside TEE memory boundaries.
-            common_hashes = set(e.privacy_id for e in entities_a) & set(
-                e.privacy_id for e in entities_b
-            )
-            entities_a_by_hash = {e.privacy_id: e for e in entities_a}
-            entities_b_by_hash = {e.privacy_id: e for e in entities_b}
-            matches = []
-            for h in common_hashes:
-                ent_a = entities_a_by_hash[h]
-                ent_b = entities_b_by_hash[h]
-                matches.append(
-                    {
-                        "privacy_hash": ent_a.privacy_id,
-                        "entity_type": ent_a.entity_type.value,
-                        "display_label_a": ent_a.display_label,
-                        "display_label_b": ent_b.display_label,
-                        "risk_level_a": ent_a.risk_level.value,
-                        "risk_level_b": ent_b.risk_level.value,
-                    }
-                )
+        matches = []
+        element_bytes = PRIME_BIT_LENGTH // 8
 
-            # Attestation measurements
-            mrenclave = "0x8fae3f19114d7a8e84a28b101e6a0f1d8b9646d0bf1a0f53fbaff74205a405d0"
-            mrsigner = "0xc4b220e897bd21ab163a3d5e2e8df81f7290c0ef49748bdf5f2a1b24d7bc902c"
+        # Load bank keys from KMS
+        from app.application.services.kms_service import get_kms_service
 
-            # Less data exchanged because only initial hashes are shared over TEE rather than double encryptions
-            data_exchanged = (len(entities_a) + len(entities_b)) * (PRIME_BIT_LENGTH // 8)
+        kms = get_kms_service()
+        key_a = kms.get_psi_private_exponent(bank_a_id)
+        key_b = kms.get_psi_private_exponent(bank_b_id)
 
-            end_time = time.perf_counter()
-            elapsed_ms = ((end_time - start_time) * 1000.0) / 15.0  # simulated 15x hardware speedup
+        if enable_fuzzy:
+            # Multi-Attribute Fuzzy Private Set Intersection
+            # Extracts 5 attributes, runs DH-PSI on each, and checks threshold overlap
+            for ent_a in entities_a:
+                feat_a = _extract_fuzzy_features(ent_a)
+                for ent_b in entities_b:
+                    feat_b = _extract_fuzzy_features(ent_b)
 
-            stats = {
-                "computation_time_ms": round(elapsed_ms, 2),
-                "data_exchanged_bytes": data_exchanged,
-                "num_entities_a": len(entities_a),
-                "num_entities_b": len(entities_b),
-                "enclave_execution": True,
-                "mrenclave": mrenclave,
-                "mrsigner": mrsigner,
-                "attestation_verified": True,
-            }
-        else:
-            # 2. Retrieve persistent private key scalars from per-bank KMS vaults
-            from app.application.services.kms_service import get_kms_service
+                    matched_features = []
+                    for k in ["phone", "email", "device_id", "birthdate", "surname"]:
+                        val_a = feat_a[k]
+                        val_b = feat_b[k]
+                        if not val_a or not val_b:
+                            continue
 
-            kms = get_kms_service()
-            key_a = kms.get_psi_private_exponent(bank_a_id)
-            key_b = kms.get_psi_private_exponent(bank_b_id)
+                        # Standardize inputs
+                        from app.domain.value_objects_phase2 import standardize_input
 
-            # 3. Pass 1: Local Encryption
-            # Convert hex privacy_id to int, then raise to modular power
-            encrypted_a = []
-            for e in entities_a:
-                val_int = int(e.privacy_id, 16)
-                enc_val = pow(val_int, key_a, PSI_PRIME)
-                encrypted_a.append((e, enc_val))
+                        std_a = standardize_input(val_a, k)
+                        std_b = standardize_input(val_b, k)
 
-            encrypted_b = []
-            for e in entities_b:
-                val_int = int(e.privacy_id, 16)
-                enc_val = pow(val_int, key_b, PSI_PRIME)
-                encrypted_b.append((e, enc_val))
+                        # In TEE mode, comparison is direct
+                        if enable_tee:
+                            if std_a == std_b:
+                                matched_features.append(k)
+                        else:
+                            # Simulated DH encryption comparison
+                            from app.domain.value_objects_phase2 import PrivacyPreservingIdentifier
 
-            # 4. Pass 2: Cross Encryption (simulate exchange and re-encryption)
-            double_encrypted_a = {}
-            for entity_a, enc_val in encrypted_a:
-                double_enc = pow(enc_val, key_b, PSI_PRIME)
-                double_encrypted_a[double_enc] = entity_a
+                            hash_a = PrivacyPreservingIdentifier.compute(std_a, k)
+                            hash_b = PrivacyPreservingIdentifier.compute(std_b, k)
 
-            double_encrypted_b = {}
-            for entity_b, enc_val in encrypted_b:
-                double_enc = pow(enc_val, key_a, PSI_PRIME)
-                double_encrypted_b[double_enc] = entity_b
+                            # Modular exponentiations
+                            enc_a = pow(int(hash_a, 16), key_a, PSI_PRIME)
+                            enc_b = pow(int(hash_b, 16), key_b, PSI_PRIME)
+                            double_enc_a = pow(enc_a, key_b, PSI_PRIME)
+                            double_enc_b = pow(enc_b, key_a, PSI_PRIME)
 
-            # 5. Intersect double-encrypted values
-            common_keys = set(double_encrypted_a.keys()) & set(double_encrypted_b.keys())
-            matches = []
-            for k in common_keys:
-                ent_a = double_encrypted_a[k]
-                ent_b = double_encrypted_b[k]
-                matches.append(
-                    {
-                        "privacy_hash": ent_a.privacy_id,
-                        "entity_type": ent_a.entity_type.value,
-                        "display_label_a": ent_a.display_label,
-                        "display_label_b": ent_b.display_label,
-                        "risk_level_a": ent_a.risk_level.value,
-                        "risk_level_b": ent_b.risk_level.value,
-                    }
-                )
+                            if double_enc_a == double_enc_b:
+                                matched_features.append(k)
 
-            element_bytes = PRIME_BIT_LENGTH // 8
-            data_exchanged = 2 * (len(entities_a) + len(entities_b)) * element_bytes
+                    if len(matched_features) >= fuzzy_threshold:
+                        matches.append(
+                            {
+                                "privacy_hash": ent_a.privacy_id,
+                                "entity_type": ent_a.entity_type.value,
+                                "display_label_a": ent_a.display_label,
+                                "display_label_b": ent_b.display_label,
+                                "risk_level_a": ent_a.risk_level.value,
+                                "risk_level_b": ent_b.risk_level.value,
+                                "matched_attributes": matched_features,
+                                "similarity_score": round(len(matched_features) / 5.0, 2),
+                            }
+                        )
 
-            end_time = time.perf_counter()
-            elapsed_ms = (end_time - start_time) * 1000.0
+            # Performance stats: 5 attributes checked per entity pair
+            if enable_tee:
+                data_exchanged = len(entities_a) * len(entities_b) * 5 * (PRIME_BIT_LENGTH // 8)
+                elapsed_ms = ((time.perf_counter() - start_time) * 1000.0) / 12.0
+            else:
+                data_exchanged = 2 * len(entities_a) * len(entities_b) * 5 * element_bytes
+                elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 
             stats = {
                 "computation_time_ms": round(elapsed_ms, 2),
@@ -173,14 +193,112 @@ class PSIService:
                 "num_entities_a": len(entities_a),
                 "num_entities_b": len(entities_b),
                 "prime_bit_length": PRIME_BIT_LENGTH,
-                "enclave_execution": False,
+                "enclave_execution": enable_tee,
             }
+            if enable_tee:
+                stats.update(
+                    {
+                        "mrenclave": "0x8fae3f19114d7a8e84a28b101e6a0f1d8b9646d0bf1a0f53fbaff74205a405d0",
+                        "mrsigner": "0xc4b220e897bd21ab163a3d5e2e8df81f7290c0ef49748bdf5f2a1b24d7bc902c",
+                        "attestation_verified": True,
+                    }
+                )
+
+        else:
+            # Exact DH-PSI Matching
+            if enable_tee:
+                common_hashes = set(e.privacy_id for e in entities_a) & set(
+                    e.privacy_id for e in entities_b
+                )
+                entities_a_by_hash = {e.privacy_id: e for e in entities_a}
+                entities_b_by_hash = {e.privacy_id: e for e in entities_b}
+                for h in common_hashes:
+                    ent_a = entities_a_by_hash[h]
+                    ent_b = entities_b_by_hash[h]
+                    matches.append(
+                        {
+                            "privacy_hash": ent_a.privacy_id,
+                            "entity_type": ent_a.entity_type.value,
+                            "display_label_a": ent_a.display_label,
+                            "display_label_b": ent_b.display_label,
+                            "risk_level_a": ent_a.risk_level.value,
+                            "risk_level_b": ent_b.risk_level.value,
+                            "matched_attributes": ["id"],
+                            "similarity_score": 1.0,
+                        }
+                    )
+
+                data_exchanged = (len(entities_a) + len(entities_b)) * (PRIME_BIT_LENGTH // 8)
+                elapsed_ms = ((time.perf_counter() - start_time) * 1000.0) / 15.0
+
+                stats = {
+                    "computation_time_ms": round(elapsed_ms, 2),
+                    "data_exchanged_bytes": data_exchanged,
+                    "num_entities_a": len(entities_a),
+                    "num_entities_b": len(entities_b),
+                    "enclave_execution": True,
+                    "mrenclave": "0x8fae3f19114d7a8e84a28b101e6a0f1d8b9646d0bf1a0f53fbaff74205a405d0",
+                    "mrsigner": "0xc4b220e897bd21ab163a3d5e2e8df81f7290c0ef49748bdf5f2a1b24d7bc902c",
+                    "attestation_verified": True,
+                }
+            else:
+                encrypted_a = []
+                for e in entities_a:
+                    val_int = int(e.privacy_id, 16)
+                    enc_val = pow(val_int, key_a, PSI_PRIME)
+                    encrypted_a.append((e, enc_val))
+
+                encrypted_b = []
+                for e in entities_b:
+                    val_int = int(e.privacy_id, 16)
+                    enc_val = pow(val_int, key_b, PSI_PRIME)
+                    encrypted_b.append((e, enc_val))
+
+                double_encrypted_a = {}
+                for entity_a, enc_val in encrypted_a:
+                    double_enc = pow(enc_val, key_b, PSI_PRIME)
+                    double_encrypted_a[double_enc] = entity_a
+
+                double_encrypted_b = {}
+                for entity_b, enc_val in encrypted_b:
+                    double_enc = pow(enc_val, key_a, PSI_PRIME)
+                    double_encrypted_b[double_enc] = entity_b
+
+                common_keys = set(double_encrypted_a.keys()) & set(double_encrypted_b.keys())
+                for k in common_keys:
+                    ent_a = double_encrypted_a[k]
+                    ent_b = double_encrypted_b[k]
+                    matches.append(
+                        {
+                            "privacy_hash": ent_a.privacy_id,
+                            "entity_type": ent_a.entity_type.value,
+                            "display_label_a": ent_a.display_label,
+                            "display_label_b": ent_b.display_label,
+                            "risk_level_a": ent_a.risk_level.value,
+                            "risk_level_b": ent_b.risk_level.value,
+                            "matched_attributes": ["id"],
+                            "similarity_score": 1.0,
+                        }
+                    )
+
+                data_exchanged = 2 * (len(entities_a) + len(entities_b)) * element_bytes
+                elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+
+                stats = {
+                    "computation_time_ms": round(elapsed_ms, 2),
+                    "data_exchanged_bytes": data_exchanged,
+                    "num_entities_a": len(entities_a),
+                    "num_entities_b": len(entities_b),
+                    "prime_bit_length": PRIME_BIT_LENGTH,
+                    "enclave_execution": False,
+                }
 
         logger.info(
-            "DH-PSI protocol executed between %s and %s (TEE: %s). Found %d matches in %.2fms. Data exchanged: %d bytes.",
+            "DH-PSI protocol executed between %s and %s (TEE: %s, Fuzzy: %s). Found %d matches in %.2fms. Data exchanged: %d bytes.",
             bank_a_id,
             bank_b_id,
             enable_tee,
+            enable_fuzzy,
             len(matches),
             elapsed_ms,
             data_exchanged,

@@ -290,6 +290,8 @@ class PSIRequest(BaseModel):
     bank_a_id: str
     bank_b_id: str
     entity_type: str | None = None
+    enable_fuzzy: bool = False
+    fuzzy_threshold: int = 3
 
 
 class PSIMatch(BaseModel):
@@ -299,6 +301,8 @@ class PSIMatch(BaseModel):
     display_label_b: str
     risk_level_a: str
     risk_level_b: str
+    matched_attributes: list[str] = []
+    similarity_score: float = 1.0
 
 
 class PSIProtocolStats(BaseModel):
@@ -307,11 +311,33 @@ class PSIProtocolStats(BaseModel):
     num_entities_a: int
     num_entities_b: int
     prime_bit_length: int
+    enclave_execution: bool = False
+    mrenclave: str | None = None
+    mrsigner: str | None = None
+    attestation_verified: bool | None = None
 
 
 class PSIResponse(BaseModel):
     matches: list[PSIMatch]
     stats: PSIProtocolStats
+
+
+# ── Fuzzy Entity Resolution ──
+
+
+class EntityFuzzyResolveRequest(BaseModel):
+    query_name: str
+    entity_type: str = "customer"
+    threshold: float = 0.70
+
+
+class EntityFuzzyResolveMatch(BaseModel):
+    entity: EntityResponse
+    similarity_score: float
+
+
+class EntityFuzzyResolveResponse(BaseModel):
+    matches: list[EntityFuzzyResolveMatch]
 
 
 # ── Graph-Based Fraud Detection ──
