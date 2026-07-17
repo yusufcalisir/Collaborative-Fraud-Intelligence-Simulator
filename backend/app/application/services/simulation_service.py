@@ -969,7 +969,7 @@ class SimulationService:
                 # Compile final metrics
                 final_metrics = {
                     "auc_roc": 0.85,
-                    "loss": float(rounds[-1].global_loss) if rounds else 0.0,
+                    "loss": rounds[-1].global_loss if rounds else 0.0,
                     "f1_score": 0.82,
                 }
 
