@@ -443,6 +443,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_multi_tenancy.py  # Tests DB-per-tenant isolation, KMS key vaults, model vaults, logging
 │   │   │   ├── test_model_governance.py # Tests shadow deployment, canary promotion, automatic rollback
 │   │   │   ├── test_psi_service.py    # Tests zero-knowledge DH-PSI commutative matching
+│   │   │   ├── test_fuzzy_psi.py      # Tests standardization, MinHash LSH, and Fuzzy PSI thresholds
 │   │   ├── test_alert_service.py  # Tests alert generation rules and severity classification
 │   │   ├── test_case_service.py   # Tests multi-bank case coordination and event logs
 │   │   ├── test_entity_resolution.py # Tests deterministic HMAC generation and resolution profiles
@@ -461,7 +462,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── layout/           # Sidebar, Header, Page layout wrappers
 │   │   │   ├── dashboard/        # BankCard, DataDriftPanel (Feature/Concept Drift tabs), FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline, PrivacyMonitor, FeatureImportanceTimeline, ModelRegistryPanel
 │   │   │   └── charts/           # LossChart, ROCCurve, ConfusionMatrix, FeatureImportance, MetricsRadar
-│   │   ├── pages/                # Application views: Dashboard, SimulationView, AlertsPage, CasesPage, CaseDetailPage, InvestigationDashboard, ScenariosPage, GraphPage
+│   │   ├── pages/                # Application views: Dashboard, SimulationView, AlertsPage, CasesPage, CaseDetailPage, InvestigationDashboard, ScenariosPage, GraphPage, PsiPage
 │   │   └── utils/                # Numerical formatters and constants
 │   ├── Dockerfile
 │   └── package.json
