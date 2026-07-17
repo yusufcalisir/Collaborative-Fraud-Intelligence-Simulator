@@ -379,3 +379,42 @@ class SessionDurationRequest(BaseModel):
     investigator: str
     duration_seconds: float
     time_window_end: str
+
+
+# ── Business Rules (Policy Engine) ────────────
+
+
+class BusinessRuleCreateRequest(BaseModel):
+    rule_name: str
+    condition: dict = Field(..., description="Condition JSON AST (e.g. {'and': [...]})")
+    action: str = Field(
+        "BLOCK_TRANSACTION", description="Action to trigger (e.g. BLOCK_TRANSACTION)"
+    )
+    is_active: bool = True
+
+
+class BusinessRuleUpdateRequest(BaseModel):
+    rule_name: str | None = None
+    condition: dict | None = None
+    action: str | None = None
+    is_active: bool | None = None
+
+
+class BusinessRuleResponse(BaseModel):
+    id: str
+    rule_name: str
+    condition: dict
+    action: str
+    is_active: bool
+    created_at: str
+    updated_at: str | None = None
+
+
+class BusinessRuleTestRequest(BaseModel):
+    condition: dict
+    transaction: dict
+
+
+class BusinessRuleTestResponse(BaseModel):
+    matches: bool
+    message: str

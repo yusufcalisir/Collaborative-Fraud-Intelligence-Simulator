@@ -2,11 +2,28 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
 
+from app.dependencies import get_session
 from app.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def override_db_session():
+    mock_session = MagicMock()
+    mock_session.execute = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = []
+    mock_session.execute.return_value = mock_result
+
+    app.dependency_overrides[get_session] = lambda: mock_session
+    yield
+    app.dependency_overrides.clear()
 
 
 def test_predict_low_risk_transaction() -> None:

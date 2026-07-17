@@ -14,6 +14,7 @@ const NAV_SECTIONS = [
       { path: '/investigation', label: 'Investigation', icon: '📊' },
       { path: '/alerts', label: 'Alerts', icon: '🚨' },
       { path: '/cases', label: 'Cases', icon: '📋' },
+      { path: '/rules', label: 'Policy Rules', icon: '🛡️' },
       { path: '/scenarios', label: 'Scenarios', icon: '▶️' },
       { path: '/graph', label: 'Entity Graph', icon: '🕸️' },
     ],

@@ -216,6 +216,7 @@ To bring the platform closer to production ML operations standards:
 4.  **Enterprise Model Registry & Governance (SR 11-7 Compliance):** A versioned model registry persists every global model as `model_vN.pt` under `storage/registry/`. A `registry.json` manifest tracks versions with audit lineage (dataset hash, git commit hash, DP noise profile). Exposes a dual-role (ML engineer & compliance officer) cryptographic sign-off workflow, concurrent Champion/Challenger prediction shadowing with 10% traffic routing, and automated rollback if real-time performance degrades (AUC < 0.65, latency > 200ms, or FPR > 5%).
 5.  **Threat Model (STRIDE / OWASP ASVS / MITRE ATLAS):** The `docs/threat_model.md` document maps all system components to STRIDE threat categories, OWASP ASVS v4.0 Level 2 controls, and MITRE ATLAS (Adversarial ML) attack tactics with mitigations.
 6.  **True Multi-Tenancy & Cryptographic Key Isolation (KMS/HSM):** Physical database-per-tenant isolation assigns each bank its own SQLite/PostgreSQL instance (`cfi_bank_a.db`, `cfi_bank_b.db`, `cfi_bank_c.db`) with zero cross-tenant query access.  A simulated KMS/HSM vault (`storage/{bank_id}/kms/`) manages per-tenant HMAC keys, DH-PSI private exponents, and secure aggregation mask seeds.  Local model checkpoints are persisted in isolated vaults (`storage/{bank_id}/model_vault/`), and application logs are routed to tenant-specific files (`storage/logs/{bank_id}.log`).  The `active_tenant` context variable and FastAPI middleware automate tenant routing for all downstream operations.
+7.  **Dynamic Policy & Rule Engine Integration (DSL/Drools):** A declarative JSON-based AST condition evaluator recursive parser supports logical and comparison constraints over transaction contexts. Risk analysts register, toggle active state, and hot-reload rules in real time via database-backed registries. Integrates into the `/predict` gateway routing to yield `BLOCK_TRANSACTION` actions immediately if matched.
 
 #### 🔍 The 9-Signal Risk Evaluation Pipeline
 The platform implements a modular **9-Signal Risk Combination Engine** to calculate transaction risk levels dynamically. Each signal outputs a normalized risk weight between `0.0` (benign) and `1.0` (maximum threat):
@@ -360,6 +361,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── kms_service.py   # Per-tenant KMS/HSM key vault simulator (HMAC, PSI, SecAgg seeds)
 │   │   │       ├── model_registry.py # Versioned model registry: save, list, rollback, manifest
 │   │   │       ├── model_service.py # PyTorch MLP creation, training loops, evaluation
+│   │   │       ├── policy_engine.py # Declarative JSON AST business policy rules interpreter
 │   │   │       ├── privacy_service.py # Differential privacy noise, gradient clipping, budgets
 │   │   │       ├── regulatory_reporter.py # Compiles regulatory FinCEN SAR XML reports
 │   │   │       ├── risk_engine.py   # Computes composite risk scores via 9-signal pipeline
@@ -396,6 +398,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── health.py     # System service health checking
 │   │   │   │   ├── model_registry.py # Model versioning, rollback, and canary history endpoints
 │   │   │   │   ├── predict.py    # Real-time serving transaction inference, risk evaluations, and alert management
+│   │   │   │   ├── rules.py      # Declarative CRUD and testing endpoints for dynamic policy rules
 │   │   │   │   ├── psd2.py       # Open Banking PSD2 XS2A interface endpoints
 │   │   │   │   ├── scenarios.py  # Controls AML scenario simulation streams
 │   │   │   │   ├── simulation.py # Handles creation, retrieval, and comparison of FL runs
@@ -429,6 +432,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_model_registry.py # Validates model saving, versioning, promotion, and canary
 │   │   │   ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
 │   │   │   ├── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
+│   │   │   ├── test_policy_engine.py  # Tests recursive AST condition parsing, DB storage, and gateway blocking
 │   │   │   ├── test_predict.py        # Validates real-time serving inference, risk mapping, and alerts creation
 │   │   │   ├── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
 │   │   │   ├── test_property_based.py # Property-based tests verifying core mathematical invariants

@@ -26,6 +26,7 @@ import type {
   Evidence,
   InvestigatorAuditLog,
   ShadowMetrics,
+  BusinessRule,
 } from './types';
 
 // ── Phase 1: Simulations ───────────────────
@@ -464,3 +465,50 @@ export function useSubmitFeedback() {
     },
   });
 }
+
+export function useRules() {
+  return useQuery<BusinessRule[]>({
+    queryKey: ['business-rules'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/rules');
+      return data;
+    },
+  });
+}
+
+export function useCreateRule() {
+  return useMutation<BusinessRule, Error, { rule_name: string; condition: Record<string, any>; action: string; is_active: boolean }>({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/rules', payload);
+      return data;
+    },
+  });
+}
+
+export function useUpdateRule() {
+  return useMutation<BusinessRule, Error, { id: string; rule_name?: string; condition?: Record<string, any>; action?: string; is_active?: boolean }>({
+    mutationFn: async ({ id, ...payload }) => {
+      const { data } = await apiClient.put(`/api/v1/rules/${id}`, payload);
+      return data;
+    },
+  });
+}
+
+export function useDeleteRule() {
+  return useMutation<unknown, Error, string>({
+    mutationFn: async (id) => {
+      const { data } = await apiClient.delete(`/api/v1/rules/${id}`);
+      return data;
+    },
+  });
+}
+
+export function useTestRule() {
+  return useMutation<{ matches: boolean; message: string }, Error, { condition: Record<string, any>; transaction: Record<string, any> }>({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/rules/test', payload);
+      return data;
+    },
+  });
+}
+

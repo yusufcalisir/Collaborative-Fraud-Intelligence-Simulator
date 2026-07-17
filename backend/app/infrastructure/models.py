@@ -223,3 +223,22 @@ class InvestigatorAuditLogModel(Base):
     )
     session_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class BusinessRuleModel(Base):
+    """Persistent record of a dynamic AML/Fraud policy rule."""
+
+    __tablename__ = "business_rules"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    rule_name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    condition: Mapped[dict] = mapped_column(JSON, nullable=False)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Integer, default=True
+    )  # Stored as SQLite/Postgres int boolean
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

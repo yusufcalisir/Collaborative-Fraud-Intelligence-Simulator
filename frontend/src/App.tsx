@@ -8,6 +8,7 @@ import CaseDetailPage from './pages/CaseDetailPage';
 import ScenariosPage from './pages/ScenariosPage';
 import GraphPage from './pages/GraphPage';
 import InvestigationDashboard from './pages/InvestigationDashboard';
+import PoliciesPage from './pages/PoliciesPage';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/cases" element={<CasesPage />} />
           <Route path="/cases/:caseId" element={<CaseDetailPage />} />
+          <Route path="/rules" element={<PoliciesPage />} />
           <Route path="/scenarios" element={<ScenariosPage />} />
           <Route path="/graph" element={<GraphPage />} />
         </Route>

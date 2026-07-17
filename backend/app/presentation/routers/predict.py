@@ -24,6 +24,7 @@ from app.application.services.model_registry import ModelEvaluationEngine, Model
 from app.application.services.model_service import ModelService
 from app.application.services.risk_engine import RiskScoringEngine
 from app.config import get_settings
+from app.dependencies import SessionDep  # noqa: TC001
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["prediction"])
@@ -106,6 +107,12 @@ class TransactionPredictResponse(BaseModel):
     risk_level: str
     breakdown: list[SignalBreakdown]
     alert_details: AlertDetails | None = None
+    policy_action: str = Field(
+        "ALLOW", description="Gateway policy action (ALLOW or BLOCK_TRANSACTION)"
+    )
+    triggered_rules: list[str] = Field(
+        default_factory=list, description="Names of triggered business rules"
+    )
 
 
 def preprocess_transaction(txn: dict[str, Any]) -> torch.Tensor:
@@ -159,6 +166,7 @@ def preprocess_transaction(txn: dict[str, Any]) -> torch.Tensor:
 @router.post("/predict", response_model=TransactionPredictResponse)
 async def predict_transaction(
     payload: TransactionPredictRequest,
+    session: SessionDep,
     x_api_key: str | None = Header(None, alias="X-API-Key"),
 ) -> TransactionPredictResponse:
     """Evaluate a transaction in real-time.
@@ -427,13 +435,44 @@ async def predict_transaction(
         for s in risk_score_obj.signals
     ]
 
+    # ── Dynamic Policy Rule Evaluation ────────
+    policy_action = "ALLOW"
+    triggered_rules = []
+    try:
+        from app.application.services.policy_engine import PolicyEngineService
+
+        policy_service = PolicyEngineService()
+        active_rules = await policy_service.get_active_rules(session)
+
+        # Context for rule evaluation
+        eval_context = {
+            "composite_risk_score": score,
+            "country_code": payload.country_code,
+            "velocity": txn_dict.get("velocity", 1.0),
+            "transaction_amount": payload.transaction_amount,
+            "merchant_category": payload.merchant_category,
+            "device_type": payload.device_type,
+            "fraud_probability": fraud_prob,
+            "bank_id": bank_id,
+        }
+
+        for rule in active_rules:
+            if policy_service.test_rule(rule.condition, eval_context):
+                triggered_rules.append(rule.rule_name)
+                if rule.action == "BLOCK_TRANSACTION":
+                    policy_action = "BLOCK_TRANSACTION"
+    except Exception as exc:
+        logger.warning("Dynamic Policy Engine evaluation failed: %s", exc)
+
     return TransactionPredictResponse(
         fraud_probability=fraud_prob,
         risk_score=score,
-        is_fraud_suspected=is_fraud_suspected,
+        is_fraud_suspected=is_fraud_suspected or (policy_action == "BLOCK_TRANSACTION"),
         risk_level=risk_level,
         breakdown=breakdown,
         alert_details=alert_details,
+        policy_action=policy_action,
+        triggered_rules=triggered_rules,
     )
 
 

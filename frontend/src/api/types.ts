@@ -539,3 +539,14 @@ export interface ShadowMetrics {
   traffic_share: number;
   sample_count: number;
 }
+
+export interface BusinessRule {
+  id: string;
+  rule_name: string;
+  condition: Record<string, any>;
+  action: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
