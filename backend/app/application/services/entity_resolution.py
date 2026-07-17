@@ -336,7 +336,7 @@ class EntityResolutionService:
         query_sig = compute_minhash_signature(standardized_query)
 
         raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
-        results = []
+        results: list[dict[str, Any]] = []
 
         for e in raw_entities:
             if e.entity_type != entity_type:
@@ -349,5 +349,5 @@ class EntityResolutionService:
                 results.append({"entity": e, "similarity_score": round(sim, 2)})
 
         # Sort by similarity score descending
-        results.sort(key=lambda x: x["similarity_score"], reverse=True)
+        results.sort(key=lambda x: float(x["similarity_score"]), reverse=True)
         return results

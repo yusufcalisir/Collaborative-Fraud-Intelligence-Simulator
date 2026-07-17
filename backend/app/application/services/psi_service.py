@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from app.application.services.entity_resolution import EntityResolutionService
 
 if TYPE_CHECKING:
+    from app.domain.entities_phase2 import Entity
     from app.domain.enums import EntityType
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class PSIService:
         Supports both Exact-string hashing matching and multi-attribute Fuzzy PSI.
         """
         start_time = time.perf_counter()
+        stats: dict[str, Any] = {}
 
         # 1. Retrieve all entities for each bank from storage
         all_entities = self.entity_service.get_entities(entity_type=entity_type, limit=1000)
@@ -254,20 +256,20 @@ class PSIService:
                     enc_val = pow(val_int, key_b, PSI_PRIME)
                     encrypted_b.append((e, enc_val))
 
-                double_encrypted_a = {}
+                double_encrypted_a: dict[int, Entity] = {}
                 for entity_a, enc_val in encrypted_a:
                     double_enc = pow(enc_val, key_b, PSI_PRIME)
                     double_encrypted_a[double_enc] = entity_a
 
-                double_encrypted_b = {}
+                double_encrypted_b: dict[int, Entity] = {}
                 for entity_b, enc_val in encrypted_b:
                     double_enc = pow(enc_val, key_a, PSI_PRIME)
                     double_encrypted_b[double_enc] = entity_b
 
                 common_keys = set(double_encrypted_a.keys()) & set(double_encrypted_b.keys())
-                for k in common_keys:
-                    ent_a = double_encrypted_a[k]
-                    ent_b = double_encrypted_b[k]
+                for key_val in common_keys:
+                    ent_a = double_encrypted_a[key_val]
+                    ent_b = double_encrypted_b[key_val]
                     matches.append(
                         {
                             "privacy_hash": ent_a.privacy_id,
