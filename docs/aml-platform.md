@@ -102,3 +102,22 @@ To interface with live production financial systems, the platform provides three
 - **ISO 20022 XML (`pacs.008.001.08`)**: Extracts transaction values, currencies, senders, and receivers from structured XML payment instructions.
 - **SWIFT MT103**: Parses legacy text-based SWIFT blocks, fields (e.g. `:32A:` for amounts/currencies), and sender/receiver accounts.
 - **SEPA Credit Transfers**: Ingests European credit transfer payloads mapped to standard transaction fields.
+
+---
+
+## 📄 AML Case Management Workflow Alignment (Phase 2 Task 7)
+
+To satisfy national Financial Intelligence Unit (FIU) standards (e.g. FinCEN, MASAK) and support judicial admissibility:
+
+### 1. SAR Filed Lifecycle Status
+- Added `SAR_FILED` state to case management workflow.
+- Allowed state transitions: `Escalated` -> `SAR Filed` and `SAR Filed` -> `Closed Confirmed`.
+
+### 2. Automatic E-Filing Report Generation
+- **FinCEN XML Compiler**: Transitions into `SAR_FILED` status trigger the `RegulatoryReporterService` to compile case details, timeline events, investigator notes, and suspect hashes into a fully schema-compliant FinCEN BSA Suspicious Activity Report (SAR) XML file.
+- Files are persisted locally under `storage/regulatory_filings/` and exposed via secure FastAPI download endpoints (`/api/v1/cases/{case_id}/sar-report`).
+
+### 3. Cryptographic Timeline Audit Chain
+- Implemented sequential SHA-256 block hashing over case events:
+  $$H_i = \text{SHA-256}(timestamp \mathbin{\Vert} type \mathbin{\Vert} description \mathbin{\Vert} actor \mathbin{\Vert} H_{i-1})$$
+- Enforces an append-only, tamper-proof log of all investigator movements and status transitions. Changing or deleting any event breaks downstream block verification, ensuring audit credibility.

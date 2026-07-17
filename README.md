@@ -154,6 +154,8 @@ To provide real-time transaction screening and investigation capabilities:
 3.  **Interactive Relationship Graphs:** A full visual graph of entities, devices, cards, and accounts built using React Flow, mapping suspicious clusters in real time.
 4.  **Scenario Replay Engine:** Scripted simulation flows representing typologies like Account Takeover (ATO), Card Testing, and Layering networks.
 5.  **Model Explainability via SHAP (SHapley Additive exPlanations):** Replaces static mock heuristics with a mathematically rigorous SHAP Kernel Explainer. This analyzes individual transaction anomalies directly using the collaboratively trained global model weight files, listing contribution importances dynamically for risk analysis.
+6.  **Regulatory SAR E-Filing Integration:** Automatically compiles and serializes a fully structured Suspicious Activity Report (SAR) XML file conforming to FinCEN BSA e-filing schemas upon case escalation to `SAR Filed`.
+7.  **Cryptographic Event Hash Chaining:** Timeline events are chained sequentially using SHA-256 block hashing ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) to establish a tamper-proof audit trail of analyst actions for judicial admissibility.
 
 #### 🧬 Diffie-Hellman Private Set Intersection (DH-PSI) Protocol
 
@@ -354,6 +356,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── model_registry.py # Versioned model registry: save, list, rollback, manifest
 │   │   │       ├── model_service.py # PyTorch MLP creation, training loops, evaluation
 │   │   │       ├── privacy_service.py # Differential privacy noise, gradient clipping, budgets
+│   │   │       ├── regulatory_reporter.py # Compiles regulatory FinCEN SAR XML reports
 │   │   │       ├── risk_engine.py   # Computes composite risk scores via 9-signal pipeline
 │   │   │       ├── scenario_service.py # Scripted transaction AML scenarios loader
 │   │   │       ├── simulation_service.py # Orchestrates local training, FL loops, canary evaluation, comparisons
