@@ -556,6 +556,7 @@ export interface PSIRequest {
   entity_type?: string;
   enable_fuzzy?: boolean;
   fuzzy_threshold?: number;
+  enable_tee?: boolean;
 }
 
 export interface PSIMatch {
@@ -565,8 +566,8 @@ export interface PSIMatch {
   display_label_b: string;
   risk_level_a: string;
   risk_level_b: string;
-  matched_attributes?: string[];
-  similarity_score?: number;
+  matched_attributes: string[];
+  similarity_score: number;
 }
 
 export interface PSIProtocolStats {
@@ -574,11 +575,11 @@ export interface PSIProtocolStats {
   data_exchanged_bytes: number;
   num_entities_a: number;
   num_entities_b: number;
-  prime_bit_length: number;
-  enclave_execution?: boolean;
-  mrenclave?: string;
-  mrsigner?: string;
-  attestation_verified?: boolean;
+  prime_bit_length: number | null;
+  enclave_execution: boolean;
+  mrenclave: string | null;
+  mrsigner: string | null;
+  attestation_verified: boolean | null;
 }
 
 export interface PSIResponse {
@@ -587,16 +588,20 @@ export interface PSIResponse {
 }
 
 export interface EntityFuzzyResolveRequest {
-  query_name: string;
-  entity_type?: string;
-  threshold?: number;
+  raw_identifier: string;
+  entity_type: string;
+  similarity_threshold?: number;
+  limit?: number;
 }
 
-export interface EntityFuzzyResolveMatch {
-  entity: Entity;
-  similarity_score: number;
+export interface FuzzyMatchResponse {
+  entity_id: string;
+  display_label: string;
+  entity_type: string;
+  bank_id: string;
+  risk_level: string;
+  privacy_id: string;
+  similarity: number;
+  standardized_stored: string;
 }
 
-export interface EntityFuzzyResolveResponse {
-  matches: EntityFuzzyResolveMatch[];
-}

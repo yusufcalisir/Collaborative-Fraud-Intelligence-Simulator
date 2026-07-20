@@ -254,29 +254,75 @@ sequenceDiagram
     Note over BA: Computes Z_A & Z_B intersection -> Matches
 ```
 
-### 1.1 Fuzzy & Probabilistic Private Set Intersection (LSH / Fuzzy PSI)
+### 1.1 Fuzzy & Probabilistic Private Entity Resolution (LSH / Fuzzy PSI)
 
-Deterministic exact-string matching can fail when bank records differ slightly in spelling, accents, or formatting (e.g., "Yusuf Çalışır" vs "Yusuf Calisir"). To resolve this, Phase 2 implements a robust, privacy-preserving fuzzy entity matching pipeline:
+> **Status: ✅ Implemented** — `backend/app/domain/value_objects_phase2.py`, `backend/app/application/services/entity_resolution.py`, `backend/app/application/services/psi_service.py`, `frontend/src/pages/PsiPage.tsx`
 
-1. **Standardization Pipeline**:
-   - Converts strings to Unicode NFC normalization.
-   - Strips accents/diacritics and replaces non-ASCII localized symbols (e.g., `ı` → `i`, `ş` → `s`, `ç` → `c`).
-   - Normalizes phone numbers to E.164-like (`+[country][number]`) format.
-   - Normalizes emails (lowercases, strips spaces).
+Deterministic exact-string matching fails when bank records differ slightly in spelling, accents, or formatting (e.g., "Yusuf Çalışır" vs "Yusuf Calisir"). Phase 2 implements a three-stage privacy-preserving fuzzy entity matching pipeline:
 
-2. **Locality-Sensitive Hashing (LSH) on Character n-grams**:
-   - Decomposes name fields into character 3-grams (e.g., "yusuf" -> `{"yus", "usu", "suf"}`).
-   - Computes MinHash signatures of length $H=16$ using $H$ independent hash functions:
-     $$h_i(s) = \text{hash}(s \parallel i) \pmod M$$
-   - The Jaccard similarity is approximated locally as:
-     $$\text{Sim}(S_1, S_2) = \frac{|\{ i \mid \text{sig}_1[i] = \text{sig}_2[i] \}|}{H}$$
-   - Allows banks to calculate Jaccard similarities privately without exposing raw names.
+#### Stage 1 — Standardization Pipeline (`standardize_input()`)
 
-3. **Multi-Attribute Fuzzy PSI**:
-   - Extracts 5 key identifiers: Phone, Email, Device ID, Birthdate, Surname.
-   - Executes standard Diffie-Hellman Commutative PSI independently on all 5 attributes.
-   - Intersects double-encrypted attributes for each customer pair.
-   - Matches customers if at least $k \ge 3$ out of 5 attributes match.
+`value_objects_phase2.py :: standardize_input(raw_value, entity_type)` applies a pre-hashing normalization pipeline to all entity identifiers before any matching is attempted:
+
+| Entity Type | Transformation Applied |
+| :--- | :--- |
+| `customer` / `merchant` | Unicode NFC → Turkish character transliteration (`ı→i`, `ş→s`, `ç→c`, `ğ→g`, `ö→o`, `ü→u`, `ß→ss`) → NFD accent stripping → lowercase → strip non-alphanumeric → collapse whitespace |
+| `phone` | Extract all digit characters; if original input starts with `+`, preserve `+` prefix (E.164 format) |
+| `email` | Strip surrounding whitespace → lowercase |
+| `device` / others | Strip → lowercase |
+
+This ensures that `"Yusuf Çalışır"` and `"Yusuf Calisir"` both standardize to `"yusuf calisir"` before any hash is computed.
+
+#### Stage 2 — Locality-Sensitive Hashing (LSH) on Character n-grams (`compute_minhash_signature()`)
+
+`value_objects_phase2.py :: compute_minhash_signature(text, num_hashes=16)` generates a compact probabilistic fingerprint:
+
+1. **3-gram Extraction**: The standardized name is decomposed into a set of overlapping character 3-grams:
+   $$S = \{ \text{text}[i:i+3] \mid 0 \le i \le \text{len(text)} - 3 \}$$
+   e.g., `"yusuf calisir"` → `{"yus", "usu", "suf", "uf ", ...}`
+
+2. **MinHash Signature**: $H=16$ independent hash seeds $i$ are applied to each shingle $s$ using a deterministic polynomial rolling hash modulo a large prime $M$:
+   $$\text{sig}[i] = \min_{s \in S} \left( \left( (a_i \cdot h(s) + b_i) \bmod M \right) \right)$$
+
+3. **Jaccard Approximation**: Similarity between two signatures is estimated as the fraction of matching positions:
+   $$\widehat{J}(S_1, S_2) = \frac{|\{ i \mid \text{sig}_1[i] = \text{sig}_2[i] \}|}{H}$$
+
+The 16-dimensional MinHash vector is stored directly in the entity's `attributes["minhash_signature"]` field, eliminating the need for a separate LSH index store.
+
+#### Stage 3 — Multi-Attribute Fuzzy PSI (`PSIService.run_psi(enable_fuzzy=True)`)
+
+`psi_service.py :: run_psi(bank_a_id, bank_b_id, entity_type, enable_fuzzy=True, fuzzy_threshold=3)` executes a threshold-based multi-attribute matching protocol:
+
+1. **Attribute Set**: 5 key PII attributes are evaluated per entity pair: `phone`, `email`, `device_id`, `birthdate`, `surname`.
+2. **Independent DH-PSI per Attribute**: Standard Diffie-Hellman commutative exponentiation is executed independently over each attribute's `PrivacyPreservingIdentifier` hash:
+   $$Z_a^{(\text{attr})} = \left( H(\text{attr}_a) \right)^{k_b \cdot k_a} \pmod p$$
+3. **k-of-n Threshold Gate**: A cross-bank pair is declared a match if:
+   $$\left| \text{matched\_attrs} \right| \ge k \quad (\text{default: } k = 3 \text{ of } n = 5)$$
+4. **Similarity Score**: The output match record includes a continuous overlap score $= |\text{matched\_attrs}| / n$.
+
+#### Stage 4 — Central LSH Registry (`EntityResolutionService.resolve_fuzzy_entities()`)
+
+`entity_resolution.py :: resolve_fuzzy_entities(query_name, entity_type, threshold=0.70)` provides a direct name-to-entity fuzzy lookup:
+- Standardizes and computes the MinHash signature of the query string.
+- Iterates all stored entities, reads their `minhash_signature` attribute, and computes Jaccard similarity.
+- Returns all entities above the configurable similarity threshold, sorted by descending similarity.
+- Exposed to the frontend via `POST /api/v1/entities/fuzzy-resolve`.
+
+#### Frontend Integration (`PsiPage.tsx`)
+
+The `PsiPage` React component provides an interactive three-panel UI:
+- **PSI Protocol Control Center**: Configures bank pair, entity type, Intel SGX TEE toggle, fuzzy enable/disable, and threshold slider (k = 1–5).
+- **MinHash Spelling Playground**: Local JavaScript implementation of `standardize_input()` and `compute_minhash_signature()` that shows real-time 16-dimensional signature comparison and Jaccard score for any two name inputs without making API calls.
+- **Central LSH Registry Query Panel**: Calls `/api/v1/entities/fuzzy-resolve` and displays matched entities with similarity scores, bank, risk level, standardized form, and privacy hash.
+
+#### Test Coverage
+
+`backend/tests/unit/test_fuzzy_psi.py` covers:
+- `test_standardization_pipeline`: Validates Turkish/accented names, E.164 phone normalization, and email stripping.
+- `test_minhash_lsh`: Asserts identical signatures for identical inputs (sim = 1.0), high similarity for near-typo variants (sim > 0.3), and low similarity for completely different strings (sim < 0.2).
+- `test_fuzzy_psi_protocol`: End-to-end test with 3 entities and 2 threshold levels (k=3 matches 1 pair; k=2 matches 2 pairs).
+
+
 
 ### 2. Graph Analytics & Risk Propagation
 

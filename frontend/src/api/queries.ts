@@ -30,7 +30,7 @@ import type {
   PSIRequest,
   PSIResponse,
   EntityFuzzyResolveRequest,
-  EntityFuzzyResolveResponse,
+  FuzzyMatchResponse,
 } from './types';
 
 // ── Phase 1: Simulations ───────────────────
@@ -526,7 +526,7 @@ export function useRunPSI() {
 }
 
 export function useFuzzyResolve() {
-  return useMutation<EntityFuzzyResolveResponse, Error, EntityFuzzyResolveRequest>({
+  return useMutation<FuzzyMatchResponse[], Error, EntityFuzzyResolveRequest>({
     mutationFn: async (payload) => {
       const { data } = await apiClient.post('/api/v1/entities/fuzzy-resolve', payload);
       return data;
