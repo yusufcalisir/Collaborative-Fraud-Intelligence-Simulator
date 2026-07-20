@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     use_kafka: bool = False
     kafka_bootstrap_servers: str = "localhost:9092"
 
+    # ── Graph Database Configuration ──────────
+    graph_db_type: str = "redis"  # "redis", "neo4j", "memgraph"
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "change_me_in_production"
+
     # ── Feature Store Configuration ───────────
     feature_store_enabled: bool = True
     feature_store_provider: str = "feast"  # "feast" or "hopsworks"

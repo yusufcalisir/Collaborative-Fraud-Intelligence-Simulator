@@ -74,9 +74,24 @@ export default function GraphPage() {
             animate={{ opacity: 1, y: 0 }}
             className="glass-card p-4 flex flex-col justify-between"
           >
-            <h3 className="text-xs font-bold uppercase text-[var(--color-text-muted)] mb-3">
-              Graph Stats
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold uppercase text-[var(--color-text-muted)]">
+                Graph Stats
+              </h3>
+              {graphStats.database_backend && (
+                <span
+                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ${
+                    graphStats.database_backend.toLowerCase().includes('neo4j')
+                      ? 'bg-[#008CC1]/20 text-[#008CC1]'
+                      : graphStats.database_backend.toLowerCase().includes('memgraph')
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'bg-[var(--color-surface-alt)] text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {graphStats.database_backend}
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3 text-center my-auto">
               {[
                 { label: 'Nodes', value: graphStats.total_nodes },
@@ -94,6 +109,7 @@ export default function GraphPage() {
         ) : (
           <div className="glass-card p-4 h-28 animate-pulse" />
         )}
+
 
         {/* Depth Control */}
         <div className="glass-card p-4 flex flex-col justify-between">

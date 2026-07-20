@@ -206,6 +206,7 @@ class GraphStatsResponse(BaseModel):
     nodes_by_type: dict[str, int]
     nodes_by_risk: dict[str, int]
     cluster_count: int
+    database_backend: str = "Redis (in-memory)"
 
 
 # ── Scenarios ─────────────────────────────────

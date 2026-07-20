@@ -332,7 +332,28 @@ Once matches are resolved, a multi-bank transaction graph is constructed. The en
 * **Community Analytics**: Connected components are grouped, and community-level statistics (size, average risk, and fraud density) are computed to isolate potential fraud rings.
 * **Temporal Velocity Anomalies**: Edges are grouped in sliding time windows (e.g., 5 minutes) to detect high-velocity relationship creation bursts that signal structuring or automated laundering networks.
 
+### 2.5 Dedicated Distributed Graph Database Integration (Neo4j / Memgraph)
+
+To handle massive scales of customer relationships, transactions, and alert linkages at sub-second latency, the Graph Engine supports a dedicated, distributed graph database backend (Neo4j or Memgraph) via the Bolt protocol.
+
+* **Cypher Queries**: Replaces CPU-bound custom Python traversal loops (BFS/DFS) with highly optimized Cypher queries executed directly in the database.
+  - *Neighbor Search query*:
+    ```cypher
+    MATCH (s:Entity {id: $entity_id})-[r]-(n:Entity)
+    WHERE ($relationship_types IS NULL OR r.relationship_type IN $relationship_types)
+    RETURN DISTINCT n
+    ```
+  - *Subgraph Extraction query*:
+    ```cypher
+    MATCH (s:Entity {id: $center_id})
+    OPTIONAL MATCH p = (s)-[*1..$radius]-(n:Entity)
+    RETURN s, collect(p) as paths
+    ```
+* **Real-time GNN Serving**: Enables compatibility with real-time Graph Neural Network inference runtimes (e.g. Memgraph GNN modules / DGL) to update node embeddings dynamically as new transaction edges are written.
+* **Dual-Storage & Fallback**: Configured via `graph_db_type` in settings (supporting `"redis"`, `"neo4j"`, `"memgraph"`). If the graph database is not reachable or not installed, the engine gracefully falls back to the Redis / in-memory adjacency list to maintain complete backward compatibility in development.
+
 ### 3. Federated Graph Embedding (FedGNN)
+
 
 To move beyond heuristic relationship weights, Phase 5 introduces a **Federated GraphSAGE** (Sample and Aggregate) pipeline to learn structural graph embeddings collaboratively:
 

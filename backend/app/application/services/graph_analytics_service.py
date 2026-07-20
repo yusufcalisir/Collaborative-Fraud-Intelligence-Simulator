@@ -12,7 +12,10 @@ from datetime import timedelta
 from typing import Any
 
 from app.application.services.entity_resolution import EntityResolutionService
-from app.application.services.graph_engine import GraphEngine
+from app.application.services.graph_engine import (
+    GraphEngine,
+    _neo4j_node_to_entity,
+)
 from app.domain.enums import RelationshipType, RiskLevel
 
 logger = logging.getLogger(__name__)
@@ -65,11 +68,48 @@ class GraphAnalyticsService:
         """Propagate risk scores from flagged entities through the graph.
 
         Uses an iterative propagation similar to PageRank with decay.
-        Saves updated risk levels back to entity storage.
+        Saves updated risk levels back to entity storage. When a Neo4j /
+        Memgraph backend is active, risk updates are written back to the
+        graph database in batch via Cypher.
         """
         # Load all entities and relationships
-        entities = {e.id: e for e in self.entity_service.get_entities(limit=1000)}
-        relationships = self.entity_service.get_relationships()
+        if self.graph_engine.db_type in ("neo4j", "memgraph") and self.graph_engine.driver:
+            # Load entities from graph DB
+            entities = {}
+            relationships = []
+            with self.graph_engine.driver.session() as session:
+                res_ents = session.run("MATCH (n:Entity) RETURN n")
+                for r in res_ents:
+                    e = _neo4j_node_to_entity(r["n"])
+                    entities[e.id] = e
+
+                res_rels = session.run(
+                    "MATCH ()-[r]->() RETURN "
+                    "r.id as id, r.source_entity_id as source_entity_id, "
+                    "r.target_entity_id as target_entity_id, "
+                    "r.relationship_type as relationship_type, "
+                    "r.confidence as confidence, r.evidence as evidence, "
+                    "r.created_at as created_at"
+                )
+                for r in res_rels:
+                    from datetime import datetime
+
+                    from app.domain.entities_phase2 import Relationship
+
+                    relationships.append(
+                        Relationship(
+                            id=r["id"],
+                            source_entity_id=r["source_entity_id"],
+                            target_entity_id=r["target_entity_id"],
+                            relationship_type=RelationshipType(r["relationship_type"]),
+                            confidence=r["confidence"],
+                            evidence=r["evidence"] or [],
+                            created_at=datetime.fromisoformat(r["created_at"]),
+                        )
+                    )
+        else:
+            entities = {e.id: e for e in self.entity_service.get_entities(limit=1000)}
+            relationships = self.entity_service.get_relationships()
 
         if not entities:
             return {"updated_nodes_count": 0, "max_score": 0.0, "avg_score_change": 0.0}
@@ -113,6 +153,7 @@ class GraphAnalyticsService:
             current_scores = next_scores
 
         # Save changes if risk level changed
+        neo4j_updates = []
         for eid, new_score in current_scores.items():
             old_level = entities[eid].risk_level
             new_level = score_to_risk_level(new_score)
@@ -120,10 +161,24 @@ class GraphAnalyticsService:
 
             if old_level != new_level:
                 self.entity_service.update_risk_level(eid, new_level)
-                # Also synchronize the graph engine's cache if needed
+                neo4j_updates.append({"id": eid, "risk_level": new_level.value})
                 updated_count += 1
                 diff = abs(new_score - RISK_LEVEL_TO_SCORE.get(old_level, 50.0))
                 total_change += diff
+
+        # Batch-update risk levels in graph DB if active
+        if (
+            self.graph_engine.db_type in ("neo4j", "memgraph")
+            and self.graph_engine.driver
+            and neo4j_updates
+        ):
+            with self.graph_engine.driver.session() as session:
+                session.run(
+                    "UNWIND $updates AS upd "
+                    "MATCH (n:Entity {id: upd.id}) "
+                    "SET n.risk_level = upd.risk_level",
+                    updates=neo4j_updates,
+                )
 
         avg_change = total_change / len(entities) if entities else 0.0
         logger.info(

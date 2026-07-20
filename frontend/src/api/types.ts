@@ -407,7 +407,9 @@ export interface GraphStats {
   nodes_by_type: Record<string, number>;
   nodes_by_risk: Record<string, number>;
   cluster_count: number;
+  database_backend?: string;
 }
+
 
 export interface ScenarioInfo {
   type: string;
