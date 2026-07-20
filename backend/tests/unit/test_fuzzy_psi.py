@@ -32,8 +32,8 @@ def test_minhash_lsh() -> None:
     # Test character 3-gram MinHash similarity bounds
     sig1 = compute_minhash_signature("yusuf calisir")
     sig2 = compute_minhash_signature("yusuf calisir")
-    sig3 = compute_minhash_signature("yusuf calisr")   # typo: missing 'i'
-    sig4 = compute_minhash_signature("jane smith")     # completely different
+    sig3 = compute_minhash_signature("yusuf calisr")  # typo: missing 'i'
+    sig4 = compute_minhash_signature("jane smith")  # completely different
 
     assert len(sig1) == 16
     assert calculate_jaccard_similarity(sig1, sig2) == 1.0
@@ -72,11 +72,11 @@ def test_fuzzy_psi_protocol() -> None:
 
     # Create entity B: 3 matching attributes, 2 mismatching attributes
     attributes_b = {
-        "phone": "+905551234567",       # match
-        "email": "yusuf@mail.com",        # match
-        "device_id": "device_999",       # mismatch
-        "birthdate": "1990-01-01",       # match
-        "surname": "Smith",              # mismatch
+        "phone": "+905551234567",  # match
+        "email": "yusuf@mail.com",  # match
+        "device_id": "device_999",  # mismatch
+        "birthdate": "1990-01-01",  # match
+        "surname": "Smith",  # mismatch
     }
     entity_service.create_entity(
         entity_type=EntityType.CUSTOMER,
@@ -87,11 +87,11 @@ def test_fuzzy_psi_protocol() -> None:
 
     # Create entity C: only 2 matching attributes (phone, email)
     attributes_c = {
-        "phone": "+905551234567",       # match
-        "email": "yusuf@mail.com",        # match
-        "device_id": "device_888",       # mismatch
-        "birthdate": "1995-12-12",       # mismatch
-        "surname": "Jones",              # mismatch
+        "phone": "+905551234567",  # match
+        "email": "yusuf@mail.com",  # match
+        "device_id": "device_888",  # mismatch
+        "birthdate": "1995-12-12",  # mismatch
+        "surname": "Jones",  # mismatch
     }
     entity_service.create_entity(
         entity_type=EntityType.CUSTOMER,
