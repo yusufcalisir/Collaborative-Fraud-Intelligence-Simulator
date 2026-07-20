@@ -176,7 +176,7 @@ class ModelService:
                     p_mean = torch.mean(predictions)
                     a_mean = torch.mean(sens_batch)
                     cov = torch.mean((predictions - p_mean) * (sens_batch - a_mean))
-                    fair_loss = fairness_lambda * (cov ** 2)
+                    fair_loss = fairness_lambda * (cov**2)
                     loss = loss + fair_loss
 
                 # FedProx proximal term
@@ -356,7 +356,7 @@ class ModelService:
                     p_mean = torch.mean(predictions)
                     a_mean = torch.mean(sens_batch)
                     cov = torch.mean((predictions - p_mean) * (sens_batch - a_mean))
-                    fair_loss = fairness_lambda * (cov ** 2)
+                    fair_loss = fairness_lambda * (cov**2)
                     loss = loss + fair_loss
 
                 # FedProx proximal term
@@ -396,7 +396,6 @@ class ModelService:
 
                 # Yield control to prevent GIL starvation
                 time.sleep(0.005)
-
 
             avg_loss = epoch_loss / max(n_batches, 1)
             loss_history.append(avg_loss)
@@ -527,8 +526,6 @@ class ModelService:
             "protected_selection_rate": float(protected_selection_rate),
             "reference_selection_rate": float(reference_selection_rate),
         }
-
-
 
     def get_parameters(self, model: FraudDetectionModel) -> ModelWeights:
         """Extract model parameters as a serializable ModelWeights object."""

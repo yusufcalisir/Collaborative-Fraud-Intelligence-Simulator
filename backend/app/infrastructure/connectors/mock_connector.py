@@ -87,7 +87,6 @@ class MockBankConnector(BankConnectorInterface):
             logger.error("Mock initialization failed for %s: %s", bank_id, exc)
             return {"status": "failed", "error": str(exc)}
 
-
     def train(
         self,
         bank_id: str,
@@ -237,4 +236,3 @@ class MockBankConnector(BankConnectorInterface):
         except Exception as exc:
             logger.error("Mock evaluation failed for %s: %s", bank_id, exc)
             return {"error": str(exc), "correlation_id": correlation_id}
-

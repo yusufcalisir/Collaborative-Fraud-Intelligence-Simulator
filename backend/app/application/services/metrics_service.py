@@ -91,4 +91,3 @@ class MetricsService:
             "protected_selection_rate": metrics.protected_selection_rate,
             "reference_selection_rate": metrics.reference_selection_rate,
         }
-

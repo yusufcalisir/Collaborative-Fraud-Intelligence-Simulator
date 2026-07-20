@@ -30,7 +30,6 @@ def metrics_service() -> MetricsService:
     return MetricsService()
 
 
-
 def test_aggregate_fairness_counts(fl_engine) -> None:
     client_counts = [
         {
@@ -52,7 +51,7 @@ def test_aggregate_fairness_counts(fl_engine) -> None:
             "protected_fn": 1,
             "reference_tp": 2,
             "reference_fn": 1,
-        }
+        },
     ]
     aggregated = fl_engine.aggregate_fairness_counts(client_counts)
 
@@ -64,6 +63,7 @@ def test_aggregate_fairness_counts(fl_engine) -> None:
     assert aggregated["protected_fn"] == 3
     assert aggregated["reference_tp"] == 6
     assert aggregated["reference_fn"] == 2
+
 
 def test_model_training_with_bias_mitigation(model_service) -> None:
     X_train = np.random.uniform(0.0, 1.0, (100, 10)).astype(np.float32)
@@ -88,6 +88,7 @@ def test_model_training_with_bias_mitigation(model_service) -> None:
     assert len(loss_history) == 1
     assert loss_history[0] > 0
 
+
 def test_model_evaluation_with_fairness(model_service) -> None:
     X_test = np.random.uniform(0.0, 1.0, (50, 10)).astype(np.float32)
     y_test = np.random.choice([0.0, 1.0], 50).astype(np.float32)
@@ -108,6 +109,7 @@ def test_model_evaluation_with_fairness(model_service) -> None:
     assert "reference_selection_rate" in eval_res
     assert 0.0 <= eval_res["disparate_impact"] <= 100.0
     assert 0.0 <= eval_res["equal_opportunity_diff"] <= 1.0
+
 
 def test_serialization_metrics(metrics_service) -> None:
     eval_dict = {

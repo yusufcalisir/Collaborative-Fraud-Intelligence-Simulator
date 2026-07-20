@@ -98,7 +98,6 @@ async def create_simulation(
         "fairness_lambda": config.fairness_lambda,
     }
 
-
     # Store pending status
     _simulation_results.set(
         simulation_id,
@@ -507,4 +506,3 @@ async def get_ai_act_report(simulation_id: str) -> dict:
             status_code=500,
             detail=f"Failed to read compliance report file: {exc}",
         )
-

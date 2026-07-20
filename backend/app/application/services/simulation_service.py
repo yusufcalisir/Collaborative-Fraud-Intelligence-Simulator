@@ -218,7 +218,6 @@ class SimulationService:
                     "sens_test": sens_test,
                 }
 
-
             # Create a global validation/test set by concatenating all bank test sets
             X_val_global = np.concatenate([data["X_test"] for data in bank_data.values()], axis=0)
             y_val_global = np.concatenate([data["y_test"] for data in bank_data.values()], axis=0)
@@ -519,7 +518,6 @@ class SimulationService:
                             enable_bias_mitigation=config.enable_bias_mitigation,
                             fairness_lambda=config.fairness_lambda,
                         )
-
 
                         if "error" in train_res:
                             logger.error(
@@ -998,8 +996,11 @@ class SimulationService:
             import json
             import os
 
-
-            compliance_status = "COMPLIANT" if g_disparate_impact >= 0.8 and g_equal_opportunity_diff < 0.1 else "BIAS_RISK_DETECTED"
+            compliance_status = (
+                "COMPLIANT"
+                if g_disparate_impact >= 0.8 and g_equal_opportunity_diff < 0.1
+                else "BIAS_RISK_DETECTED"
+            )
             compliance_score = 95.0 if compliance_status == "COMPLIANT" else 75.0
 
             report = {
@@ -1022,19 +1023,28 @@ class SimulationService:
                     "privacy_preserving_features": {
                         "differential_privacy_enabled": enable_dp,
                         "secure_aggregation_enabled": enable_sa,
-                        "byzantine_defense_strategy": getattr(config, "aggregation_method", "fed_avg_weighted"),
+                        "byzantine_defense_strategy": getattr(
+                            config, "aggregation_method", "fed_avg_weighted"
+                        ),
                     },
                     "regulatory_checks": [
                         {"clause": "Article 10 (Data and data governance)", "status": "PASSED"},
                         {"clause": "Article 13 (Transparency and information)", "status": "PASSED"},
                         {"clause": "Article 14 (Human oversight)", "status": "PASSED"},
-                        {"clause": "Article 15 (Accuracy and robustness)", "status": "PASSED" if compliance_status == "COMPLIANT" else "WARNING_RAISED"},
-                    ]
+                        {
+                            "clause": "Article 15 (Accuracy and robustness)",
+                            "status": "PASSED"
+                            if compliance_status == "COMPLIANT"
+                            else "WARNING_RAISED",
+                        },
+                    ],
                 },
                 "compliance_certification": {
                     "eu_ai_act_compliance_score": compliance_score,
-                    "audit_sign_off_status": "APPROVED_BY_SYSTEM" if compliance_status == "COMPLIANT" else "REJECTED_BY_SYSTEM",
-                }
+                    "audit_sign_off_status": "APPROVED_BY_SYSTEM"
+                    if compliance_status == "COMPLIANT"
+                    else "REJECTED_BY_SYSTEM",
+                },
             }
 
             storage_dir = os.path.abspath(
@@ -1044,7 +1054,9 @@ class SimulationService:
                 )
             )
             os.makedirs(storage_dir, exist_ok=True)
-            report_path = os.path.join(storage_dir, f"ai_act_compliance_report_{simulation.id}.json")
+            report_path = os.path.join(
+                storage_dir, f"ai_act_compliance_report_{simulation.id}.json"
+            )
             with open(report_path, "w", encoding="utf-8") as f:
                 json.dump(report, f, indent=4)
             logger.info("Generated and saved EU AI Act Compliance Report to %s", report_path)
@@ -1053,7 +1065,6 @@ class SimulationService:
             active_simulations.add(-1)
             simulation.status = SimulationStatus.COMPLETED
             simulation.completed_at = _now()
-
 
             # Save the final global model to the versioned registry
             try:
