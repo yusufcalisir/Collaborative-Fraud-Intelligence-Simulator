@@ -498,8 +498,9 @@ async def get_ai_act_report(simulation_id: str) -> dict:
             detail="EU AI Act compliance report not found for this simulation. Make sure training completed successfully.",
         )
     try:
-        with open(report_path, "r", encoding="utf-8") as f:
+        with open(report_path, encoding="utf-8") as f:
             report_data = json.load(f)
+
         return report_data
     except Exception as exc:
         raise HTTPException(

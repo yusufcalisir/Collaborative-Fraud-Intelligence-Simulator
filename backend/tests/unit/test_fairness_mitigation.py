@@ -1,32 +1,34 @@
-import os
-import json
 import numpy as np
 import pytest
-import torch
 
 from app.application.services.fl_engine import FederatedLearningEngine
-from app.application.services.model_service import ModelService
 from app.application.services.metrics_service import MetricsService
-from app.domain.value_objects import SimulationConfig
+from app.application.services.model_service import ModelService
+
 
 @pytest.fixture
 def fl_engine() -> FederatedLearningEngine:
-    from app.config import get_settings
     from app.application.services.privacy_service import PrivacyService
+    from app.config import get_settings
+
     settings = get_settings()
     model_service = ModelService(settings)
     privacy_service = PrivacyService()
     return FederatedLearningEngine(settings, model_service, privacy_service)
 
+
 @pytest.fixture
 def model_service() -> ModelService:
     from app.config import get_settings
+
     settings = get_settings()
     return ModelService(settings)
+
 
 @pytest.fixture
 def metrics_service() -> MetricsService:
     return MetricsService()
+
 
 
 def test_aggregate_fairness_counts(fl_engine) -> None:
@@ -53,7 +55,7 @@ def test_aggregate_fairness_counts(fl_engine) -> None:
         }
     ]
     aggregated = fl_engine.aggregate_fairness_counts(client_counts)
-    
+
     assert aggregated["protected_positive_pred"] == 150
     assert aggregated["protected_negative_pred"] == 15
     assert aggregated["reference_positive_pred"] == 300
@@ -81,7 +83,7 @@ def test_model_training_with_bias_mitigation(model_service) -> None:
         enable_bias_mitigation=True,
         fairness_lambda=1.0,
     )
-    
+
     assert trained_model is not None
     assert len(loss_history) == 1
     assert loss_history[0] > 0
@@ -98,7 +100,7 @@ def test_model_evaluation_with_fairness(model_service) -> None:
         y_test,
         sens_attr=sens_attr,
     )
-    
+
     assert "fairness_counts" in eval_res
     assert "disparate_impact" in eval_res
     assert "equal_opportunity_diff" in eval_res
@@ -127,7 +129,7 @@ def test_serialization_metrics(metrics_service) -> None:
     metrics = metrics_service.from_eval_dict(eval_dict)
     assert metrics.disparate_impact == 0.85
     assert metrics.equal_opportunity_diff == 0.05
-    
+
     serialized = metrics_service.metrics_to_dict(metrics)
     assert serialized["disparate_impact"] == 0.85
     assert serialized["equal_opportunity_diff"] == 0.05

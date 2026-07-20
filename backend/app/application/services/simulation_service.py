@@ -985,9 +985,19 @@ class SimulationService:
                         bank.federated_metrics.feature_importance,
                     )
 
+                    logger.info(
+                        "Federated model at %s — F1: %.4f (local: %.4f), AUC: %.4f (local: %.4f)",
+                        bank.name,
+                        bank.federated_metrics.f1_score,
+                        bank.local_metrics.f1_score if bank.local_metrics else 0,
+                        bank.federated_metrics.auc_roc,
+                        bank.local_metrics.auc_roc if bank.local_metrics else 0,
+                    )
+
             # Generate automated regulatory compliance log
-            import os
             import json
+            import os
+
 
             compliance_status = "COMPLIANT" if g_disparate_impact >= 0.8 and g_equal_opportunity_diff < 0.1 else "BIAS_RISK_DETECTED"
             compliance_score = 95.0 if compliance_status == "COMPLIANT" else 75.0
@@ -1039,20 +1049,11 @@ class SimulationService:
                 json.dump(report, f, indent=4)
             logger.info("Generated and saved EU AI Act Compliance Report to %s", report_path)
 
-
-                logger.info(
-                    "Federated model at %s — F1: %.4f (local: %.4f), AUC: %.4f (local: %.4f)",
-                    bank.name,
-                    bank.federated_metrics.f1_score,
-                    bank.local_metrics.f1_score if bank.local_metrics else 0,
-                    bank.federated_metrics.auc_roc,
-                    bank.local_metrics.auc_roc if bank.local_metrics else 0,
-                )
-
             # Finalize
             active_simulations.add(-1)
             simulation.status = SimulationStatus.COMPLETED
             simulation.completed_at = _now()
+
 
             # Save the final global model to the versioned registry
             try:
