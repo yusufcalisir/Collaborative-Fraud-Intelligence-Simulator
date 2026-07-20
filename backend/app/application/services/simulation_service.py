@@ -230,7 +230,7 @@ class SimulationService:
             for bank in banks:
                 data = bank_data[bank.id]
                 model = self.model_service.create_model()
-                model, loss_history = self.model_service.train_local(
+                model, loss_history, _ = self.model_service.train_local(
                     model,
                     data["X_train"],
                     data["y_train"],
@@ -238,6 +238,7 @@ class SimulationService:
                     learning_rate=config.learning_rate,
                     batch_size=config.batch_size,
                 )
+
 
                 eval_dict = self.model_service.evaluate(model, data["X_test"], data["y_test"])
                 feat_imp = self.model_service.get_feature_importance(model)

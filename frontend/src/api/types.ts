@@ -20,7 +20,8 @@ export interface SimulationConfig {
   bank_a_transactions: number;
   bank_b_transactions: number;
   bank_c_transactions: number;
-  aggregation_method: 'fed_avg_weighted' | 'fed_avg' | 'krum' | 'coordinate_wise_median' | 'trimmed_mean' | 'bulyan';
+  aggregation_method: 'fed_avg_weighted' | 'fed_avg' | 'krum' | 'coordinate_wise_median' | 'trimmed_mean' | 'bulyan' | 'fed_adam' | 'fed_adagrad' | 'fed_yogi' | 'scaffold';
+
   enable_poisoning_simulation: boolean;
   poisoning_bank_id: string;
   poisoning_scale: number;

@@ -660,3 +660,121 @@ To defend against colluding attackers that Krum or Median cannot fully mitigate:
 | `POST` | `/api/v1/privacy-defense/audit/dlg` | Evaluate Deep Leakage from Gradients (DLG) via Pearson correlation |
 | `GET` | `/api/v1/privacy-defense/budget-log` | Get sorted multi-simulation privacy budget consumption logs |
 
+---
+
+## Item 20 — Public Dataset Benchmark & Advanced FL Optimization
+
+> **Implemented**: 2026-07
+
+### Overview
+
+Item 20 establishes academic credibility by:
+1. Adding **public AML dataset loaders** with mock fallback for local development.
+2. Introducing two new **advanced FL aggregation algorithms**: FedYogi and SCAFFOLD.
+3. Providing an offline **cross-product benchmark runner** to evaluate all optimizer×dataset×defense combinations.
+
+---
+
+### Public Dataset Loaders (`dataloader.py`)
+
+| Dataset | Source | Feature Dim | Fraud Ratio | Graph? |
+|:---|:---|---:|---:|:---:|
+| **Elliptic Bitcoin** | Kaggle / EllipticDataset | 166 | ~2 % | ✅ node-edge CSV |
+| **AMLSim** | IBM Research | 6 (tabular) | ~1.5 % | — |
+| **PaySim / Kaggle CC** | Kaggle Credit Card Fraud | 29 (V1-V28 + Amount) | ~0.17 % | — |
+
+Each loader follows the contract:
+
+```python
+data = load_dataset("elliptic", n_mock_nodes=2000)
+# Returns: {"X": np.ndarray, "y": np.ndarray, "edges": list, "source": "real"|"mock"}
+```
+
+Real CSV files are looked up under `storage/datasets/<name>/`.  
+If files are absent, a **synthetic mock** with the same feature dimensions and label ratios is generated automatically, enabling fully offline operation for CI/CD.
+
+---
+
+### FedYogi — Adaptive Server Optimizer
+
+**Reference**: Reddi et al., "Adaptive Federated Optimization" (ICLR 2021)
+
+FedYogi is a server-side adaptive optimizer similar to FedAdam but with a *Yogi* second-moment update that prevents the effective learning rate from decreasing too fast in sparse gradient regimes:
+
+$$v_{t+1} = v_t - (1 - \beta_2) \cdot \text{sign}(v_t - \Delta_t^2) \cdot \Delta_t^2$$
+$$m_{t+1} = \beta_1 m_t + (1 - \beta_1) \Delta_t$$
+$$w_{t+1} = w_t + \eta \cdot \frac{m_{t+1}}{\sqrt{v_{t+1}} + \tau}$$
+
+Compared to FedAdam, FedYogi **slows variance growth** and maintains larger effective learning rates on coordinates where $v$ already exceeds $\Delta^2$. This is beneficial for imbalanced fraud datasets with sparse positive gradients.
+
+**Server-state lifecycle** (per `simulation_id`):
+- `_server_m_by_sim[sim_id]` — first moment, initialised to **0**
+- `_server_v_by_sim[sim_id]` — second moment, initialised to **τ²** (Yogi-specific)
+
+---
+
+### SCAFFOLD — Control-Variate Client-Drift Correction
+
+**Reference**: Karimireddy et al., "SCAFFOLD: Stochastic Controlled Averaging for Federated Learning" (ICML 2020)
+
+SCAFFOLD mitigates *client drift* caused by heterogeneous (Non-IID) data distributions by introducing control variates `c` (global) and `c_i` (per-client).
+
+**Client local update** (`model_service.train_local`):
+
+```
+g_i ← ∇L_i(w) - c_i + c        # corrected gradient
+w_i ← w_i - lr · g_i
+```
+
+**Control variate update** (end of local training):
+
+```
+c_i+ ← c_i - c + (1/K·lr)·(w_old - w_new)
+```
+
+**Server aggregation** (`fl_engine.py`): weighted FedAvg on the received model updates. Full server-side variate aggregation (`c ← c + (1/N)·Σ Δc_i`) is a planned extension requiring per-client delta upload through the connector layer.
+
+**Configuration**: select `aggregation_method = "scaffold"` in the simulation config.
+
+---
+
+### Offline Benchmark Runner (`benchmark_real_data.py`)
+
+Cross-product evaluation over:
+- **Datasets**: Elliptic, AMLSim, PaySim
+- **Optimizers**: FedAvg, FedProx, SCAFFOLD, MOON, FedYogi
+- **Byzantine Defenses**: None, Krum, Bulyan
+
+```bash
+# Full run (uses mocks if real data absent, 5 rounds × 2 epochs):
+python benchmark_real_data.py
+
+# Smoke test:
+python benchmark_real_data.py --mock-only --n-samples 300 --rounds 2 --epochs 1
+```
+
+Output: `storage/benchmark_results.md` — a markdown table with F1, ROC-AUC, PR-AUC per combination.
+
+---
+
+### New Aggregation Method Enums
+
+| Enum value | Class | Server state |
+|:---|:---|:---|
+| `fed_yogi` | `AggregationMethod.FED_YOGI` | per-sim m, v (Yogi) |
+| `scaffold` | `AggregationMethod.SCAFFOLD` | none (client-side only) |
+
+---
+
+### Frontend Controls
+
+The **Aggregation Strategy** dropdown in `SimulationControls.tsx` now groups options:
+
+- **Classic**: FedAvg Weighted, FedAvg
+- **Adaptive Server Optimizers** ✨: FedAdam, FedAdagrad, **FedYogi** (new)
+- **Client-Drift Correction** ✨: **SCAFFOLD** (new)
+- **Byzantine-Robust**: Krum, Coordinate-wise Median, Trimmed Mean, Bulyan
+
+The `aggregation_method` union type in `types.ts` has been extended to include `'fed_yogi'` and `'scaffold'`.
+
+

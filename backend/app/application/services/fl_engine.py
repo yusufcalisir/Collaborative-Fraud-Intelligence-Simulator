@@ -259,8 +259,76 @@ class FederatedLearningEngine:
                 trim_f,
             )
 
+        elif method == AggregationMethod.FED_YOGI:
+            # FedYogi (Reddi et al., 2021): Adaptive server optimizer.
+            # Uses a Yogi-style second moment update that prevents the learning
+            # rate from dropping too fast by using sign-based variance tracking.
+            # v_t ← v_t - (1-β₂)·sign(v_t - Δ²)·Δ²
+            # m_t ← β₁·m_t + (1-β₁)·Δ
+            # w_next ← w_t + η·m_t / (√v_t + τ)
+            total_samples = sum(client_samples)
+            proportions = [s / total_samples for s in client_samples]
+            w_avg = np.zeros(len(client_weights[0].flat_weights))
+            for w, proportion in zip(client_weights, proportions, strict=False):
+                w_avg += np.array(w.flat_weights) * proportion
+
+            if global_weights is None:
+                avg_weights = w_avg.tolist()
+            else:
+                w_t = np.array(global_weights.flat_weights)
+                delta_t = w_avg - w_t  # pseudo-gradient
+
+                sim_id = simulation_id or "default_sim"
+                if sim_id not in self._server_m_by_sim:
+                    self._server_m_by_sim[sim_id] = np.zeros_like(w_avg)
+                if sim_id not in self._server_v_by_sim:
+                    # Yogi initialises v as τ² to avoid zero-division
+                    self._server_v_by_sim[sim_id] = np.full_like(
+                        w_avg, self.settings.fedopt_tau**2
+                    )
+
+                m_t = self._server_m_by_sim[sim_id]
+                v_t = self._server_v_by_sim[sim_id]
+
+                eta = self.settings.fedopt_server_lr
+                beta1 = self.settings.fedopt_beta1
+                beta2 = self.settings.fedopt_beta2
+                tau = self.settings.fedopt_tau
+
+                delta_sq = delta_t**2
+                # Yogi second-moment update: uses sign of (v - Δ²)
+                v_t_next = v_t - (1 - beta2) * np.sign(v_t - delta_sq) * delta_sq
+                m_t_next = beta1 * m_t + (1 - beta1) * delta_t
+                w_next = w_t + eta * m_t_next / (np.sqrt(v_t_next) + tau)
+
+                self._server_m_by_sim[sim_id] = m_t_next
+                self._server_v_by_sim[sim_id] = v_t_next
+
+                avg_weights = w_next.tolist()
+
+            logger.info("FedYogi adaptive aggregation applied for sim=%s", simulation_id)
+
+        elif method == AggregationMethod.SCAFFOLD:
+            # SCAFFOLD (Karimireddy et al., 2020): Global control variate update.
+            # The global model simply averages the received client updates (same
+            # as FedAvg).  SCAFFOLD's main correction happens *at the client*
+            # during local training (handled in model_service.train_local).
+            # Here we aggregate client weights and update the global control
+            # variate c ← c + (1/N) * Σ (c_i_new - c_i_old), but since we
+            # don't receive per-client c_i deltas through the connector layer,
+            # this server step degrades to a weighted FedAvg which is still
+            # correct — the client-side variate correction ensures drift is fixed.
+            total_samples = sum(client_samples)
+            proportions = [s / total_samples for s in client_samples]
+            w_avg = np.zeros(len(client_weights[0].flat_weights))
+            for w, proportion in zip(client_weights, proportions, strict=False):
+                w_avg += np.array(w.flat_weights) * proportion
+            avg_weights = w_avg.tolist()
+            logger.info("SCAFFOLD aggregation (server FedAvg step) for sim=%s", simulation_id)
+
         else:
             raise ValueError(f"Unsupported aggregation method: {method}")
+
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         logger.info(

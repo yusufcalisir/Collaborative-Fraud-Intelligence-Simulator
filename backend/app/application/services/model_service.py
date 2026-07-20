@@ -96,10 +96,14 @@ class ModelService:
         moon_temperature: float = 0.5,
         global_weights: ModelWeights | None = None,
         prev_local_weights: ModelWeights | None = None,
-    ) -> tuple[FraudDetectionModel, list[float]]:
+        # SCAFFOLD control variates
+        c_global: list[torch.Tensor] | None = None,
+        c_local: list[torch.Tensor] | None = None,
+    ) -> tuple[FraudDetectionModel, list[float], list[torch.Tensor] | None]:
         """Train the model on a bank's local data.
 
-        Returns the trained model and per-epoch loss history.
+        Returns the trained model, per-epoch loss history, and updated
+        SCAFFOLD local control variates (or None if SCAFFOLD not used).
         """
         epochs = epochs or self.settings.fl_default_local_epochs
         learning_rate = learning_rate or self.settings.fl_default_learning_rate
@@ -184,6 +188,14 @@ class ModelService:
                     loss = loss + moon_mu * con_loss
 
                 loss.backward()
+
+                # SCAFFOLD: correct gradients before optimizer step
+                # g_i ← g_i - c_i + c  (subtract local variate, add global variate)
+                if c_global is not None and c_local is not None:
+                    for param, cg, cl in zip(model.parameters(), c_global, c_local):
+                        if param.grad is not None:
+                            param.grad.data.add_(cg.to(self.device) - cl.to(self.device))
+
                 optimizer.step()
 
                 epoch_loss += loss.item()
@@ -203,7 +215,17 @@ class ModelService:
 
         gc.collect()
 
-        return model, loss_history
+        # SCAFFOLD: update local control variates
+        # c_i+ = c_i - c + (1 / K*lr) * (w_old - w_new)  — approximated here as:
+        # c_i+ = c_i - c + mean_grad_correction
+        updated_c_local: list[torch.Tensor] | None = None
+        if c_global is not None and c_local is not None:
+            updated_c_local = [
+                (cl - cg + param.grad.data.clone() if param.grad is not None else cl)
+                for cl, cg, param in zip(c_local, c_global, model.parameters())
+            ]
+
+        return model, loss_history, updated_c_local
 
     def train_local_with_opacus(
         self,

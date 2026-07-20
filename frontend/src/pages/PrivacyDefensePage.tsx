@@ -266,7 +266,7 @@ function BudgetLogSection() {
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry: BudgetLogEntry, i: number) => (
+              {entries.map((entry: BudgetLogEntry) => (
                 <tr
                   key={entry.simulation_id}
                   className={`border-b border-slate-800 transition-colors hover:bg-slate-800/40 ${entry.budget_exhausted ? 'bg-red-500/5' : ''}`}

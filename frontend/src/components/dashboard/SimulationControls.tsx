@@ -234,17 +234,30 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
                 disabled={config.fl_engine_type === 'flower'}
                 className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-indigo)] transition-colors"
               >
-                <option value="fed_avg_weighted">FedAvg Weighted (Default)</option>
-                <option value="fed_avg">FedAvg (Unweighted)</option>
-                <option value="krum" disabled={config.fl_engine_type === 'flower'}>Krum (Byzantine-Robust)</option>
-                <option value="coordinate_wise_median" disabled={config.fl_engine_type === 'flower'}>Coordinate-wise Median (Byzantine-Robust)</option>
-                <option value="trimmed_mean" disabled={config.fl_engine_type === 'flower'}>Trimmed Mean (Coordinate Byzantine) ✨</option>
-                <option value="bulyan" disabled={config.fl_engine_type === 'flower'}>Bulyan (Multi-Byzantine Robust) ✨</option>
+                <optgroup label="Classic">
+                  <option value="fed_avg_weighted">FedAvg Weighted (Default)</option>
+                  <option value="fed_avg">FedAvg (Unweighted)</option>
+                </optgroup>
+                <optgroup label="Adaptive Server Optimizers ✨">
+                  <option value="fed_adam" disabled={config.fl_engine_type === 'flower'}>FedAdam (Server Adam)</option>
+                  <option value="fed_adagrad" disabled={config.fl_engine_type === 'flower'}>FedAdagrad (Server AdaGrad)</option>
+                  <option value="fed_yogi" disabled={config.fl_engine_type === 'flower'}>FedYogi (Slow variance decay) ✨</option>
+                </optgroup>
+                <optgroup label="Client-Drift Correction ✨">
+                  <option value="scaffold" disabled={config.fl_engine_type === 'flower'}>SCAFFOLD (Control variates) ✨</option>
+                </optgroup>
+                <optgroup label="Byzantine-Robust">
+                  <option value="krum" disabled={config.fl_engine_type === 'flower'}>Krum</option>
+                  <option value="coordinate_wise_median" disabled={config.fl_engine_type === 'flower'}>Coordinate-wise Median</option>
+                  <option value="trimmed_mean" disabled={config.fl_engine_type === 'flower'}>Trimmed Mean</option>
+                  <option value="bulyan" disabled={config.fl_engine_type === 'flower'}>Bulyan (Multi-Byzantine Robust)</option>
+                </optgroup>
               </select>
               <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
-                {config.fl_engine_type === 'flower' ? 'Flower uses its built-in FedAvg implementation' : 'Krum, Median, Trimmed Mean and Bulyan are robust against Byzantine attacks'}
+                {config.fl_engine_type === 'flower' ? 'Flower uses its built-in FedAvg implementation' : 'FedYogi & SCAFFOLD are new in v20 — adaptive convergence & drift correction'}
               </p>
             </div>
+
 
             {/* Adversarial Simulation */}
             <div className={config.fl_engine_type === 'flower' ? 'opacity-40 pointer-events-none' : ''}>

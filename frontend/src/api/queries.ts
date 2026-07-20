@@ -703,6 +703,8 @@ export function useNegotiatedParams(bankId: string, baseBatchSize: number, baseE
     },
     enabled: !!bankId,
   });
+}
+
 
 
 // ── Privacy Defense Suite (Item 19) ──────────────────────────
