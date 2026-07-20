@@ -352,7 +352,22 @@ To handle massive scales of customer relationships, transactions, and alert link
 * **Real-time GNN Serving**: Enables compatibility with real-time Graph Neural Network inference runtimes (e.g. Memgraph GNN modules / DGL) to update node embeddings dynamically as new transaction edges are written.
 * **Dual-Storage & Fallback**: Configured via `graph_db_type` in settings (supporting `"redis"`, `"neo4j"`, `"memgraph"`). If the graph database is not reachable or not installed, the engine gracefully falls back to the Redis / in-memory adjacency list to maintain complete backward compatibility in development.
 
+### 2.6 Advanced AI Explainability Portal (Counterfactuals, Decision Replay, GNNExplainer)
+
+To satisfy strict regulatory requirements ("Right to Explanation" under GDPR Art. 22) and provide compliance officers with audit-grade transparency:
+
+1. **Counterfactual Remediation Engine**:
+   - Computes actionable feature modifications ($x \to x'$) that lower an alert's risk score below the remediation threshold (e.g. $<350.0$).
+   - Formulates human-understandable remediation statements (e.g., *"Reduce amount by $45.00 AND originate transaction from US instead of RU"*).
+2. **Deterministic Decision Replay (Inference Audit)**:
+   - Reproduces historical risk scoring decisions deterministically ($| \text{score}_{\text{replay}} - \text{score}_{\text{orig}} | < 0.01$).
+   - Retrieves model version metadata (`v1.4.2-champion`), feature vector snapshots, 9-signal policy rule outcomes, and graph snapshots at transaction timestamp.
+3. **GNNExplainer Subgraph Attribution**:
+   - Calculates edge contribution percentages over entity 2-hop neighborhoods via message-passing masking.
+   - Highlights specific relationship types (e.g., `SHARES_DEVICE` with known mule account) driving the GraphSAGE risk embedding.
+
 ### 3. Federated Graph Embedding (FedGNN)
+
 
 
 To move beyond heuristic relationship weights, Phase 5 introduces a **Federated GraphSAGE** (Sample and Aggregate) pipeline to learn structural graph embeddings collaboratively:

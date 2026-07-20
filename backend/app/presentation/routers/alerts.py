@@ -11,7 +11,10 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.application.schemas.phase2 import (
     AlertResponse,
+    CounterfactualExplanationResponse,
+    DecisionReplayResponse,
     ExplainabilityResponse,
+    GNNExplanationResponse,
     IntelligenceStatsResponse,
     SharedIntelligenceResponse,
 )
@@ -187,3 +190,99 @@ async def intelligence_stats() -> IntelligenceStatsResponse:
     """Get shared intelligence statistics."""
     stats = _alert_service.get_intelligence_stats()
     return IntelligenceStatsResponse(**stats)
+
+
+@router.get("/alerts/{alert_id}/counterfactuals", response_model=CounterfactualExplanationResponse)
+async def get_alert_counterfactuals(
+    alert_id: str,
+    target_score: float = Query(350.0, ge=50.0, le=800.0),
+) -> CounterfactualExplanationResponse:
+    """Get actionable counterfactual remediation paths for an alert."""
+    alert = _alert_service.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    cf = _explainability_service.generate_counterfactuals(alert, target_score=target_score)
+
+    return CounterfactualExplanationResponse(
+        alert_id=cf.alert_id,
+        original_score=cf.original_score,
+        remediated_score=cf.remediated_score,
+        is_cleared=cf.is_cleared,
+        changes=[
+            {
+                "feature": c.feature,
+                "original_value": c.original_value,
+                "remediated_value": c.remediated_value,
+                "delta_explanation": c.delta_explanation,
+            }
+            for c in cf.changes
+        ],
+        summary_text=cf.summary_text,
+    )
+
+
+@router.get("/alerts/{alert_id}/decision-replay", response_model=DecisionReplayResponse)
+async def replay_alert_decision(alert_id: str) -> DecisionReplayResponse:
+    """Execute deterministic decision replay for regulatory inference audit."""
+    alert = _alert_service.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    audit = _explainability_service.replay_inference_audit(alert)
+
+    return DecisionReplayResponse(
+        alert_id=audit.alert_id,
+        transaction_id=audit.transaction_id,
+        timestamp=audit.timestamp,
+        model_version=audit.model_version,
+        model_auc=audit.model_auc,
+        features_snapshot=audit.features_snapshot,
+        graph_snapshot=audit.graph_snapshot,
+        policy_rules_evaluated=[
+            {
+                "rule_code": r.rule_code,
+                "signal_name": r.signal_name,
+                "weight": r.weight,
+                "raw_value": r.raw_value,
+                "normalized_score": r.normalized_score,
+                "contribution": r.contribution,
+                "triggered": r.triggered,
+            }
+            for r in audit.policy_rules_evaluated
+        ],
+        reconstructed_risk_score=audit.reconstructed_risk_score,
+        reproduced_severity=audit.reproduced_severity,
+        audit_matched=audit.audit_matched,
+    )
+
+
+@router.get("/alerts/{alert_id}/gnn-explanation", response_model=GNNExplanationResponse)
+async def get_alert_gnn_explanation(alert_id: str) -> GNNExplanationResponse:
+    """Compute GNNExplainer graph attribution for the entity associated with an alert."""
+    alert = _alert_service.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    node_id = (
+        alert.involved_entity_ids[0] if alert.involved_entity_ids else f"entity_{alert.id[:8]}"
+    )
+    gnn_exp = _explainability_service.explain_gnn_embedding(node_id)
+
+    return GNNExplanationResponse(
+        node_id=gnn_exp.node_id,
+        target_risk_level=gnn_exp.target_risk_level,
+        subgraph_nodes_count=gnn_exp.subgraph_nodes_count,
+        subgraph_edges_count=gnn_exp.subgraph_edges_count,
+        top_contributing_edges=[
+            {
+                "source": e.source,
+                "target": e.target,
+                "relationship_type": e.relationship_type,
+                "weight": e.weight,
+                "contribution_percentage": e.contribution_percentage,
+            }
+            for e in gnn_exp.top_contributing_edges
+        ],
+        primary_driver_text=gnn_exp.primary_driver_text,
+    )

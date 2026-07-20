@@ -31,7 +31,11 @@ import type {
   PSIResponse,
   EntityFuzzyResolveRequest,
   FuzzyMatchResponse,
+  CounterfactualExplanation,
+  DecisionReplayReport,
+  GNNExplanationReport,
 } from './types';
+
 
 // ── Phase 1: Simulations ───────────────────
 
@@ -533,5 +537,41 @@ export function useFuzzyResolve() {
     },
   });
 }
+
+export function useAlertCounterfactuals(alertId: string | undefined, targetScore: number = 350.0) {
+  return useQuery<CounterfactualExplanation>({
+    queryKey: ['alert-counterfactuals', alertId, targetScore],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/alerts/${alertId}/counterfactuals`, {
+        params: { target_score: targetScore },
+      });
+      return data;
+    },
+    enabled: !!alertId,
+  });
+}
+
+export function useAlertDecisionReplay(alertId: string | undefined) {
+  return useQuery<DecisionReplayReport>({
+    queryKey: ['alert-decision-replay', alertId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/alerts/${alertId}/decision-replay`);
+      return data;
+    },
+    enabled: !!alertId,
+  });
+}
+
+export function useAlertGNNExplanation(alertId: string | undefined) {
+  return useQuery<GNNExplanationReport>({
+    queryKey: ['alert-gnn-explanation', alertId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/alerts/${alertId}/gnn-explanation`);
+      return data;
+    },
+    enabled: !!alertId,
+  });
+}
+
 
 

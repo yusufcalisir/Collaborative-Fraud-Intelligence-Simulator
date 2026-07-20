@@ -597,6 +597,7 @@ export interface EntityFuzzyResolveRequest {
 }
 
 export interface FuzzyMatchResponse {
+
   entity_id: string;
   display_label: string;
   entity_type: string;
@@ -606,4 +607,63 @@ export interface FuzzyMatchResponse {
   similarity: number;
   standardized_stored: string;
 }
+
+export interface CounterfactualChange {
+
+  feature: string;
+  original_value: string;
+  remediated_value: string;
+  delta_explanation: string;
+}
+
+export interface CounterfactualExplanation {
+  alert_id: string;
+  original_score: number;
+  remediated_score: number;
+  is_cleared: boolean;
+  changes: CounterfactualChange[];
+  summary_text: string;
+}
+
+export interface PolicyRuleEvaluation {
+  rule_code: string;
+  signal_name: string;
+  weight: number;
+  raw_value: number;
+  normalized_score: number;
+  contribution: number;
+  triggered: boolean;
+}
+
+export interface DecisionReplayReport {
+  alert_id: string;
+  transaction_id: string;
+  timestamp: string;
+  model_version: string;
+  model_auc: number;
+  features_snapshot: Record<string, unknown>;
+  graph_snapshot: Record<string, number>;
+  policy_rules_evaluated: PolicyRuleEvaluation[];
+  reconstructed_risk_score: number;
+  reproduced_severity: string;
+  audit_matched: boolean;
+}
+
+export interface EdgeContribution {
+  source: string;
+  target: string;
+  relationship_type: string;
+  weight: number;
+  contribution_percentage: number;
+}
+
+export interface GNNExplanationReport {
+  node_id: string;
+  target_risk_level: string;
+  subgraph_nodes_count: number;
+  subgraph_edges_count: number;
+  top_contributing_edges: EdgeContribution[];
+  primary_driver_text: string;
+}
+
 

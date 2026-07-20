@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAlerts, useAlertExplainability } from '../api/queries';
+import {
+  useAlerts,
+  useAlertExplainability,
+  useAlertCounterfactuals,
+  useAlertDecisionReplay,
+  useAlertGNNExplanation,
+} from '../api/queries';
 import { BANK_NAMES, SEVERITY_COLORS } from '../api/types';
 import type { Alert } from '../api/types';
+
 
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
@@ -220,8 +227,12 @@ function AlertCard({
   );
 }
 
-function ExplainabilityPanel({ alert }: { alert: Alert }) {
-  const { data: report, isLoading } = useAlertExplainability(alert.id);
+export function ExplainabilityPanel({ alert }: { alert: Alert }) {
+  const [activeTab, setActiveTab] = useState<'attribution' | 'counterfactuals' | 'audit' | 'gnn'>('attribution');
+  const { data: report, isLoading: isReportLoading } = useAlertExplainability(alert.id);
+  const { data: cfReport, isLoading: isCfLoading } = useAlertCounterfactuals(alert.id);
+  const { data: auditReport, isLoading: isAuditLoading } = useAlertDecisionReplay(alert.id);
+  const { data: gnnReport, isLoading: isGnnLoading } = useAlertGNNExplanation(alert.id);
 
   return (
     <motion.div
@@ -230,113 +241,311 @@ function ExplainabilityPanel({ alert }: { alert: Alert }) {
       animate={{ opacity: 1, x: 0 }}
       className="glass-card p-5 sticky top-6 space-y-4"
     >
-      <h3 className="text-sm font-bold uppercase text-[var(--color-text-muted)]">
-        Explainability Report
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase text-[var(--color-text-muted)] tracking-wider">
+          AI Explainability Portal
+        </h3>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-bold">
+          GDPR Art. 22 Compliant
+        </span>
+      </div>
 
-      {isLoading ? (
-        <div className="text-center py-6 text-[var(--color-text-muted)]">Analyzing...</div>
-      ) : !report ? (
-        <div className="text-center py-6 text-[var(--color-text-muted)]">No report available</div>
-      ) : (
-        <>
-          {/* Risk Factors */}
-          <div>
-            <h4 className="text-xs font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
-              Risk Factors
-            </h4>
-            <ul className="space-y-1">
-              {report.risk_factors.map((factor, i) => (
-                <li key={i} className="text-sm flex gap-2">
-                  <span className="text-[var(--color-danger)]">•</span>
-                  {factor}
-                </li>
-              ))}
-            </ul>
-          </div>
+      {/* Tabs */}
+      <div className="grid grid-cols-4 gap-1 p-1 bg-[var(--color-surface-alt)] rounded-lg text-center text-[10px] font-bold">
+        {[
+          { id: 'attribution', label: 'Attribution' },
+          { id: 'counterfactuals', label: 'Remediation' },
+          { id: 'audit', label: 'Audit Replay' },
+          { id: 'gnn', label: 'GNN Explainer' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`py-1.5 rounded-md transition-all ${
+              activeTab === tab.id
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          {/* Top Features */}
-          <div>
-            <h4 className="text-xs font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
-              Top Features
-            </h4>
-            <div className="space-y-2">
-              {report.top_features.slice(0, 5).map((f, i) => {
-                const anyF = f as any;
-                const rawVal = typeof anyF.contribution === 'number' ? anyF.contribution : (typeof anyF.value === 'number' ? anyF.value : 0);
-                const pct = rawVal * 100;
-                const barWidth = rawVal > 0.25 ? pct : pct * 5;
+      {/* Tab 1: Attribution */}
+      {activeTab === 'attribution' && (
+        <div className="space-y-4">
+          {isReportLoading ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">Analyzing feature contributions...</div>
+          ) : !report ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">No report available</div>
+          ) : (
+            <>
+              {/* Risk Factors */}
+              <div>
+                <h4 className="text-[10px] font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
+                  Risk Factors
+                </h4>
+                <ul className="space-y-1">
+                  {report.risk_factors.map((factor, i) => (
+                    <li key={i} className="text-xs flex gap-2">
+                      <span className="text-[var(--color-danger)]">•</span>
+                      {factor}
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-                return (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-xs w-28 truncate text-[var(--color-text-muted)]">
-                      {f.feature.replace(/_/g, ' ')}
-                    </span>
-                    <div className="flex-1 h-1.5 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, barWidth)}%` }}
-                        transition={{ delay: i * 0.1 }}
-                        className="h-full rounded-full bg-[var(--color-primary)]"
-                      />
-                    </div>
-                    <span className="text-xs font-mono w-10 text-right">
-                      {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+              {/* Top Features */}
+              <div>
+                <h4 className="text-[10px] font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
+                  Kernel SHAP Feature Attribution
+                </h4>
+                <div className="space-y-2">
+                  {report.top_features.slice(0, 5).map((f, i) => {
+                    const anyF = f as any;
+                    const rawVal =
+                      typeof anyF.contribution === 'number'
+                        ? anyF.contribution
+                        : typeof anyF.value === 'number'
+                        ? anyF.value
+                        : 0;
+                    const pct = rawVal * 100;
+                    const barWidth = rawVal > 0.25 ? pct : pct * 5;
 
-          {/* Signal Breakdown */}
-          {report.risk_score_breakdown.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
-                Signal Breakdown
-              </h4>
-              <div className="space-y-2">
-                {report.risk_score_breakdown
-                  .slice()
-                  .sort((a, b) => b.contribution - a.contribution)
-                  .slice(0, 5)
-                  .map((sig, i) => (
-                    <div key={i} className="text-xs">
-                      <div
-                        className="flex justify-between mb-0.5"
-                        title={`Signal Risk Score: ${(sig.normalized_score * 100).toFixed(0)}% | Engine Weight: ${(sig.weight * 100).toFixed(0)}%`}
-                      >
-                        <span className="text-[var(--color-text-muted)] capitalize">
-                          {sig.signal_name.replace(/_/g, ' ').replace('rules', '')}
+                    return (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <span className="w-28 truncate text-[var(--color-text-muted)]">
+                          {f.feature.replace(/_/g, ' ')}
                         </span>
-                        <span className="font-mono text-[var(--color-accent-teal)] font-semibold">
-                          {(sig.contribution * 100).toFixed(0)}%
+                        <div className="flex-1 h-1.5 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(100, barWidth)}%` }}
+                            transition={{ delay: i * 0.1 }}
+                            className="h-full rounded-full bg-[var(--color-primary)]"
+                          />
+                        </div>
+                        <span className="font-mono w-10 text-right">{pct.toFixed(0)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Signal Breakdown */}
+              {report.risk_score_breakdown.length > 0 && (
+                <div>
+                  <h4 className="text-[10px] font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
+                    9-Signal Composite Pipeline
+                  </h4>
+                  <div className="space-y-2">
+                    {report.risk_score_breakdown
+                      .slice()
+                      .sort((a, b) => b.contribution - a.contribution)
+                      .slice(0, 5)
+                      .map((sig, i) => (
+                        <div key={i} className="text-xs">
+                          <div className="flex justify-between mb-0.5">
+                            <span className="text-[var(--color-text-muted)] capitalize">
+                              {sig.signal_name.replace(/_/g, ' ').replace('rules', '')}
+                            </span>
+                            <span className="font-mono text-[var(--color-accent-teal)] font-semibold">
+                              {(sig.contribution * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="h-1 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-indigo)] to-[var(--color-accent-teal)]"
+                              style={{ width: `${sig.contribution * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Counterfactuals */}
+      {activeTab === 'counterfactuals' && (
+        <div className="space-y-4 text-xs">
+          {isCfLoading ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">Generating remediation paths...</div>
+          ) : !cfReport ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">No counterfactual report available</div>
+          ) : (
+            <>
+              <div className="p-3 bg-[var(--color-surface-alt)] rounded-lg border border-[var(--color-border)]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-[var(--color-text-primary)]">Remediation Target</span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      cfReport.is_cleared ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                    }`}
+                  >
+                    {cfReport.is_cleared ? 'CLEARED (<350 Risk)' : 'ACTION REQUIRED'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-center my-1">
+                  <div className="flex-1">
+                    <div className="text-base font-bold text-[var(--color-danger)]">{cfReport.original_score}</div>
+                    <div className="text-[9px] uppercase text-[var(--color-text-muted)]">Current Risk</div>
+                  </div>
+                  <div className="text-lg text-[var(--color-text-muted)]">➔</div>
+                  <div className="flex-1">
+                    <div className="text-base font-bold text-emerald-400">{cfReport.remediated_score}</div>
+                    <div className="text-[9px] uppercase text-[var(--color-text-muted)]">Target Risk</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-[10px] font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
+                  Actionable Remediation Statements
+                </h4>
+                <div className="space-y-2">
+                  {cfReport.changes.map((change, i) => (
+                    <div key={i} className="p-2.5 bg-[var(--color-bg-card)] rounded-lg border border-[var(--color-border)] space-y-1">
+                      <div className="flex items-center justify-between font-bold text-[var(--color-text-primary)] capitalize">
+                        <span>{change.feature.replace(/_/g, ' ')}</span>
+                        <span className="text-[10px] font-mono text-[var(--color-accent-indigo)]">
+                          {change.original_value} ➔ {change.remediated_value}
                         </span>
                       </div>
-                      <div
-                        className="h-1 bg-[var(--color-surface-alt)] rounded-full overflow-hidden"
-                        title={`Signal Risk Score: ${(sig.normalized_score * 100).toFixed(0)}% | Engine Weight: ${(sig.weight * 100).toFixed(0)}%`}
-                      >
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-indigo)] to-[var(--color-accent-teal)]"
-                          style={{ width: `${sig.contribution * 100}%` }}
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                        {change.delta_explanation}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Deterministic Audit Replay */}
+      {activeTab === 'audit' && (
+        <div className="space-y-4 text-xs">
+          {isAuditLoading ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">Replaying inference audit...</div>
+          ) : !auditReport ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">Audit replay not available</div>
+          ) : (
+            <>
+              <div className="p-3 bg-[var(--color-surface-alt)] rounded-lg border border-[var(--color-border)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold">Model Version</span>
+                  <span className="font-mono text-[var(--color-primary)] font-bold">{auditReport.model_version}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--color-text-muted)]">Model Baseline AUC</span>
+                  <span className="font-mono font-bold">{(auditReport.model_auc * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--color-border)]">
+                  <span className="text-[var(--color-text-muted)]">Inference Audit Match</span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      auditReport.audit_matched ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                    }`}
+                  >
+                    {auditReport.audit_matched ? '✓ 100% REPRODUCED' : 'MISMATCH'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-[10px] font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
+                  9-Signal Replay Execution Trace
+                </h4>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {auditReport.policy_rules_evaluated.map((rule, i) => (
+                    <div key={i} className="flex items-center justify-between p-1.5 bg-[var(--color-bg-card)] rounded border border-[var(--color-border)]">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            rule.triggered ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'
+                          }`}
                         />
+                        <span className="font-mono font-bold text-[10px]">{rule.rule_code}</span>
+                        <span className="text-[var(--color-text-muted)] capitalize truncate w-24">
+                          {rule.signal_name.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                      <div className="font-mono text-[10px] text-right">
+                        <div>+{(rule.contribution * 1000).toFixed(0)} pts</div>
                       </div>
                     </div>
                   ))}
+                </div>
               </div>
-            </div>
+            </>
           )}
+        </div>
+      )}
 
-          {/* Confidence */}
-          <div className="pt-2 border-t border-[var(--color-border)]">
-            <div className="flex justify-between text-sm">
-              <span className="text-[var(--color-text-muted)]">Model Confidence</span>
-              <span className="font-bold">{(report.model_confidence * 100).toFixed(1)}%</span>
-            </div>
-          </div>
-        </>
+      {/* Tab 4: GNN Explainer */}
+      {activeTab === 'gnn' && (
+        <div className="space-y-4 text-xs">
+          {isGnnLoading ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">Computing GNN attribution...</div>
+          ) : !gnnReport ? (
+            <div className="text-center py-6 text-[var(--color-text-muted)]">GNN explanation not available</div>
+          ) : (
+            <>
+              <div className="p-3 bg-[var(--color-surface-alt)] rounded-lg border border-[var(--color-border)] space-y-1.5">
+                <div className="flex justify-between font-bold">
+                  <span>Target Node ID</span>
+                  <span className="font-mono text-[var(--color-primary)]">{gnnReport.node_id.slice(0, 14)}</span>
+                </div>
+                <div className="flex justify-between text-[var(--color-text-muted)]">
+                  <span>2-Hop Subgraph</span>
+                  <span>{gnnReport.subgraph_nodes_count} nodes • {gnnReport.subgraph_edges_count} edges</span>
+                </div>
+                <p className="text-[11px] text-[var(--color-accent-teal)] font-medium pt-1 border-t border-[var(--color-border)]">
+                  {gnnReport.primary_driver_text}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-[10px] font-semibold text-[var(--color-text-muted)] mb-2 uppercase">
+                  Top Graph Edge Contributors
+                </h4>
+                <div className="space-y-2">
+                  {gnnReport.top_contributing_edges.map((edge, i) => (
+                    <div key={i} className="p-2 bg-[var(--color-bg-card)] rounded-lg border border-[var(--color-border)] space-y-1">
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="text-[var(--color-accent-indigo)] capitalize">
+                          {edge.relationship_type.replace(/_/g, ' ')}
+                        </span>
+                        <span className="font-mono text-emerald-400">
+                          {edge.contribution_percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="h-1 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-400 rounded-full"
+                          style={{ width: `${edge.contribution_percentage}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[9px] font-mono text-[var(--color-text-muted)]">
+                        <span>{edge.source.slice(0, 10)}</span>
+                        <span>➔</span>
+                        <span>{edge.target.slice(0, 10)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </motion.div>
   );
 }
+

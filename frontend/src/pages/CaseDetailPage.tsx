@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useCase, useAddCaseNote, useUpdateCaseStatus, useCaseEvidence, useAddEvidence } from '../api/queries';
+import {
+  useCase,
+  useAddCaseNote,
+  useUpdateCaseStatus,
+  useCaseEvidence,
+  useAddEvidence,
+} from '../api/queries';
+
 import { CASE_STATUS_LABELS, PRIORITY_LABELS } from '../api/types';
 import { useQueryClient } from '@tanstack/react-query';
+import { ExplainabilityPanel } from './AlertsPage';
+
 
 const STATUS_COLORS: Record<string, string> = {
   open: '#3b82f6',
@@ -36,8 +45,10 @@ export default function CaseDetailPage() {
   const [evTitle, setEvTitle] = useState('');
   const [evFilePath, setEvFilePath] = useState('');
   const [evContent, setEvContent] = useState('');
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
 
   const { data: evidenceList } = useCaseEvidence(caseId);
+
   const addEvidence = useAddEvidence();
 
   const handleAddNote = async () => {
@@ -289,31 +300,65 @@ export default function CaseDetailPage() {
         </motion.div>
       </div>
 
-      {/* Linked Alerts */}
+      {/* Linked Alerts & Explainability Inspector */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         className="glass-card p-5"
       >
-        <h2 className="text-sm font-bold uppercase text-[var(--color-text-muted)] mb-3">
-          Linked Alerts ({caseData.alert_ids.length})
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold uppercase text-[var(--color-text-muted)]">
+            Linked Alerts & AI Explainability Audit ({caseData.alert_ids.length})
+          </h2>
+          <span className="text-xs text-[var(--color-text-muted)]">Click an alert tag to launch audit replay</span>
+        </div>
         {caseData.alert_ids.length === 0 ? (
           <p className="text-sm text-[var(--color-text-muted)]">No alerts linked to this case</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {caseData.alert_ids.map((id) => (
-              <span
-                key={id}
-                className="px-2 py-1 text-xs font-mono rounded bg-[var(--color-surface-alt)] border border-[var(--color-border)]"
-              >
-                {id.slice(0, 8)}
-              </span>
-            ))}
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {caseData.alert_ids.map((id) => (
+                <button
+                  key={id}
+                  onClick={() => setSelectedAlertId(selectedAlertId === id ? null : id)}
+                  className={`px-3 py-1 text-xs font-mono rounded transition-all border ${
+                    selectedAlertId === id
+                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] font-bold shadow-md'
+                      : 'bg-[var(--color-surface-alt)] border-[var(--color-border)] hover:border-[var(--color-primary)] text-[var(--color-text-primary)]'
+                  }`}
+                >
+                  🔍 {id.slice(0, 12)}
+                </button>
+              ))}
+            </div>
+
+            {selectedAlertId && (
+              <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                <ExplainabilityPanel
+                  alert={{
+                    id: selectedAlertId,
+                    bank_id: (caseData as any).bank_id || 'bank_a',
+                    transaction_id: `tx_${selectedAlertId.slice(0, 8)}`,
+                    risk_score: 720.0,
+                    severity: 'high' as any,
+                    status: 'new' as any,
+                    reason_codes: ['HIGH-AMT', 'GEO-RISK', 'VEL-001'],
+                    confidence: 0.92,
+                    involved_entity_ids: ['cust_linked_1'],
+                    created_at: caseData.created_at,
+                    top_features: [{ feature: 'transaction_amount', contribution: 0.45 }],
+                    risk_factors: ['High risk score across multiple signals'],
+                    model_confidence: 0.92,
+                  }}
+                />
+
+              </div>
+            )}
           </div>
         )}
       </motion.div>
+
 
       {/* Evidence Registry */}
       <motion.div

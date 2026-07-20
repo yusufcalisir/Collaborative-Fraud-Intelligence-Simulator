@@ -11,6 +11,7 @@ import hmac
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from typing import Any
 
 
 def standardize_input(raw_value: str, entity_type: str) -> str:
@@ -293,3 +294,78 @@ class GraphSubgraph:
     clusters: list[list[str]] = field(default_factory=list)  # Groups of connected entity IDs
     center_entity_id: str = ""
     depth: int = 2
+
+
+@dataclass(frozen=True)
+class CounterfactualChange:
+    """A single feature parameter modification in a counterfactual scenario."""
+
+    feature: str
+    original_value: Any
+    remediated_value: Any
+    delta_explanation: str
+
+
+@dataclass(frozen=True)
+class CounterfactualExplanation:
+    """Counterfactual explanation report showing minimal input changes to clear an alert."""
+
+    alert_id: str
+    original_score: float
+    remediated_score: float
+    is_cleared: bool
+    changes: list[CounterfactualChange] = field(default_factory=list)
+    summary_text: str = ""
+
+
+@dataclass(frozen=True)
+class PolicyRuleEvaluation:
+    """Evaluation result for a single 9-signal policy rule during audit replay."""
+
+    rule_code: str
+    signal_name: str
+    weight: float
+    raw_value: float
+    normalized_score: float
+    contribution: float
+    triggered: bool
+
+
+@dataclass(frozen=True)
+class DecisionReplayReport:
+    """Deterministic decision replay report for regulatory inference audit."""
+
+    alert_id: str
+    transaction_id: str
+    timestamp: str
+    model_version: str
+    model_auc: float
+    features_snapshot: dict[str, Any] = field(default_factory=dict)
+    graph_snapshot: dict[str, int] = field(default_factory=dict)
+    policy_rules_evaluated: list[PolicyRuleEvaluation] = field(default_factory=list)
+    reconstructed_risk_score: float = 0.0
+    reproduced_severity: str = "low"
+    audit_matched: bool = True
+
+
+@dataclass(frozen=True)
+class EdgeContribution:
+    """Contribution weight of a specific graph relationship to GNN embedding classification."""
+
+    source: str
+    target: str
+    relationship_type: str
+    weight: float
+    contribution_percentage: float
+
+
+@dataclass(frozen=True)
+class GNNExplanationReport:
+    """GNNExplainer attribution report highlighting subgraphs and edge drivers."""
+
+    node_id: str
+    target_risk_level: str
+    subgraph_nodes_count: int
+    subgraph_edges_count: int
+    top_contributing_edges: list[EdgeContribution] = field(default_factory=list)
+    primary_driver_text: str = ""

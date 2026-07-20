@@ -4,7 +4,7 @@ Request/response models for alerts, cases, entities, graph,
 scenarios, and intelligence.
 """
 
-from __future__ import annotations
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -445,3 +445,63 @@ class BusinessRuleTestRequest(BaseModel):
 class BusinessRuleTestResponse(BaseModel):
     matches: bool
     message: str
+
+
+# ── Advanced Explainability (Counterfactuals, Decision Replay, GNNExplainer) ──
+
+
+class CounterfactualChangeSchema(BaseModel):
+    feature: str
+    original_value: Any
+    remediated_value: Any
+    delta_explanation: str
+
+
+class CounterfactualExplanationResponse(BaseModel):
+    alert_id: str
+    original_score: float
+    remediated_score: float
+    is_cleared: bool
+    changes: list[CounterfactualChangeSchema] = []
+    summary_text: str = ""
+
+
+class PolicyRuleEvaluationSchema(BaseModel):
+    rule_code: str
+    signal_name: str
+    weight: float
+    raw_value: float
+    normalized_score: float
+    contribution: float
+    triggered: bool
+
+
+class DecisionReplayResponse(BaseModel):
+    alert_id: str
+    transaction_id: str
+    timestamp: str
+    model_version: str
+    model_auc: float
+    features_snapshot: dict[str, Any] = {}
+    graph_snapshot: dict[str, int] = {}
+    policy_rules_evaluated: list[PolicyRuleEvaluationSchema] = []
+    reconstructed_risk_score: float = 0.0
+    reproduced_severity: str = "low"
+    audit_matched: bool = True
+
+
+class EdgeContributionSchema(BaseModel):
+    source: str
+    target: str
+    relationship_type: str
+    weight: float
+    contribution_percentage: float
+
+
+class GNNExplanationResponse(BaseModel):
+    node_id: str
+    target_risk_level: str
+    subgraph_nodes_count: int
+    subgraph_edges_count: int
+    top_contributing_edges: list[EdgeContributionSchema] = []
+    primary_driver_text: str = ""
