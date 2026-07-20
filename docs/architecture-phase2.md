@@ -380,7 +380,25 @@ To satisfy enterprise banking security standards (ISO 27001, SOC2, PCI-DSS):
 4. **HashiCorp Vault Integration**: Centralizes secrets management via Vault KV v2 secret engine with environment fallback.
 5. **Tamper-Proof Cryptographic Audit Chain**: Chains every system event using SHA-256 hash chaining ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with a 1-click `verify_chain_integrity()` tool to detect retrospective log tampering.
 
+### 2.8 Enterprise Observability, Log Aggregation & Model Drift Engine
+
+To maintain continuous MLOps model quality and infrastructure health:
+
+1. **PLG Log Aggregation Stack**: **Grafana Loki** + **Promtail** scrape container log streams. Backend uses structured `JSONLogFormatter` tagging log entries with `tenant_id`, `bank_id`, and OpenTelemetry `trace_id`.
+2. **Prometheus Alertmanager**: Evaluates real-time metric thresholds (`monitoring/prometheus/alert_rules.yml`):
+   - *High Gateway Latency*: $p95 \text{ latency} > 100\text{ms}$ for 5m.
+   - *High Client Dropout*: $>50\%$ bank client dropout during FL rounds.
+   - *Significant Concept Drift*: Concept drift $PSI > 0.20$ for 1m.
+   - *Poor Model Calibration*: Brier score $> 0.15$ for 1m.
+3. **Statistical Model Drift Engine (`ModelDriftService`)**:
+   - *Feature Drift*: Kolmogorov-Smirnov 2-sample test ($p$-value threshold $<0.05$) and Wasserstein distance across incoming features against reference baselines.
+   - *Concept Drift*: Population Stability Index (PSI) over transaction risk scores:
+     $$PSI = \sum_{i=1}^k (A_i - E_i) \times \ln\left(\frac{A_i}{E_i}\right)$$
+4. **Model Calibration Monitoring**: Evaluates probability calibration via Brier score ($\frac{1}{N}\sum (p_i - y_i)^2$), Expected Calibration Error (ECE), and 10-bin reliability curve generation.
+5. **Automated Re-training Triggers**: When concept drift $PSI \ge 0.20$, the platform automatically alerts MLOps engineers and triggers a new federated training round (`trigger_auto_retraining()`).
+
 ### 3. Federated Graph Embedding (FedGNN)
+
 
 
 

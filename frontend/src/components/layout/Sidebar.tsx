@@ -25,12 +25,14 @@ const NAV_SECTIONS = [
   {
     label: 'Observability',
     items: [
+      { path: '/observability', label: 'Observability & Drift', icon: '📊' },
       { 
         href: import.meta.env.VITE_GRAFANA_URL ?? 'https://curiousheather2678.grafana.net/d/cfi-overview/cfi-platform-overview', 
         label: 'Grafana Dashboards', 
         icon: '📈', 
         isExternal: true 
       },
+
       { 
         href: import.meta.env.VITE_JAEGER_URL ?? 'https://curiousheather2678.grafana.net/explore', 
         label: 'Jaeger Tracing (Tempo)', 

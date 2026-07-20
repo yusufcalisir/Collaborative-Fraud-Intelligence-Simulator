@@ -316,7 +316,9 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Graph-Based Fraud Detection** | Supports both in-memory/Redis and dedicated Neo4j/Memgraph backends. Traversal and aggregation operations (BFS/DFS, PageRank-like risk propagation with decay $\gamma=0.85$, community component analytics, temporal edge velocity sliding windows) are converted to Cypher queries when Neo4j is active. | Identifies organized fraud rings (mule networks, layering) and propagates risk scores to connected accounts/devices. Supports real-time Graph Neural Network inference runtimes. | Decoupled graph traversal; heuristic structural threat scoring; Bolt protocol driver with Cypher queries |
 | **BankConnector Adapter Pattern** | Abstract `BankConnectorInterface` port; concrete adapters: `MockBankConnector` (in-process), `RESTBankConnector` (HTTP with OAuth2/mTLS/API Key), `RedisBankConnector` (pub/sub), `MQSkeletonBankConnector` (AMQP placeholder). `BankConnectorFactory` resolves per-bank adapter from config. | Decouples the FL platform from bank-specific integrations — swap a single config key to connect a real bank REST API without touching business logic. | Open/Closed principle; per-bank connector-type override |
 | **Production Enterprise Security Suite** | Enterprise security compliance architecture: **Mutual TLS 1.3 (mTLS)** with X.509 cert validation & SAN matching, **OIDC / OAuth2 JWT** bearer claims extraction, **Dynamic ABAC** policy engine (multi-tenant bank isolation, shift hour windows, approval tiers, clearance levels), **HashiCorp Vault** KV v2 secret engine client, and **Tamper-Proof Cryptographic Audit Chain** ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with retrospective integrity verification. | Meets ISO 27001, SOC2, and PCI-DSS compliance requirements for multi-tenant banking data isolation, key management, and immutable audit logs. | mTLS 1.3, OIDC JWT, ABAC evaluator, HashiCorp Vault KV v2, SHA-256 Audit Chain |
+| **Enterprise Observability & Drift Monitoring** | Production PLG log aggregation stack (**Grafana Loki** + **Promtail**), **Prometheus Alertmanager** metric alerting (gateway latency, client dropouts, concept drift $PSI > 0.20$, calibration $Brier > 0.15$), statistical **Model Drift Engine** (Kolmogorov-Smirnov 2-sample test, Wasserstein distance, Population Stability Index), **Model Calibration Monitoring** (Brier score & Expected Calibration Error), and **Automated Re-training Triggers**. | Provides full real-time visibility into model health, feature distribution shifts, prediction probability calibration, and automated MLOps retraining. | Grafana Loki, Promtail, Alertmanager, KS-test, Wasserstein, PSI, Brier Score, ECE |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
+
 
 
 ***
@@ -456,8 +458,11 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_property_based.py # Property-based tests verifying core mathematical invariants
 │   │   │   ├── test_multi_tenancy.py  # Tests DB-per-tenant isolation, KMS key vaults, model vaults, logging
 │   │   │   ├── test_model_governance.py # Tests shadow deployment, canary promotion, automatic rollback
+│   │   │   ├── test_enterprise_security_suite.py # Tests mTLS, OIDC, ABAC, Vault, and SHA-256 audit chain
+│   │   │   ├── test_drift_and_monitoring.py # Tests Kolmogorov-Smirnov test, PSI, Brier score, and Alertmanager
 │   │   │   ├── test_psi_service.py    # Tests zero-knowledge DH-PSI commutative matching
 │   │   │   ├── test_fuzzy_psi.py      # Tests standardization, MinHash LSH, and Fuzzy PSI thresholds
+
 │   │   ├── test_alert_service.py  # Tests alert generation rules and severity classification
 │   │   ├── test_case_service.py   # Tests multi-bank case coordination and event logs
 │   │   ├── test_entity_resolution.py # Tests deterministic HMAC generation and resolution profiles
@@ -484,7 +489,15 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   ├── threat_model.md           # STRIDE / OWASP ASVS v4.0 / MITRE ATLAS security architecture
 │   ├── aml-platform.md           # AML platform architecture and investigation workflows
 │   └── architecture-phase2.md     # Phase 2 system architecture design and cryptographic data flows
-├── monitoring/                   # Observability stack configuration
+├── monitoring/                   # Observability & PLG Log Aggregation stack
+│   ├── alertmanager/             # Prometheus Alertmanager config
+│   │   └── config.yml            # Alert routing and webhook notifications
+│   ├── loki/                     # Grafana Loki log indexer config
+│   │   └── loki-config.yml       # Storage, schema, and TSDB index config
+│   ├── promtail/                 # Promtail container log collector config
+│   │   └── promtail-config.yml   # Scrape configs for container logs
+│   ├── prometheus/               # Prometheus alert definitions
+│   │   └── alert_rules.yml       # Rules for latency, dropouts, drift PSI, and calibration
 │   ├── prometheus.yml            # Prometheus scrape targets (all backend services)
 │   └── grafana/
 │       ├── provisioning/         # Auto-provisioned datasources (Prometheus, Jaeger) & dashboards

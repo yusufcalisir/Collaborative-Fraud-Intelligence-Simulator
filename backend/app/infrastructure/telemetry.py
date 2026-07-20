@@ -52,12 +52,50 @@ class _NoOpUpDownCounter:
         pass
 
 
+class _NoOpGauge:
+    """Drop-in replacement that silently discards .set() or .record() calls."""
+
+    def set(self, value: float, attributes: dict | None = None) -> None:  # noqa: ARG002
+        pass
+
+    def record(self, value: float, attributes: dict | None = None) -> None:  # noqa: ARG002
+        pass
+
+
 # Public metric handles — always safe to use.
 simulation_rounds_total: Any = _NoOpCounter()
 simulation_duration_seconds: Any = _NoOpHistogram()
 active_simulations: Any = _NoOpUpDownCounter()
 alerts_generated_total: Any = _NoOpCounter()
 http_request_duration_seconds: Any = _NoOpHistogram()
+
+# Model Drift & Calibration Metrics
+cfi_concept_drift_psi: Any = _NoOpGauge()
+cfi_feature_drift_ks_stat: Any = _NoOpGauge()
+cfi_model_brier_score: Any = _NoOpGauge()
+cfi_model_ece: Any = _NoOpGauge()
+cfi_active_alerts_count: Any = _NoOpGauge()
+
+
+class JSONLogFormatter(logging.Formatter):
+    """Structured JSON formatter for Loki log aggregation via Promtail."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        import json
+        import time
+
+        log_obj = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(record.created)),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "service": getattr(record, "service", "cfi-backend"),
+            "tenant_id": getattr(record, "tenant_id", "system"),
+            "trace_id": getattr(record, "trace_id", "0" * 32),
+        }
+        if record.exc_info:
+            log_obj["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_obj)
 
 
 # ── Setup ─────────────────────────────────────────────────────
@@ -159,6 +197,8 @@ def setup_telemetry(app: FastAPI) -> None:
     # Create real metric instruments and publish to module-level handles
     global simulation_rounds_total, simulation_duration_seconds  # noqa: PLW0603
     global active_simulations, alerts_generated_total, http_request_duration_seconds  # noqa: PLW0603
+    global cfi_concept_drift_psi, cfi_feature_drift_ks_stat  # noqa: PLW0603
+    global cfi_model_brier_score, cfi_model_ece, cfi_active_alerts_count  # noqa: PLW0603
 
     simulation_rounds_total = meter.create_counter(
         name="simulation_rounds_total",
@@ -184,6 +224,31 @@ def setup_telemetry(app: FastAPI) -> None:
         name="http_request_duration_seconds",
         description="HTTP request latency by route",
         unit="s",
+    )
+    cfi_concept_drift_psi = meter.create_gauge(
+        name="cfi_concept_drift_psi",
+        description="Population Stability Index for model concept drift",
+        unit="1",
+    )
+    cfi_feature_drift_ks_stat = meter.create_gauge(
+        name="cfi_feature_drift_ks_stat",
+        description="Max Kolmogorov-Smirnov test statistic across features",
+        unit="1",
+    )
+    cfi_model_brier_score = meter.create_gauge(
+        name="cfi_model_brier_score",
+        description="Brier score for model probability calibration",
+        unit="1",
+    )
+    cfi_model_ece = meter.create_gauge(
+        name="cfi_model_ece",
+        description="Expected Calibration Error (ECE)",
+        unit="1",
+    )
+    cfi_active_alerts_count = meter.create_gauge(
+        name="cfi_active_alerts_count",
+        description="Number of active firing Alertmanager alerts",
+        unit="1",
     )
 
     # ── Auto-instrument FastAPI ────────────────────────────────

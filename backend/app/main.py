@@ -30,6 +30,7 @@ from app.presentation.routers import (
     graph,
     health,
     model_registry,
+    monitoring,
     predict,
     psd2,
     rules,
@@ -426,6 +427,7 @@ else:
     app.include_router(streaming_ws.router)
     app.include_router(psd2.router)
     app.include_router(security.router)
+    app.include_router(monitoring.router)
 
 
 @app.get("/", tags=["root"])

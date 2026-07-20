@@ -39,8 +39,14 @@ import type {
   ABACEvalRequest,
   ABACEvalResponse,
   AuditChainEntry,
+
   AuditChainVerifyResponse,
+  DriftAnalysisReport,
+  CalibrationReport,
+  ActiveAlertItem,
+  RetrainTriggerResponse,
 } from './types';
+
 
 
 
@@ -622,6 +628,54 @@ export function useVerifyAuditChain() {
     },
   });
 }
+
+export function useDriftAnalysis(severeDrift: boolean = false) {
+
+  return useQuery<DriftAnalysisReport>({
+    queryKey: ['drift-analysis', severeDrift],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/monitoring/drift/analyze', {
+        params: { severe_drift: severeDrift },
+      });
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
+
+export function useCalibrationReport() {
+  return useQuery<CalibrationReport>({
+    queryKey: ['monitoring-calibration'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/monitoring/calibration');
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
+
+export function useActiveAlerts() {
+  return useQuery<ActiveAlertItem[]>({
+    queryKey: ['monitoring-alerts'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/monitoring/alerts');
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
+
+export function useTriggerAutoRetrain() {
+  return useMutation<RetrainTriggerResponse, Error, string | undefined>({
+    mutationFn: async (reason) => {
+      const { data } = await apiClient.post('/api/v1/monitoring/drift/trigger-retrain', null, {
+        params: { reason },
+      });
+      return data;
+    },
+  });
+}
+
 
 
 

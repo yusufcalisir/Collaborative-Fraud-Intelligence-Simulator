@@ -745,6 +745,61 @@ export interface AuditChainVerifyResponse {
   verified_at: string;
 }
 
+export interface FeatureDriftResult {
+
+  feature_name: string;
+  ks_statistic: number;
+  ks_p_value: number;
+  wasserstein_distance: number;
+  psi: number;
+  status: string;
+}
+
+export interface CalibrationBinItem {
+  bin_index: number;
+  prob_min: number;
+  prob_max: number;
+  mean_predicted_prob: number;
+  empirical_fraud_ratio: number;
+  sample_count: number;
+}
+
+export interface CalibrationReport {
+  brier_score: number;
+  expected_calibration_error: number;
+  max_calibration_error: number;
+  is_well_calibrated: boolean;
+  evaluated_at: string;
+  bins: CalibrationBinItem[];
+}
+
+export interface DriftAnalysisReport {
+  overall_status: string;
+  max_psi: number;
+  mean_ks_p_value: number;
+  concept_drift_psi: number;
+  auto_retrain_triggered: boolean;
+  evaluated_at: string;
+  feature_drifts: FeatureDriftResult[];
+  calibration?: CalibrationReport | null;
+}
+
+export interface ActiveAlertItem {
+  alert_name: string;
+  severity: string;
+  summary: string;
+  started_at: string;
+  status: string;
+}
+
+export interface RetrainTriggerResponse {
+  triggered: boolean;
+  reason: string;
+  new_simulation_id?: string | null;
+  triggered_at: string;
+}
+
+
 
 
 
