@@ -16,10 +16,12 @@ const NAV_SECTIONS = [
       { path: '/cases', label: 'Cases', icon: '📋' },
       { path: '/rules', label: 'Policy Rules', icon: '🛡️' },
       { path: '/psi', label: 'Fuzzy PSI Matching', icon: '🤝' },
+      { path: '/security', label: 'Security & Compliance', icon: '🔒' },
       { path: '/scenarios', label: 'Scenarios', icon: '▶️' },
       { path: '/graph', label: 'Entity Graph', icon: '🕸️' },
     ],
   },
+
   {
     label: 'Observability',
     items: [

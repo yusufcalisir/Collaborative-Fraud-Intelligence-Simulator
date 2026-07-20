@@ -315,7 +315,9 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Private Set Intersection (PSI)** | Simulated zero-knowledge Diffie-Hellman protocol (DH-PSI) using modular exponentiation over a 512-bit prime field ($p$) with commutative private keys. **Fuzzy PSI** mode additionally applies the DH protocol independently over 5 standardized attributes (Phone, Email, Device ID, Birthdate, Surname) and flags a match when $k \ge 3$ attributes intersect. Configurable threshold slider in `PsiPage.tsx` UI. | Identifies common customers/devices between banks without disclosing any non-overlapping records. Fuzzy PSI handles realistic PII variation: partial matches (e.g., same phone + email but different device) are still flagged. | Exact: Perfect Forward Secrecy, zero-knowledge set comparison. Fuzzy: $k$-of-$n$ attribute threshold matching with configurable $k$ (1–5) |
 | **Graph-Based Fraud Detection** | Supports both in-memory/Redis and dedicated Neo4j/Memgraph backends. Traversal and aggregation operations (BFS/DFS, PageRank-like risk propagation with decay $\gamma=0.85$, community component analytics, temporal edge velocity sliding windows) are converted to Cypher queries when Neo4j is active. | Identifies organized fraud rings (mule networks, layering) and propagates risk scores to connected accounts/devices. Supports real-time Graph Neural Network inference runtimes. | Decoupled graph traversal; heuristic structural threat scoring; Bolt protocol driver with Cypher queries |
 | **BankConnector Adapter Pattern** | Abstract `BankConnectorInterface` port; concrete adapters: `MockBankConnector` (in-process), `RESTBankConnector` (HTTP with OAuth2/mTLS/API Key), `RedisBankConnector` (pub/sub), `MQSkeletonBankConnector` (AMQP placeholder). `BankConnectorFactory` resolves per-bank adapter from config. | Decouples the FL platform from bank-specific integrations — swap a single config key to connect a real bank REST API without touching business logic. | Open/Closed principle; per-bank connector-type override |
+| **Production Enterprise Security Suite** | Enterprise security compliance architecture: **Mutual TLS 1.3 (mTLS)** with X.509 cert validation & SAN matching, **OIDC / OAuth2 JWT** bearer claims extraction, **Dynamic ABAC** policy engine (multi-tenant bank isolation, shift hour windows, approval tiers, clearance levels), **HashiCorp Vault** KV v2 secret engine client, and **Tamper-Proof Cryptographic Audit Chain** ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with retrospective integrity verification. | Meets ISO 27001, SOC2, and PCI-DSS compliance requirements for multi-tenant banking data isolation, key management, and immutable audit logs. | mTLS 1.3, OIDC JWT, ABAC evaluator, HashiCorp Vault KV v2, SHA-256 Audit Chain |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
+
 
 ***
 
@@ -384,7 +386,14 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── event_bus.py      # Pub/sub channels for real-time WebSocket communication
 │   │   │   ├── models.py         # Relational tables for simulation logs, alerts, and runs
 │   │   │   ├── redis_store.py    # Redis state syncing client with automatic thread-safe memory fallback
+│   │   │   ├── security/         # Production Enterprise Security Suite
+│   │   │   │   ├── abac_engine.py # Attribute-Based Access Control evaluator (tenant isolation, shift windows, approval tiers)
+│   │   │   │   ├── immutable_audit_chain.py # Tamper-proof SHA-256 cryptographic audit chain (H_i = SHA256(L_i || H_{i-1}))
+│   │   │   │   ├── mtls_manager.py # Mutual TLS 1.3 PKI certificate generator, SAN matcher, and CRL revocation
+│   │   │   │   ├── oidc_authenticator.py # OIDC RS256/HS256 JWT bearer token authenticator and claims extractor
+│   │   │   │   └── vault_client.py # HashiCorp Vault KV v2 secret engine client with environment fallback
 │   │   │   ├── connectors/       # Bank Connector adapter implementations (BankConnector port)
+
 │   │   │   │   ├── factory.py    # Configuration-driven connector resolver (mock/rest/redis/mq)
 │   │   │   │   ├── mock_connector.py  # In-process simulator connector (default)
 │   │   │   │   ├── rest_connector.py  # HTTP REST connector with OAuth2, mTLS, API Key auth

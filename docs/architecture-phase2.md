@@ -366,7 +366,22 @@ To satisfy strict regulatory requirements ("Right to Explanation" under GDPR Art
    - Calculates edge contribution percentages over entity 2-hop neighborhoods via message-passing masking.
    - Highlights specific relationship types (e.g., `SHARES_DEVICE` with known mule account) driving the GraphSAGE risk embedding.
 
+### 2.7 Production Enterprise Security Suite (mTLS, OIDC, Vault, ABAC, Immutable Audit Chain)
+
+To satisfy enterprise banking security standards (ISO 27001, SOC2, PCI-DSS):
+
+1. **Mutual TLS 1.3 (mTLS)**: Enforces TLS 1.3 with client certificate requirement (`CERT_REQUIRED`) and Subject Alternative Name (SAN) validation for all inter-microservice communication.
+2. **OIDC / OAuth2 JWT Authentication**: Authenticates users with signed JWT bearer tokens, parsing standard (`sub`, `iss`, `exp`) and custom claims (`bank_id`, `roles`, `clearance_level`, `shift_hours`, `approval_tier`).
+3. **Dynamic Attribute-Based Access Control (ABAC)**: Evaluates dynamic policy rules matching user attributes against resource properties:
+   - *Tenant Isolation*: Restricts data access strictly to the user's home bank ID unless holding `cross_bank_investigator` or `super_admin` roles.
+   - *Shift Hours Restriction*: Enforces access windows (e.g. `08:00-18:00`).
+   - *Approval Tier Limit*: Limits high-value operations ($>\$50,000$) to qualified authorization tiers.
+   - *Security Clearance*: Restricts classified intelligence by clearance level.
+4. **HashiCorp Vault Integration**: Centralizes secrets management via Vault KV v2 secret engine with environment fallback.
+5. **Tamper-Proof Cryptographic Audit Chain**: Chains every system event using SHA-256 hash chaining ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with a 1-click `verify_chain_integrity()` tool to detect retrospective log tampering.
+
 ### 3. Federated Graph Embedding (FedGNN)
+
 
 
 

@@ -34,6 +34,7 @@ from app.presentation.routers import (
     psd2,
     rules,
     scenarios,
+    security,
     simulation,
     training,
 )
@@ -424,6 +425,7 @@ else:
     app.include_router(dashboard.router)
     app.include_router(streaming_ws.router)
     app.include_router(psd2.router)
+    app.include_router(security.router)
 
 
 @app.get("/", tags=["root"])

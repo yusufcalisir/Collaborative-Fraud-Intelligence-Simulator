@@ -69,6 +69,22 @@ class Settings(BaseSettings):
     gateway_api_keys: str = "key_bank_a:bank_a:bank,key_bank_b:bank_b:bank,key_bank_c:bank_c:bank,key_analyst:analyst:analyst"
     payload_signing_secret: str = "cfi_local_secret_key_2026_change_me_in_production"
 
+    # ── Enterprise Security Suite ─────────────
+    mtls_enabled: bool = True
+    mtls_ca_cn: str = "CFI-Root-CA"
+    mtls_cert_dir: str = "certs"
+
+    oidc_enabled: bool = True
+    oidc_issuer_url: str = "https://auth.cfi-platform.internal/realms/cfi"
+    oidc_client_id: str = "cfi-api"
+    oidc_jwt_signing_secret: str = "cfi_oidc_jwt_secret_key_2026"
+
+    abac_enabled: bool = True
+    vault_enabled: bool = False
+    vault_url: str = "http://vault.internal:8200"
+    vault_token: str = "vault_token_dev_2026"
+    immutable_audit_chain_enabled: bool = True
+
     # ── Observability (OpenTelemetry) ─────────
     otel_enabled: bool = False
     otel_exporter_otlp_endpoint: str = "http://jaeger:4317"

@@ -10,6 +10,9 @@ from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.config import get_settings
 from app.infrastructure.redis_store import RedisStore
+from app.infrastructure.security.abac_engine import ABACEngine
+from app.infrastructure.security.immutable_audit_chain import ImmutableAuditChain
+from app.infrastructure.security.oidc_authenticator import OIDCAuthenticator
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +20,14 @@ router = APIRouter()
 settings = get_settings()
 
 _rate_limiter = RedisStore("gateway_rate_limit")
+_oidc_auth = OIDCAuthenticator(
+    issuer=settings.oidc_issuer_url,
+    audience=settings.oidc_client_id,
+    signing_secret=settings.oidc_jwt_signing_secret,
+)
+_abac_engine = ABACEngine()
+_audit_chain = ImmutableAuditChain.get_instance()
+
 
 # Downstream services mapping
 SERVICES = {

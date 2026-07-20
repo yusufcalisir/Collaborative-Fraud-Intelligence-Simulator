@@ -32,9 +32,16 @@ import type {
   EntityFuzzyResolveRequest,
   FuzzyMatchResponse,
   CounterfactualExplanation,
+
   DecisionReplayReport,
   GNNExplanationReport,
+  SecurityStatus,
+  ABACEvalRequest,
+  ABACEvalResponse,
+  AuditChainEntry,
+  AuditChainVerifyResponse,
 } from './types';
+
 
 
 // ── Phase 1: Simulations ───────────────────
@@ -572,6 +579,50 @@ export function useAlertGNNExplanation(alertId: string | undefined) {
     enabled: !!alertId,
   });
 }
+
+export function useSecurityStatus() {
+
+  return useQuery<SecurityStatus>({
+    queryKey: ['security-status'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/security/status');
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
+
+export function useEvaluateABAC() {
+  return useMutation<ABACEvalResponse, Error, ABACEvalRequest>({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/security/abac/evaluate', payload);
+      return data;
+    },
+  });
+}
+
+export function useAuditChain(limit: number = 50) {
+  return useQuery<AuditChainEntry[]>({
+    queryKey: ['audit-chain', limit],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/security/audit-chain', {
+        params: { limit },
+      });
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
+
+export function useVerifyAuditChain() {
+  return useMutation<AuditChainVerifyResponse, Error, void>({
+    mutationFn: async () => {
+      const { data } = await apiClient.post('/api/v1/security/audit-chain/verify');
+      return data;
+    },
+  });
+}
+
 
 
 

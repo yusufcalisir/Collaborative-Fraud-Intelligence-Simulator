@@ -133,14 +133,14 @@ With default settings (ε=1.0, δ=1e-5) over 10 rounds:
 
 | Security Property | Simulator | Production Target |
 |---|---|---|
-| Transport encryption | None (localhost) | TLS 1.3 mutual auth |
-| Client authentication | None | mTLS + API keys |
+| Transport encryption | **Mutual TLS 1.3 (mTLS) with SAN & CRL Checks** | TLS 1.3 mutual auth |
+| Client authentication | **OIDC / OAuth2 JWT Bearer Tokens + ABAC** | mTLS + OIDC / OAuth2 + ABAC |
 | Secure aggregation | Simulated pairwise masks | MPC (SPDZ, SecureNN) or **Secure Enclaves (Intel SGX / AMD SEV)** |
 | Private Set Intersection (PSI) | Simulated DH-PSI / **Secure TEE Enclave Matching** | **Hardware Enclave (Intel SGX)** or Multi-party Computation (MPC) |
 | DP accounting & Budgeting | Basic composition + **Strict Budget Limit Gating** | Rényi DP (moments accountant) + Budget limits |
 | Byzantine resilience | **Krum / Median Implemented** | Krum / Trimmed Mean |
-| Audit logging & Vulnerability Audits | Console logging + **Active GNN LRA & MIA Privacy Auditing** | Tamper-evident audit trail + Real-time vulnerability scanning |
-| Key management | None | HSM-backed key infrastructure |
+| Audit logging & Vulnerability Audits | **SHA-256 Cryptographic Hash Chain Ledger ($H_i = \text{SHA256}(L_i \Vert H_{i-1})$)** | Tamper-evident audit trail + Real-time vulnerability scanning |
+| Key management & Secrets | **HashiCorp Vault KV v2 Secret Engine Client** | HSM-backed key infrastructure / HashiCorp Vault |
 
 This gap analysis is intentional — the simulator demonstrates the concepts and simulates hardware constraints. Production deployment requires hardening each layer.
 
@@ -152,12 +152,13 @@ The system architecture and interfaces are mapped against the **STRIDE** securit
 
 | Threat Category | Specific Threat Description | Affected Components | Active Mitigations | Production Gap / Residual Risk |
 |:---|:---|:---|:---|:---|
-| **Spoofing** | A compromised or malicious node masquerades as a verified participating bank to send false parameters or steal global weights. | FL Aggregation Coordinator, WebSockets | salted HMAC entity identification in entity resolution | Absence of TLS Client Certificates (mTLS) in local loop. |
-| **Tampering** | A participant alters local parameters to degrade model performance (Model Poisoning) or inject backdoors. | Pytorch Training, FedAvg Engine | Byzantine-Robust aggregation (Krum, Coordinate-wise Median) | Attack scale threshold limits. If $>50\%$ of nodes are compromised, median fails. |
-| **Repudiation** | An attacker performs malicious actions (e.g., model poisoning) and denies execution due to lack of non-repudiation logs. | Microservices Gateway | Audit trail logs, event streaming logs | Logging records are not cryptographically signed or sealed. |
-| **Information Disclosure** | Passive intercept of model weights allows gradient inversion, reconstructing raw transaction features or identity fields. | Network Gateway, Aggregation Engine | Differential Privacy (L2 clipping + noise), Secure Aggregation masking | Basic composition limits budget tracking. Requires advanced accounting. |
+| **Spoofing** | A compromised or malicious node masquerades as a verified participating bank to send false parameters or steal global weights. | FL Aggregation Coordinator, WebSockets | **mTLS 1.3 X.509 PKI** with SAN verification (`mtls_manager.py`), OIDC JWT validation | Certificate revocation propagation latency. |
+| **Tampering** | A participant alters local parameters to degrade model performance (Model Poisoning) or inject backdoors. | Pytorch Training, FedAvg Engine | Byzantine-Robust aggregation (Krum, Coordinate-wise Median), **SHA-256 Cryptographic Audit Chain** | Attack scale threshold limits. If $>50\%$ of nodes are compromised, median fails. |
+| **Repudiation** | An attacker performs malicious actions (e.g., model poisoning) and denies execution due to lack of non-repudiation logs. | Microservices Gateway | **Tamper-Proof SHA-256 Audit Chain ($H_i = \text{SHA256}(L_i \Vert H_{i-1})$)** with 1-click retrospective verification | Offline ledger backup frequency. |
+| **Information Disclosure** | Passive intercept of model weights allows gradient inversion, reconstructing raw transaction features or identity fields. | Network Gateway, Aggregation Engine | Differential Privacy (L2 clipping + noise), Secure Aggregation masking, **HashiCorp Vault Secret Isolation** | Basic composition limits budget tracking. Requires advanced accounting. |
 | **Denial of Service** | A client drops offline or sends malformed weights, stalling coordinator aggregation routines. | flower_engine, Celery Workers | Quorum checks ($\ge$ Min Clients), timeout intervals, fallback state | Distributed denial of service on gateway endpoints. |
-| **Elevation of Privilege** | An unauthorized client gains access to case management records or starts scenarios via gateway. | gateway API router | Gateway rate limiting, endpoint prefix checks, role-based checks | Weak API keys validation, lack of JWT/OAuth2 integration. |
+| **Elevation of Privilege** | An unauthorized client gains access to case management records or starts scenarios via gateway. | gateway API router | **Dynamic ABAC Engine** (multi-tenant bank isolation, shift hour restrictions, approval tier limits, clearance levels), OIDC JWT claims | Policy misconfiguration risks. |
+
 
 ---
 

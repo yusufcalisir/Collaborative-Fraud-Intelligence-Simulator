@@ -666,4 +666,85 @@ export interface GNNExplanationReport {
   primary_driver_text: string;
 }
 
+export interface SecurityStatus {
+  mtls: {
+    enabled: boolean;
+    ca_cn: string;
+    tls_version: string;
+    peer_verification: string;
+    sample_cert: { cn: string; sans: string[]; valid_until: string };
+  };
+  oidc: {
+    enabled: boolean;
+    issuer: string;
+    client_id: string;
+    supported_algorithms: string[];
+    claims_extracted: string[];
+  };
+  abac: {
+    enabled: boolean;
+    active_rules_count: number;
+    enforced_policies: string[];
+  };
+  vault: {
+    enabled: boolean;
+    vault_url: string;
+    mount_point: string;
+    sample_secret_source: string;
+  };
+  audit_chain: {
+    enabled: boolean;
+    total_events: number;
+    chain_valid: boolean;
+    last_hash: string;
+    hashing_algorithm: string;
+  };
+}
+
+export interface ABACEvalRequest {
+  user_username?: string;
+  user_bank_id?: string;
+  user_roles?: string[];
+  user_clearance?: number;
+  user_shift_hours?: string;
+  user_approval_tier?: number;
+  resource_type?: string;
+  resource_id?: string;
+  resource_bank_id?: string;
+  resource_amount?: number;
+  resource_classification?: number;
+  action?: string;
+  hour_override?: number;
+}
+
+export interface ABACEvalResponse {
+  allowed: boolean;
+  policy_name: string;
+  reason: string;
+  evaluated_at: string;
+}
+
+export interface AuditChainEntry {
+  index: number;
+  event_type: string;
+  actor: string;
+  target_id: string;
+  timestamp: string;
+  details: Record<string, unknown>;
+  prev_hash: string;
+  curr_hash: string;
+}
+
+export interface AuditChainVerifyResponse {
+  is_valid: boolean;
+  total_records: number;
+  broken_index: number | null;
+  tamper_reason: string | null;
+  genesis_hash: string;
+  last_hash: string;
+  verified_at: string;
+}
+
+
+
 
