@@ -26,6 +26,8 @@ class MockBankConnector(BankConnectorInterface):
         self.y_train: Any = None
         self.X_test: Any = None
         self.y_test: Any = None
+        self.sens_train: Any = None
+        self.sens_test: Any = None
 
     def initialize(
         self,
@@ -47,18 +49,23 @@ class MockBankConnector(BankConnectorInterface):
             X = DataGenerator.encode_features(df)
             y = labels.values
 
+            # Map sensitive attribute: 1 if country_code != "US" else 0
+            sensitive_array = (df["country_code"] != "US").astype(int).values
+
             try:
-                X_train, X_test, y_train, y_test = train_test_split(
+                X_train, X_test, y_train, y_test, sens_train, sens_test = train_test_split(
                     X,
                     y,
+                    sensitive_array,
                     test_size=0.2,
                     random_state=42,
                     stratify=y,
                 )
             except Exception:
-                X_train, X_test, y_train, y_test = train_test_split(
+                X_train, X_test, y_train, y_test, sens_train, sens_test = train_test_split(
                     X,
                     y,
+                    sensitive_array,
                     test_size=0.2,
                     random_state=42,
                 )
@@ -67,6 +74,8 @@ class MockBankConnector(BankConnectorInterface):
             self.y_train = y_train
             self.X_test = X_test
             self.y_test = y_test
+            self.sens_train = sens_train
+            self.sens_test = sens_test
 
             return {
                 "status": "initialized",
@@ -77,6 +86,7 @@ class MockBankConnector(BankConnectorInterface):
         except Exception as exc:
             logger.error("Mock initialization failed for %s: %s", bank_id, exc)
             return {"status": "failed", "error": str(exc)}
+
 
     def train(
         self,
@@ -104,6 +114,8 @@ class MockBankConnector(BankConnectorInterface):
             moon_mu = kwargs.get("moon_mu", 0.0)
             moon_temperature = kwargs.get("moon_temperature", 0.5)
             prev_local_weights = kwargs.get("prev_local_weights")
+            enable_bias_mitigation = kwargs.get("enable_bias_mitigation", False)
+            fairness_lambda = kwargs.get("fairness_lambda", 0.5)
 
             actual_eps = None
             if enable_dp:
@@ -122,6 +134,9 @@ class MockBankConnector(BankConnectorInterface):
                     moon_temperature=moon_temperature,
                     global_weights=weights,
                     prev_local_weights=prev_local_weights,
+                    sens_attr=self.sens_train,
+                    enable_bias_mitigation=enable_bias_mitigation,
+                    fairness_lambda=fairness_lambda,
                 )
             else:
                 trained_model, loss_hist, _ = self.model_service.train_local(
@@ -136,6 +151,9 @@ class MockBankConnector(BankConnectorInterface):
                     moon_temperature=moon_temperature,
                     global_weights=weights,
                     prev_local_weights=prev_local_weights,
+                    sens_attr=self.sens_train,
+                    enable_bias_mitigation=enable_bias_mitigation,
+                    fairness_lambda=fairness_lambda,
                 )
 
             output_weights = self.model_service.get_parameters(trained_model)
@@ -198,6 +216,7 @@ class MockBankConnector(BankConnectorInterface):
                 model,
                 self.X_test,
                 self.y_test,
+                sens_attr=self.sens_test,
             )
 
             return {
@@ -212,8 +231,10 @@ class MockBankConnector(BankConnectorInterface):
                 "roc_fpr": eval_res["roc_fpr"],
                 "roc_tpr": eval_res["roc_tpr"],
                 "roc_thresholds": eval_res["roc_thresholds"],
+                "fairness_counts": eval_res.get("fairness_counts"),
                 "correlation_id": correlation_id,
             }
         except Exception as exc:
             logger.error("Mock evaluation failed for %s: %s", bank_id, exc)
             return {"error": str(exc), "correlation_id": correlation_id}
+

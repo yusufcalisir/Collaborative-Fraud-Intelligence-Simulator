@@ -15,6 +15,8 @@ import ConfusionMatrix from '../components/charts/ConfusionMatrix';
 import FeatureImportance from '../components/charts/FeatureImportance';
 import MetricsRadar from '../components/charts/MetricsRadar';
 import { formatDuration, formatPercent } from '../utils/formatters';
+import ComplianceReportPanel from '../components/dashboard/ComplianceReportPanel';
+
 
 export default function SimulationView() {
   const { id } = useParams<{ id: string }>();
@@ -210,6 +212,8 @@ export default function SimulationView() {
           <div className="border-t border-[var(--color-border-subtle)] pt-4 space-y-6">
             <MetricsComparison banks={banks} />
             <MetricsRadar banks={banks} />
+            <ComplianceReportPanel simulationId={simulation.id} banks={banks} />
+
 
              {/* ROC Curves - side by side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

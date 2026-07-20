@@ -309,6 +309,43 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
               )}
             </div>
 
+            {/* Regulatory Fairness & Bias Mitigation */}
+            <div>
+              <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+                Regulatory AI Compliance & Fairness
+              </h4>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.enable_bias_mitigation || false}
+                    onChange={(e) => updateConfig('enable_bias_mitigation', e.target.checked)}
+                    className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-accent-indigo)] focus:ring-[var(--color-accent-indigo)]"
+                  />
+                  <span className="text-xs text-[var(--color-text-secondary)]">Enable Bias Mitigation (Covariance Penalty)</span>
+                </label>
+                {config.enable_bias_mitigation && (
+                  <div>
+                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">
+                      Fairness Regularization Weight (&lambda;): {config.fairness_lambda ?? 0.5}
+                    </label>
+                    <input
+                      type="range"
+                      min={0.0}
+                      max={2.0}
+                      step={0.1}
+                      value={config.fairness_lambda ?? 0.5}
+                      onChange={(e) => updateConfig('fairness_lambda', parseFloat(e.target.value))}
+                      className="w-full accent-[var(--color-accent-indigo)]"
+                    />
+                    <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+                      Higher weight pushes model parameters to have zero covariance with sensitive attributes (nationality/region).
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Data Volume */}
             <div>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">

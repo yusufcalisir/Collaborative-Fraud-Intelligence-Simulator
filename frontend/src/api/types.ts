@@ -26,6 +26,10 @@ export interface SimulationConfig {
   poisoning_bank_id: string;
   poisoning_scale: number;
   fl_engine_type: 'custom' | 'flower';
+
+  // Regulatory Compliance & Fairness (AI Act)
+  enable_bias_mitigation?: boolean;
+  fairness_lambda?: number;
 }
 
 export interface EvaluationMetrics {
@@ -40,7 +44,14 @@ export interface EvaluationMetrics {
   roc_tpr: number[];
   roc_thresholds: number[];
   feature_importance: Record<string, number>;
+
+  // Fairness metrics
+  disparate_impact?: number;
+  equal_opportunity_diff?: number;
+  protected_selection_rate?: number;
+  reference_selection_rate?: number;
 }
+
 
 export interface DataProfile {
   bank_name: string;

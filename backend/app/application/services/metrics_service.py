@@ -34,6 +34,10 @@ class MetricsService:
             roc_tpr=eval_dict["roc_tpr"],
             roc_thresholds=eval_dict["roc_thresholds"],
             feature_importance=feature_importance or {},
+            disparate_impact=eval_dict.get("disparate_impact", 1.0),
+            equal_opportunity_diff=eval_dict.get("equal_opportunity_diff", 0.0),
+            protected_selection_rate=eval_dict.get("protected_selection_rate", 1.0),
+            reference_selection_rate=eval_dict.get("reference_selection_rate", 1.0),
         )
 
     @staticmethod
@@ -82,4 +86,9 @@ class MetricsService:
             "roc_tpr": metrics.roc_tpr,
             "roc_thresholds": metrics.roc_thresholds,
             "feature_importance": metrics.feature_importance,
+            "disparate_impact": metrics.disparate_impact,
+            "equal_opportunity_diff": metrics.equal_opportunity_diff,
+            "protected_selection_rate": metrics.protected_selection_rate,
+            "reference_selection_rate": metrics.reference_selection_rate,
         }
+

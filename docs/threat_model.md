@@ -317,3 +317,34 @@ The introduction of the `PrivacyAuditService` and new robust aggregation methods
 | **Denial of Service** | Submitting infinite parameters to attack audits | Fixed-window rate limiter + Pydantic validation |
 | **Elevation of Privilege** | Bypassing DP noise checks | Global accountant checks at the coordinator boundary |
 
+
+---
+
+## 13. Bias, Discrimination & AI Act Regulatory Compliance Threat Surface (Item 21)
+
+The platform implements fairness auditing and debiasing layers to comply with the EU AI Act (Articles 10, 13, 14, 15) and Fair Lending regulations. These features introduce specific risk vectors:
+
+### 13.1 Systematic Bias and Discriminatory Profiling (Repudiation & Information Disclosure)
+* **Threat**: A GNN model trained across non-IID bank datasets learns systemic demographic biases, causing high false-positive fraud flags on specific nationalities or age groups (e.g., flagging international transactions).
+* **Mitigations**:
+  * **Covariance Penalization Loss (Local Debiasing)**: If `enable_bias_mitigation` is active, client nodes compute the covariance between prediction probabilities ($p$) and sensitive attributes ($A$):
+    $$\mathcal{L}_{\text{fair}} = \lambda \cdot \operatorname{cov}(p, A)^2$$
+    This penalizes parameter states that correlate fraud decisions with demographic slices.
+  * **Decentralized Auditing**: Clients safely compute and send local count vectors to calculate global Disparate Impact and Equal Opportunity statistics without sharing raw sensitive attributes.
+
+### 13.2 Fairness Verification Spoofing (Spoofing & Tampering)
+* **Threat**: A compromised bank node manipulates its local contingency counts to falsify fairness metrics, masking systematic profiling bias.
+* **Mitigations**:
+  * **Cross-Bank Auditing & Global Gating**: The compliance report requires aggregated counts across all active nodes. A single node's spoofed counts are restricted by the global validation set benchmarks and historical drift analyses.
+  * **AI Act Compliance Log Verification**: The final report requires automated systems checks verifying compliance status, ensuring full technical logging and transparency.
+
+| STRIDE Category | Fairness / Regulatory Threat | Mitigation |
+|:---|:---|:---|
+| **Spoofing** | Masquerading as a fair node by sending spoofed counts | Verification against global validation metrics, multi-party cross-checks |
+| **Tampering** | Injecting demographic profiling bias into model updates | Covariance-based loss regularization, GNN link reconstruction audits |
+| **Repudiation** | Denying systematic bias or discriminatory gating decisions | Tamper-proof compliance log persisted at `storage/` with UTC timestamp |
+| **Information Disclosure** | Leaking raw client nationalities or ages during audit | Decentralized count-only aggregation (no raw PII transmitted) |
+| **Denial of Service** | Triggering infinite bias warnings to lock down downstream nodes | Standardized gating limits (Disparate Impact $\ge 0.8$, Equal Opportunity Difference $< 0.1$) |
+| **Elevation of Privilege** | Bypassing AI Act gating limits to deploy biased champions | Automatic gate gating: Champion registry requires approved compliance check |
+
+

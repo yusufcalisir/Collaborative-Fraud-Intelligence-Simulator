@@ -92,6 +92,11 @@ class SimulationConfigRequest(BaseModel):
     fedopt_tau: float = Field(
         default=1e-3, gt=0.0, description="FedOpt server optimizer epsilon equivalent"
     )
+    # Bias mitigation & fairness compliance (EU AI Act)
+    enable_bias_mitigation: bool = False
+    fairness_lambda: float = Field(
+        default=0.5, ge=0.0, le=2.0, description="Weight on covariance constraint for debiasing"
+    )
 
 
 class SimulationSummaryResponse(BaseModel):
@@ -163,6 +168,12 @@ class MetricsResponse(BaseModel):
     roc_tpr: list[float]
     roc_thresholds: list[float]
     feature_importance: dict[str, float] = {}
+
+    # Fairness metrics
+    disparate_impact: float = 1.0
+    equal_opportunity_diff: float = 0.0
+    protected_selection_rate: float = 1.0
+    reference_selection_rate: float = 1.0
 
 
 class DataProfileResponse(BaseModel):

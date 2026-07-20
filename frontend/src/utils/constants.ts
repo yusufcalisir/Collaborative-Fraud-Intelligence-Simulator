@@ -23,7 +23,10 @@ export const DEFAULT_SIMULATION_CONFIG = {
   poisoning_bank_id: 'bank_c',
   poisoning_scale: 5.0,
   fl_engine_type: 'custom' as const,
+  enable_bias_mitigation: false,
+  fairness_lambda: 0.5,
 };
+
 
 export const METRIC_LABELS: Record<string, string> = {
   accuracy: 'Accuracy',

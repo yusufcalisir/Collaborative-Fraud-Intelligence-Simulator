@@ -638,3 +638,27 @@ class FederatedLearningEngine:
 
         # Delegate to the standard aggregation logic
         return self.aggregate_parameters(client_weights, client_samples, method)
+
+    def aggregate_fairness_counts(self, client_counts: list[dict[str, int]]) -> dict[str, int]:
+        """Aggregate local demographic and prediction counts from clients using sum aggregation.
+
+        This represents the secure/federated collation of contingency table counts.
+        """
+        keys = [
+            "protected_positive_pred",
+            "protected_negative_pred",
+            "reference_positive_pred",
+            "reference_negative_pred",
+            "protected_tp",
+            "protected_fn",
+            "reference_tp",
+            "reference_fn",
+        ]
+        aggregated = {k: 0 for k in keys}
+        for counts in client_counts:
+            if not counts:
+                continue
+            for k in keys:
+                aggregated[k] += counts.get(k, 0)
+        return aggregated
+

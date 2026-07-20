@@ -99,6 +99,10 @@ class ModelService:
         # SCAFFOLD control variates
         c_global: list[torch.Tensor] | None = None,
         c_local: list[torch.Tensor] | None = None,
+        # Bias mitigation config
+        sens_attr: np.ndarray | None = None,
+        enable_bias_mitigation: bool = False,
+        fairness_lambda: float = 0.5,
     ) -> tuple[FraudDetectionModel, list[float], list[torch.Tensor] | None]:
         """Train the model on a bank's local data.
 
@@ -134,9 +138,16 @@ class ModelService:
         criterion: Any = nn.BCELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+        # Build tensor dataset including sensitive attribute
+        if sens_attr is not None:
+            sens_tensor = torch.FloatTensor(sens_attr).to(self.device)
+        else:
+            sens_tensor = torch.zeros(len(y_train)).to(self.device)
+
         dataset = TensorDataset(
             torch.FloatTensor(X_train).to(self.device),
             torch.FloatTensor(y_train).to(self.device),
+            sens_tensor,
         )
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
 
@@ -148,7 +159,7 @@ class ModelService:
             epoch_loss = 0.0
             n_batches = 0
 
-            for X_batch, y_batch in loader:
+            for X_batch, y_batch, sens_batch in loader:
                 optimizer.zero_grad()
 
                 # Check if we need representation features for MOON
@@ -159,6 +170,14 @@ class ModelService:
                     feats = None
 
                 loss = criterion(predictions, y_batch)
+
+                # Bias mitigation: penalize covariance between predictions and protected group
+                if enable_bias_mitigation:
+                    p_mean = torch.mean(predictions)
+                    a_mean = torch.mean(sens_batch)
+                    cov = torch.mean((predictions - p_mean) * (sens_batch - a_mean))
+                    fair_loss = fairness_lambda * (cov ** 2)
+                    loss = loss + fair_loss
 
                 # FedProx proximal term
                 if fedprox_mu > 0.0 and global_model is not None:
@@ -243,6 +262,10 @@ class ModelService:
         moon_temperature: float = 0.5,
         global_weights: ModelWeights | None = None,
         prev_local_weights: ModelWeights | None = None,
+        # Bias mitigation config
+        sens_attr: np.ndarray | None = None,
+        enable_bias_mitigation: bool = False,
+        fairness_lambda: float = 0.5,
     ) -> tuple[FraudDetectionModel, list[float], float]:
         """Train the model on a bank's local data with Differential Privacy using Opacus.
 
@@ -279,9 +302,16 @@ class ModelService:
         criterion: Any = nn.BCELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+        # Build tensor dataset including sensitive attribute
+        if sens_attr is not None:
+            sens_tensor = torch.FloatTensor(sens_attr).to(self.device)
+        else:
+            sens_tensor = torch.zeros(len(y_train)).to(self.device)
+
         dataset = TensorDataset(
             torch.FloatTensor(X_train).to(self.device),
             torch.FloatTensor(y_train).to(self.device),
+            sens_tensor,
         )
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
 
@@ -309,7 +339,7 @@ class ModelService:
             epoch_loss = 0.0
             n_batches = 0
 
-            for X_batch, y_batch in loader_private:
+            for X_batch, y_batch, sens_batch in loader_private:
                 optimizer_private.zero_grad()
 
                 # Check if we need representation features for MOON
@@ -320,6 +350,14 @@ class ModelService:
                     feats = None
 
                 loss = criterion(predictions, y_batch)
+
+                # Bias mitigation: penalize covariance between predictions and protected group
+                if enable_bias_mitigation:
+                    p_mean = torch.mean(predictions)
+                    a_mean = torch.mean(sens_batch)
+                    cov = torch.mean((predictions - p_mean) * (sens_batch - a_mean))
+                    fair_loss = fairness_lambda * (cov ** 2)
+                    loss = loss + fair_loss
 
                 # FedProx proximal term
                 if fedprox_mu > 0.0 and global_model is not None:
@@ -359,6 +397,7 @@ class ModelService:
                 # Yield control to prevent GIL starvation
                 time.sleep(0.005)
 
+
             avg_loss = epoch_loss / max(n_batches, 1)
             loss_history.append(avg_loss)
             logger.debug("Opacus Epoch %d/%d — loss: %.4f", epoch + 1, epochs, avg_loss)
@@ -381,11 +420,12 @@ class ModelService:
         model: FraudDetectionModel,
         X_test: np.ndarray,
         y_test: np.ndarray,
-    ) -> dict[str, float | list]:
+        sens_attr: np.ndarray | None = None,
+    ) -> dict[str, Any]:
         """Evaluate model on test data.
 
         Returns a dict with accuracy, precision, recall, f1, auc_roc, loss,
-        confusion_matrix, roc_fpr, roc_tpr, roc_thresholds.
+        confusion_matrix, roc_fpr, roc_tpr, roc_thresholds, and fairness_counts.
         """
         from sklearn.metrics import (
             accuracy_score,
@@ -426,6 +466,50 @@ class ModelService:
 
         cm = confusion_matrix(y_test, preds, labels=[0, 1])
 
+        # Compute contingency counts if sens_attr is provided
+        fairness_counts = {}
+        disparate_impact = 1.0
+        equal_opportunity_diff = 0.0
+        protected_selection_rate = 1.0
+        reference_selection_rate = 1.0
+
+        if sens_attr is not None:
+            prot_pos = int(np.sum((sens_attr == 1) & (preds == 0)))
+            prot_neg = int(np.sum((sens_attr == 1) & (preds == 1)))
+            ref_pos = int(np.sum((sens_attr == 0) & (preds == 0)))
+            ref_neg = int(np.sum((sens_attr == 0) & (preds == 1)))
+
+            prot_total = prot_pos + prot_neg
+            ref_total = ref_pos + ref_neg
+
+            protected_selection_rate = prot_pos / prot_total if prot_total > 0 else 1.0
+            reference_selection_rate = ref_pos / ref_total if ref_total > 0 else 1.0
+
+            if reference_selection_rate > 0:
+                disparate_impact = protected_selection_rate / reference_selection_rate
+            else:
+                disparate_impact = 1.0
+
+            prot_tp = int(np.sum((sens_attr == 1) & (y_test == 1) & (preds == 1)))
+            prot_fn = int(np.sum((sens_attr == 1) & (y_test == 1) & (preds == 0)))
+            ref_tp = int(np.sum((sens_attr == 0) & (y_test == 1) & (preds == 1)))
+            ref_fn = int(np.sum((sens_attr == 0) & (y_test == 1) & (preds == 0)))
+
+            prot_tpr = prot_tp / (prot_tp + prot_fn) if (prot_tp + prot_fn) > 0 else 1.0
+            ref_tpr = ref_tp / (ref_tp + ref_fn) if (ref_tp + ref_fn) > 0 else 1.0
+            equal_opportunity_diff = abs(prot_tpr - ref_tpr)
+
+            fairness_counts = {
+                "protected_positive_pred": prot_pos,
+                "protected_negative_pred": prot_neg,
+                "reference_positive_pred": ref_pos,
+                "reference_negative_pred": ref_neg,
+                "protected_tp": prot_tp,
+                "protected_fn": prot_fn,
+                "reference_tp": ref_tp,
+                "reference_fn": ref_fn,
+            }
+
         return {
             "accuracy": float(accuracy_score(y_test, preds)),
             "precision": float(precision_score(y_test, preds, zero_division=0)),
@@ -437,7 +521,14 @@ class ModelService:
             "roc_fpr": fpr.tolist(),
             "roc_tpr": tpr.tolist(),
             "roc_thresholds": thresholds.tolist(),
+            "fairness_counts": fairness_counts,
+            "disparate_impact": float(disparate_impact),
+            "equal_opportunity_diff": float(equal_opportunity_diff),
+            "protected_selection_rate": float(protected_selection_rate),
+            "reference_selection_rate": float(reference_selection_rate),
         }
+
+
 
     def get_parameters(self, model: FraudDetectionModel) -> ModelWeights:
         """Extract model parameters as a serializable ModelWeights object."""

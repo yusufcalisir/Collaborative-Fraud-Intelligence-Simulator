@@ -94,7 +94,10 @@ async def create_simulation(
         "fedopt_beta1": config.fedopt_beta1,
         "fedopt_beta2": config.fedopt_beta2,
         "fedopt_tau": config.fedopt_tau,
+        "enable_bias_mitigation": config.enable_bias_mitigation,
+        "fairness_lambda": config.fairness_lambda,
     }
+
 
     # Store pending status
     _simulation_results.set(
@@ -463,6 +466,10 @@ def _build_metrics_response(data: dict | None) -> MetricsResponse | None:
         roc_tpr=data.get("roc_tpr", []),
         roc_thresholds=data.get("roc_thresholds", []),
         feature_importance=data.get("feature_importance", {}),
+        disparate_impact=data.get("disparate_impact", 1.0),
+        equal_opportunity_diff=data.get("equal_opportunity_diff", 0.0),
+        protected_selection_rate=data.get("protected_selection_rate", 1.0),
+        reference_selection_rate=data.get("reference_selection_rate", 1.0),
     )
 
 
@@ -470,3 +477,33 @@ def _build_profile_response(data: dict | None) -> DataProfileResponse | None:
     if not data:
         return None
     return DataProfileResponse(**data)
+
+
+@router.get("/{simulation_id}/ai-act-report")
+async def get_ai_act_report(simulation_id: str) -> dict:
+    """Retrieve the generated EU AI Act Compliance Report JSON log."""
+    import json
+    import os
+
+    storage_dir = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+            "storage",
+        )
+    )
+    report_path = os.path.join(storage_dir, f"ai_act_compliance_report_{simulation_id}.json")
+    if not os.path.exists(report_path):
+        raise HTTPException(
+            status_code=404,
+            detail="EU AI Act compliance report not found for this simulation. Make sure training completed successfully.",
+        )
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            report_data = json.load(f)
+        return report_data
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read compliance report file: {exc}",
+        )
+

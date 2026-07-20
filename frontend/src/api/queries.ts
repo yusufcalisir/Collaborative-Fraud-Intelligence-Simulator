@@ -89,6 +89,18 @@ export function useSimulation(id: string | undefined) {
   });
 }
 
+export function useAIActComplianceReport(id: string | undefined, enabled: boolean) {
+  return useQuery<any>({
+    queryKey: ['ai-act-report', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/simulations/${id}/ai-act-report`);
+      return data;
+    },
+    enabled: enabled && !!id,
+    retry: false,
+  });
+}
+
 export function useCreateSimulation() {
   return useMutation<SimulationCreateResponse, Error, Partial<SimulationConfig>>({
     mutationFn: async (config) => {
