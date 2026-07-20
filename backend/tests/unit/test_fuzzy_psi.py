@@ -18,12 +18,12 @@ def test_standardization_pipeline() -> None:
     assert standardize_input("  JANE   sMiTh  ", "customer") == "jane smith"
     assert standardize_input("Özge Çelik", "customer") == "ozge celik"
     assert standardize_input("Hüseyin Şen", "customer") == "huseyin sen"
-    
+
     # 2. Phone numbers (E.164 normalization)
     assert standardize_input("+90 555-123-4567", "phone") == "+905551234567"
     assert standardize_input("0555 123 45 67", "phone") == "05551234567"
     assert standardize_input("  +1 (555) 123-4567 ", "phone") == "+15551234567"
-    
+
     # 3. Emails
     assert standardize_input("  User.Name+Label@Mail.com  ", "email") == "user.name+label@mail.com"
 
@@ -37,10 +37,10 @@ def test_minhash_lsh() -> None:
 
     assert len(sig1) == 16
     assert calculate_jaccard_similarity(sig1, sig2) == 1.0
-    
+
     sim_close = calculate_jaccard_similarity(sig1, sig3)
     sim_diff = calculate_jaccard_similarity(sig1, sig4)
-    
+
     # Close name should have high similarity, completely different should have low
     assert sim_close > 0.3
     assert sim_diff < 0.2
