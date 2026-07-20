@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
-from app.application.services.coordinator_service import (
-    ClientCapability,
-    CoordinatorService,
-    NegotiatedParameters,
-)
+from app.application.services.coordinator_service import CoordinatorService
 
 
 class TestCoordinatorServiceRegistration:

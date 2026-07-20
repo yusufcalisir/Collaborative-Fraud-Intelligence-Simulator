@@ -130,10 +130,9 @@ class CoordinatorService:
         now = time.time()
         active = []
         for client in self.registry.values():
-            if now - client.last_heartbeat > self.heartbeat_timeout:
-                if client.status == "ONLINE":
-                    logger.warning("Client connection drop detected for bank: %s", client.bank_id)
-                    client.status = "OFFLINE"
+            if now - client.last_heartbeat > self.heartbeat_timeout and client.status == "ONLINE":
+                logger.warning("Client connection drop detected for bank: %s", client.bank_id)
+                client.status = "OFFLINE"
             if client.status == "ONLINE":
                 active.append(client)
         return active
