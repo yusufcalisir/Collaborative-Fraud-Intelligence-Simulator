@@ -33,6 +33,7 @@ from app.presentation.routers import (
     model_registry,
     monitoring,
     predict,
+    privacy_defense,
     psd2,
     rules,
     scenarios,
@@ -382,6 +383,7 @@ elif service_name == "fl-coordinator":
     app.include_router(model_registry.router)
     app.include_router(training_ws.router)
     app.include_router(coordinator.router)
+    app.include_router(privacy_defense.router)
 
 elif service_name == "identity-graph":
     app.include_router(health.router)
@@ -431,6 +433,7 @@ else:
     app.include_router(security.router)
     app.include_router(monitoring.router)
     app.include_router(coordinator.router)
+    app.include_router(privacy_defense.router)
 
 
 @app.get("/", tags=["root"])

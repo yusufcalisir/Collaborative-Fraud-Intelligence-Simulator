@@ -299,3 +299,83 @@ class TestByzantineRobustness:
         # w_1 = 0.02 / 2.001 = ~0.009995
         assert len(result.flat_weights) == 12
         assert all(0.009 < w < 0.011 for w in result.flat_weights)
+
+    def test_trimmed_mean_eliminates_outlier(
+        self,
+        fl_engine: FederatedLearningEngine,
+    ) -> None:
+        """Trimmed Mean must discard the extreme outlier and converge to the honest cluster."""
+        shapes: list[tuple[int, ...]] = [(4,)]
+        # Honest clients cluster at ~2.0, poisoned client at 100.0
+        weights = [
+            ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[100.0, 100.0, 100.0, 100.0]),  # Byzantine
+        ]
+        result = fl_engine.aggregate_parameters(
+            weights,
+            client_samples=[100, 100, 100, 100],
+            method=AggregationMethod.TRIMMED_MEAN,
+        )
+        # After trimming f=1 extremes: only honest [2.0, 2.0] clients remain
+        # Result should be close to 2.0, not inflated by the Byzantine 100.0 client
+        assert all(abs(w - 2.0) < 0.5 for w in result.flat_weights), (
+            f"Trimmed Mean should suppress outlier: got {result.flat_weights}"
+        )
+
+    def test_trimmed_mean_fallback_with_too_few_clients(
+        self,
+        fl_engine: FederatedLearningEngine,
+    ) -> None:
+        """With only 2 clients (= 2*f), Trimmed Mean falls back to plain FedAvg gracefully."""
+        shapes: list[tuple[int, ...]] = [(3,)]
+        weights = [
+            ModelWeights(layer_shapes=shapes, flat_weights=[1.0, 1.0, 1.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[3.0, 3.0, 3.0]),
+        ]
+        result = fl_engine.aggregate_parameters(
+            weights,
+            client_samples=[100, 100],
+            method=AggregationMethod.TRIMMED_MEAN,
+        )
+        # Falls back to mean: (1+3)/2 = 2.0
+        assert all(abs(w - 2.0) < 1e-6 for w in result.flat_weights)
+
+    def test_bulyan_defends_against_colluding_byzantine(
+        self,
+        fl_engine: FederatedLearningEngine,
+    ) -> None:
+        """Bulyan must suppress a poisoning client and converge near honest values."""
+        shapes: list[tuple[int, ...]] = [(4,)]
+        # 3 honest clients at 2.0, 1 poisoned at 50.0
+        weights = [
+            ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
+            ModelWeights(layer_shapes=shapes, flat_weights=[50.0, 50.0, 50.0, 50.0]),  # Byzantine
+        ]
+        result = fl_engine.aggregate_parameters(
+            weights,
+            client_samples=[100, 100, 100, 100],
+            method=AggregationMethod.BULYAN,
+        )
+        # Bulyan Krum step should reject the poisoned client
+        # Result must be close to honest cluster value 2.0
+        assert all(abs(w - 2.0) < 5.0 for w in result.flat_weights), (
+            f"Bulyan should suppress Byzantine client: got {result.flat_weights}"
+        )
+
+    def test_bulyan_preserves_layer_shapes(
+        self,
+        fl_engine: FederatedLearningEngine,
+        sample_weights: list[ModelWeights],
+    ) -> None:
+        """Bulyan aggregation must preserve the original layer shapes."""
+        result = fl_engine.aggregate_parameters(
+            sample_weights,
+            client_samples=[100, 100, 100],
+            method=AggregationMethod.BULYAN,
+        )
+        assert result.layer_shapes == sample_weights[0].layer_shapes
+        assert len(result.flat_weights) == len(sample_weights[0].flat_weights)

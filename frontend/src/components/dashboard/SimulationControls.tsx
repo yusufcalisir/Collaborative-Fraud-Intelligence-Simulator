@@ -238,9 +238,11 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
                 <option value="fed_avg">FedAvg (Unweighted)</option>
                 <option value="krum" disabled={config.fl_engine_type === 'flower'}>Krum (Byzantine-Robust)</option>
                 <option value="coordinate_wise_median" disabled={config.fl_engine_type === 'flower'}>Coordinate-wise Median (Byzantine-Robust)</option>
+                <option value="trimmed_mean" disabled={config.fl_engine_type === 'flower'}>Trimmed Mean (Coordinate Byzantine) ✨</option>
+                <option value="bulyan" disabled={config.fl_engine_type === 'flower'}>Bulyan (Multi-Byzantine Robust) ✨</option>
               </select>
               <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
-                {config.fl_engine_type === 'flower' ? 'Flower uses its built-in FedAvg implementation' : 'Krum and Median are robust against malicious client attacks'}
+                {config.fl_engine_type === 'flower' ? 'Flower uses its built-in FedAvg implementation' : 'Krum, Median, Trimmed Mean and Bulyan are robust against Byzantine attacks'}
               </p>
             </div>
 

@@ -47,7 +47,10 @@ class SimulationConfigRequest(BaseModel):
     # Aggregation strategy
     aggregation_method: str = Field(
         default="fed_avg_weighted",
-        description="Aggregation algorithm: fed_avg_weighted, fed_avg, krum, coordinate_wise_median",
+        description=(
+            "Aggregation algorithm: fed_avg_weighted, fed_avg, krum, coordinate_wise_median, "
+            "trimmed_mean (Yin et al. 2018), bulyan (El Mhamdi et al. 2018)"
+        ),
     )
 
     # FL engine selection

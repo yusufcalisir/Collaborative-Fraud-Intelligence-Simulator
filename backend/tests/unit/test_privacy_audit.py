@@ -91,3 +91,118 @@ class TestPrivacyAuditService:
             result["membership_leakage_asr"] == 0.5
         )  # Median threshold splits them: TP=3, TN=2 -> ASR = 5/10 = 0.5
         assert result["risk_tier"] == "low_risk"
+
+    # ── Model Inversion Tests ──────────────────────────────────
+
+    def test_audit_model_inversion_empty(self, audit_service: PrivacyAuditService) -> None:
+        """Empty gradient norms should return safe tier without error."""
+        result = audit_service.audit_model_inversion(gradient_norms=[])
+        assert result["reconstruction_risk_score"] == 0.0
+        assert result["risk_tier"] == "safe"
+
+    def test_audit_model_inversion_low_risk(self, audit_service: PrivacyAuditService) -> None:
+        """Homogeneous gradient norms (low CV) should yield low reconstruction risk."""
+        # All norms equal → zero std → CV ≈ 0 → score < 0.3
+        norms = [1.0, 1.0, 1.0, 1.0, 1.0]
+        result = audit_service.audit_model_inversion(gradient_norms=norms)
+        assert result["reconstruction_risk_score"] < 0.3
+        assert result["risk_tier"] == "low_risk"
+
+    def test_audit_model_inversion_high_risk(self, audit_service: PrivacyAuditService) -> None:
+        """Highly variable gradient norms should yield high reconstruction risk."""
+        # High variance relative to mean → CV > 0.6
+        norms = [0.001, 100.0, 0.001, 100.0, 0.001]
+        result = audit_service.audit_model_inversion(gradient_norms=norms)
+        assert result["reconstruction_risk_score"] >= 0.6
+        assert result["risk_tier"] == "high_risk"
+        assert "mean_gradient_norm" in result
+        assert "num_gradients_audited" in result
+        assert result["num_gradients_audited"] == 5
+
+    # ── DLG Gradient Leakage Tests ─────────────────────────────
+
+    def test_audit_dlg_empty_inputs(self, audit_service: PrivacyAuditService) -> None:
+        """Empty gradient vectors should return safe tier without error."""
+        result = audit_service.audit_gradient_leakage_dlg(
+            original_gradients=[],
+            received_gradients=[],
+        )
+        assert result["dlg_leakage_score"] == 0.0
+        assert result["risk_tier"] == "safe"
+
+    def test_audit_dlg_low_leakage_with_noise(self, audit_service: PrivacyAuditService) -> None:
+        """Gradients with DP noise (uncorrelated) should yield low DLG score."""
+        rng = np.random.default_rng(42)
+        original = rng.normal(0, 1, 50).tolist()
+        # Received = independent noise → near-zero Pearson correlation
+        received = rng.normal(0, 1, 50).tolist()
+        result = audit_service.audit_gradient_leakage_dlg(
+            original_gradients=original,
+            received_gradients=received,
+        )
+        assert result["dlg_leakage_score"] < 0.5  # relaxed bound for random data
+        assert "params_audited" in result
+        assert result["params_audited"] == 50
+
+    def test_audit_dlg_high_leakage_perfect_correlation(
+        self, audit_service: PrivacyAuditService
+    ) -> None:
+        """Identical gradient vectors should yield maximum DLG leakage score."""
+        gradients = [float(i) for i in range(1, 21)]
+        result = audit_service.audit_gradient_leakage_dlg(
+            original_gradients=gradients,
+            received_gradients=gradients,  # perfect correlation → score == 1.0
+        )
+        assert result["dlg_leakage_score"] >= 0.99
+        assert result["risk_tier"] == "high_risk"
+
+
+class TestPrivacyServiceBudgetLog:
+    """Tests for multi-simulation privacy budget summary (get_all_budgets_summary)."""
+
+    def test_empty_budget_log(self) -> None:
+        """get_all_budgets_summary returns empty list when no simulations tracked."""
+        from app.application.services.privacy_service import PrivacyService
+
+        svc = PrivacyService()
+        result = svc.get_all_budgets_summary()
+        assert result == []
+
+    def test_budget_log_single_simulation(self) -> None:
+        """A single simulation's epsilon spend is reflected in the summary."""
+        from app.application.services.privacy_service import PrivacyService
+
+        svc = PrivacyService()
+        svc.record_opacus_epsilon(simulation_id="sim-test-001", epsilon=1.5, limit=8.0)
+        result = svc.get_all_budgets_summary(epsilon_limit=8.0)
+        assert len(result) == 1
+        entry = result[0]
+        assert entry["simulation_id"] == "sim-test-001"
+        assert abs(entry["total_epsilon"] - 1.5) < 1e-4
+        assert entry["budget_exhausted"] is False
+
+    def test_budget_log_exhaustion_flag(self) -> None:
+        """Simulations exceeding epsilon_limit are flagged as exhausted in the summary."""
+        from app.application.services.privacy_service import PrivacyService
+
+        svc = PrivacyService()
+        # Bypass the spend guard by manually appending to _epsilon_history
+        budget = svc.get_or_create_budget("sim-exhaust-001")
+        budget._epsilon_history.append(9.0)  # noqa: SLF001  # bypasses the raise-guard for testing
+        budget.rounds_spent = 1
+        result = svc.get_all_budgets_summary(epsilon_limit=8.0)
+        assert len(result) == 1
+        assert result[0]["budget_exhausted"] is True
+        assert result[0]["total_epsilon"] > 8.0
+
+    def test_budget_log_sorted_by_epsilon_descending(self) -> None:
+        """Budget log must be sorted highest epsilon first."""
+        from app.application.services.privacy_service import PrivacyService
+
+        svc = PrivacyService()
+        svc.record_opacus_epsilon("sim-low", epsilon=1.0, limit=8.0)
+        svc.record_opacus_epsilon("sim-high", epsilon=5.0, limit=8.0)
+        svc.record_opacus_epsilon("sim-mid", epsilon=3.0, limit=8.0)
+        result = svc.get_all_budgets_summary()
+        epsilons = [e["total_epsilon"] for e in result]
+        assert epsilons == sorted(epsilons, reverse=True)

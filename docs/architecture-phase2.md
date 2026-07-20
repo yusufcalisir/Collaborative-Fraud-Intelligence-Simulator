@@ -606,3 +606,57 @@ The coordinator uses a passive sweep model — there is no background thread. In
 | `POST` | `/api/v1/coordinator/heartbeat` | Record a heartbeat ping for a registered bank |
 | `GET` | `/api/v1/coordinator/clients` | List all registered clients with status and heartbeat age |
 | `GET` | `/api/v1/coordinator/negotiate` | Return negotiated training parameters for a bank's hardware |
+
+---
+
+## Section 19: Advanced Privacy Defense & Attack Benchmarking
+
+To audit and protect aggregated model weights against advanced adversarial attacks, the system integrates the `PrivacyAuditService`, robust Byzantine defenses, and a multi-simulation privacy budget logger.
+
+```
+                  ┌──────────────────────────────┐
+                  │      FL Server (Server)      │
+                  └──────────────┬───────────────┘
+                                 │
+              Runs aggregate_parameters() (fl_engine.py)
+                                 │
+         ┌───────────────────────┴───────────────────────┐
+         ▼                                               ▼
+[Trimmed Mean (coordinate)]                      [Bulyan (nested)]
+  - Removes largest/smallest f updates             - Selects closest candidate (Krum)
+  - Averages remaining updates                     - Trims coordinate-wise extremes
+                                                   - Averages remaining parameters
+```
+
+### Components
+
+| Component | File | Responsibility |
+|:---|:---|:---|
+| `Bulyan` & `Trimmed Mean` | `app/application/services/fl_engine.py` | Byzantine-robust aggregation algorithms to defend against colluding malicious banks |
+| `PrivacyAuditService` | `app/application/services/privacy_audit_service.py` | Evaluators for MIA (Attack Success Rate), Model Inversion (Reconstruction Risk Score), and DLG (Pearson Leakage Score) |
+| `PrivacyService` | `app/application/services/privacy_service.py` | Multi-simulation $\epsilon$ budget logs summary with exhaustion flags |
+| `privacy_defense` Router | `app/presentation/routers/privacy_defense.py` | REST API routes: `/aggregation-methods`, `/audit/mia`, `/audit/model-inversion`, `/audit/dlg`, and `/budget-log` |
+| `PrivacyDefensePage` | `frontend/src/pages/PrivacyDefensePage.tsx` | Dashboard displaying Byzantine defenses, active attack simulation buttons, and dynamic privacy budget exhaustion indicators |
+
+### Robust Aggregation Algorithms
+
+#### 1. Coordinate-wise Trimmed Mean
+For each parameter coordinate, sort the received weights from $N$ clients. Remove the $f$ lowest and $f$ highest updates, where $f$ represents the estimated number of Byzantine/malicious workers (clamped such that $2f < N$). Compute the mean of the remaining $N - 2f$ values.
+$$\text{TrimmedMean}_i = \frac{1}{N - 2f} \sum_{k=f+1}^{N-f} w_{(k), i}$$
+
+#### 2. Bulyan
+To defend against colluding attackers that Krum or Median cannot fully mitigate:
+1. Runs a selection loop to choose $\theta = N - 2f$ candidate weight vectors using Krum (minimizing multi-client Euclidean distance).
+2. For each coordinate $i$, sorts the parameters of the $\theta$ selected updates.
+3. Applies a Trimmed Mean on the sorted parameters by discarding the $f'$ largest and $f'$ smallest parameters (where $f' = \theta - 2f$), and averaging the rest.
+
+### REST API Endpoints
+
+| Method | Path | Description |
+|:---|:---|:---|
+| `GET` | `/api/v1/privacy-defense/aggregation-methods` | List Byzantine robust aggregation methods (Krum, Median, Trimmed Mean, Bulyan) |
+| `POST` | `/api/v1/privacy-defense/audit/mia` | Run Membership Inference Attack (MIA) audit based on loss distributions |
+| `POST` | `/api/v1/privacy-defense/audit/model-inversion` | Run Model Inversion Audit based on variance of gradient norms |
+| `POST` | `/api/v1/privacy-defense/audit/dlg` | Evaluate Deep Leakage from Gradients (DLG) via Pearson correlation |
+| `GET` | `/api/v1/privacy-defense/budget-log` | Get sorted multi-simulation privacy budget consumption logs |
+

@@ -26,6 +26,7 @@ const NAV_SECTIONS = [
     label: 'Enterprise Platform',
     items: [
       { path: '/coordinator', label: 'FL Coordinator Suite', icon: '🛰️' },
+      { path: '/privacy-defense', label: 'Privacy Defense Suite', icon: '🔐' },
     ],
   },
   {

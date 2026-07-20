@@ -79,6 +79,11 @@ cfi_active_alerts_count: Any = _NoOpGauge()
 # Enterprise FL Coordinator Metrics
 cfi_active_clients_count: Any = _NoOpGauge()
 
+# Privacy Defense & Attack Benchmarking Metrics (Item 19)
+cfi_privacy_epsilon_consumed: Any = _NoOpGauge()     # Cumulative ε consumed per simulation
+cfi_mia_attack_success_rate: Any = _NoOpGauge()      # MIA Attack Success Rate (ASR) score
+cfi_dlg_gradient_leakage_score: Any = _NoOpGauge()   # DLG Pearson leakage correlation score
+
 
 class JSONLogFormatter(logging.Formatter):
     """Structured JSON formatter for Loki log aggregation via Promtail."""

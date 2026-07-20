@@ -189,6 +189,76 @@ class FederatedLearningEngine:
             weights_array = np.array([w.flat_weights for w in client_weights])
             avg_weights = np.median(weights_array, axis=0).tolist()
 
+        elif method == AggregationMethod.TRIMMED_MEAN:
+            # Coordinate-wise Trimmed Mean: for each parameter coordinate,
+            # drop the f largest and f smallest values then average the rest.
+            # f=1 assumed Byzantine worker. Requires at least 2f+1 clients.
+            weights_array = np.array([w.flat_weights for w in client_weights])
+            n = len(weights_array)
+            f = 1  # assumed Byzantine count
+            if n <= 2 * f:
+                # Not enough clients for trimming — fall back to plain mean
+                logger.warning(
+                    "Trimmed Mean: too few clients (%d <= 2*f=%d), falling back to FedAvg",
+                    n,
+                    2 * f,
+                )
+                avg_weights = weights_array.mean(axis=0).tolist()
+            else:
+                sorted_arr = np.sort(weights_array, axis=0)
+                trimmed = sorted_arr[f : n - f]  # drop f smallest and f largest per coordinate
+                avg_weights = trimmed.mean(axis=0).tolist()
+            logger.info(
+                "Trimmed Mean aggregation: %d clients, f=%d, effective clients=%d",
+                n,
+                f,
+                max(0, n - 2 * f),
+            )
+
+        elif method == AggregationMethod.BULYAN:
+            # Bulyan (El Mhamdi et al., 2018): Byzantine-robust aggregation that
+            # combines Krum selection with Trimmed Mean.
+            # Step 1: Krum — select the n-2f clients closest to each other.
+            # Step 2: Trimmed Mean — apply coordinate-wise trimmed mean on the
+            #         Krum-selected subset.
+            # This defeats coordinated colluding Byzantine attacks that evade Krum.
+            weights_array = np.array([w.flat_weights for w in client_weights])
+            n = len(weights_array)
+            f = 1  # assumed Byzantine workers
+            # Bulyan requires n >= 4f + 3
+            selected_count = max(1, n - 2 * f)
+
+            # Krum scores
+            krum_num_closest = max(1, n - f - 2)
+            scores = []
+            for i in range(n):
+                dists = sorted(
+                    float(np.sum((weights_array[i] - weights_array[j]) ** 2))
+                    for j in range(n)
+                    if i != j
+                )
+                scores.append(sum(dists[:krum_num_closest]))
+
+            # Select the best `selected_count` indices (lowest Krum score)
+            selected_indices = np.argsort(scores)[:selected_count]
+            selected_weights = weights_array[selected_indices]  # (selected_count, params)
+
+            # Apply coordinate-wise trimmed mean on the selected subset
+            trim_f = max(0, (selected_count - 1) // 4)  # conservative trim
+            if selected_count <= 2 * trim_f or trim_f == 0:
+                avg_weights = selected_weights.mean(axis=0).tolist()
+            else:
+                sorted_sel = np.sort(selected_weights, axis=0)
+                trimmed_sel = sorted_sel[trim_f : selected_count - trim_f]
+                avg_weights = trimmed_sel.mean(axis=0).tolist()
+
+            logger.info(
+                "Bulyan aggregation: %d clients → Krum selected %d → Trimmed Mean (f=%d)",
+                n,
+                selected_count,
+                trim_f,
+            )
+
         else:
             raise ValueError(f"Unsupported aggregation method: {method}")
 
@@ -429,6 +499,18 @@ class FederatedLearningEngine:
             best_idx = int(np.argmin(scores))
             logger.info("Byzantine defense (krum): selected client %d as representative", best_idx)
             return [client_weights[best_idx]]
+
+        if defense_type == "trimmed_mean":
+            # Trimmed Mean defense: return all weights unchanged — aggregation
+            # will apply coordinate-wise trimming when TRIMMED_MEAN method is used.
+            logger.info("Byzantine defense (trimmed_mean): deferring to aggregation step")
+            return client_weights
+
+        if defense_type == "bulyan":
+            # Bulyan defense: return all weights unchanged — aggregation
+            # will apply Krum selection + trimmed mean when BULYAN method is used.
+            logger.info("Byzantine defense (bulyan): deferring to aggregation step")
+            return client_weights
 
         # coordinate_wise_median and any unknown defense: return all weights
         # unchanged — the aggregation method will apply robustness if configured.

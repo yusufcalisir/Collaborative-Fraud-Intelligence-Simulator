@@ -196,3 +196,44 @@ class PrivacyService:
     def clear_budget(self, simulation_id: str) -> None:
         """Remove privacy budget for a completed simulation."""
         self._budgets.pop(simulation_id, None)
+
+    def get_all_budgets_summary(self, epsilon_limit: float = 8.0) -> list[dict]:
+        """Return cumulative privacy budget summary across all tracked simulations.
+
+        Provides an enterprise-level view of epsilon consumption across multiple
+        federated training sessions. Used by the Privacy Budget Log dashboard to
+        detect budget exhaustion attack patterns (where an attacker triggers many
+        short simulations to slowly accumulate delta patterns).
+
+        Args:
+            epsilon_limit: Maximum allowed cumulative epsilon before flagging.
+
+        Returns:
+            List of dicts, one per simulation_id, with budget details.
+        """
+        summaries = []
+        for simulation_id, budget in self._budgets.items():
+            total_eps = budget.total_epsilon
+            exhausted = total_eps > epsilon_limit
+            if exhausted:
+                logger.warning(
+                    "Budget exhaustion risk detected for simulation %s: ε=%.4f > limit=%.4f",
+                    simulation_id,
+                    total_eps,
+                    epsilon_limit,
+                )
+            summaries.append(
+                {
+                    "simulation_id": simulation_id,
+                    "total_epsilon": round(total_eps, 6),
+                    "delta": budget.delta,
+                    "rounds_spent": budget.rounds_spent,
+                    "epsilon_per_round": budget.epsilon_per_round,
+                    "epsilon_history": budget.history,
+                    "budget_exhausted": exhausted,
+                    "epsilon_limit": epsilon_limit,
+                }
+            )
+        # Sort by total_epsilon descending (highest consumption first)
+        summaries.sort(key=lambda x: x["total_epsilon"], reverse=True)
+        return summaries

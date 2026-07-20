@@ -173,3 +173,110 @@ class PrivacyAuditService:
             "num_train_samples_audited": len(train_losses),
             "num_test_samples_audited": len(test_losses),
         }
+
+    def audit_model_inversion(
+        self,
+        gradient_norms: list[float],
+    ) -> dict[str, Any]:
+        """Simulate a Model Inversion Attack (MIA) audit on gradient norms.
+
+        Evaluates whether the magnitude of shared gradient updates could allow an
+        adversary to reconstruct sensitive node features or transaction amounts.
+        High gradient norms indicate that individual sample contributions are
+        distinguishable, which increases the risk of feature reconstruction.
+
+        Returns:
+            Dict with reconstruction risk score and risk tier.
+        """
+        if not gradient_norms:
+            return {
+                "reconstruction_risk_score": 0.0,
+                "risk_tier": "safe",
+                "message": "No gradient norms provided for model inversion audit.",
+            }
+
+        arr = np.array(gradient_norms)
+        # Normalise to [0, 1]: high norm variance → high reconstruction risk
+        mean_norm = float(np.mean(arr))
+        std_norm = float(np.std(arr))
+        # Risk proxy: coefficient of variation captures exploitable heterogeneity
+        cv = std_norm / (mean_norm + 1e-9)
+        risk_score = float(np.clip(cv, 0.0, 1.0))
+
+        if risk_score < 0.3:
+            risk_tier = "low_risk"
+        elif risk_score < 0.6:
+            risk_tier = "moderate_risk"
+        else:
+            risk_tier = "high_risk"
+
+        logger.info(
+            "Model Inversion audit: mean_norm=%.4f std_norm=%.4f cv=%.4f tier=%s",
+            mean_norm,
+            std_norm,
+            cv,
+            risk_tier,
+        )
+
+        return {
+            "reconstruction_risk_score": round(risk_score, 4),
+            "risk_tier": risk_tier,
+            "mean_gradient_norm": round(mean_norm, 6),
+            "std_gradient_norm": round(std_norm, 6),
+            "num_gradients_audited": len(gradient_norms),
+        }
+
+    def audit_gradient_leakage_dlg(
+        self,
+        original_gradients: list[float],
+        received_gradients: list[float],
+    ) -> dict[str, Any]:
+        """Deep Leakage from Gradients (DLG) audit.
+
+        Measures the Pearson correlation between the gradients exchanged during
+        secure aggregation and a synthetic "leaked" reconstruction gradient.
+        High correlation indicates that raw transaction features could be recovered
+        from the shared gradient vectors.
+
+        Reference: Zhu et al., "Deep Leakage from Gradients" (NeurIPS 2019).
+
+        Returns:
+            Dict with leakage correlation score and risk tier.
+        """
+        if not original_gradients or not received_gradients:
+            return {
+                "dlg_leakage_score": 0.0,
+                "risk_tier": "safe",
+                "message": "Insufficient gradient data for DLG audit.",
+            }
+
+        min_len = min(len(original_gradients), len(received_gradients))
+        orig = np.array(original_gradients[:min_len])
+        recv = np.array(received_gradients[:min_len])
+
+        # Pearson correlation as leakage proxy
+        if orig.std() == 0 or recv.std() == 0:
+            corr = 0.0
+        else:
+            corr_matrix = np.corrcoef(orig, recv)
+            corr = float(np.clip(abs(corr_matrix[0, 1]), 0.0, 1.0))
+
+        if corr < 0.3:
+            risk_tier = "low_risk"
+        elif corr < 0.6:
+            risk_tier = "moderate_risk"
+        else:
+            risk_tier = "high_risk"
+
+        logger.info(
+            "DLG audit: pearson_correlation=%.4f tier=%s (params_audited=%d)",
+            corr,
+            risk_tier,
+            min_len,
+        )
+
+        return {
+            "dlg_leakage_score": round(corr, 4),
+            "risk_tier": risk_tier,
+            "params_audited": min_len,
+        }

@@ -20,7 +20,7 @@ export interface SimulationConfig {
   bank_a_transactions: number;
   bank_b_transactions: number;
   bank_c_transactions: number;
-  aggregation_method: 'fed_avg_weighted' | 'fed_avg' | 'krum' | 'coordinate_wise_median';
+  aggregation_method: 'fed_avg_weighted' | 'fed_avg' | 'krum' | 'coordinate_wise_median' | 'trimmed_mean' | 'bulyan';
   enable_poisoning_simulation: boolean;
   poisoning_bank_id: string;
   poisoning_scale: number;
@@ -839,5 +839,48 @@ export interface NegotiatedParamsResponse {
 
 
 
+// ── Privacy Defense Suite (Item 19) ────────────────────────────
 
+export interface MIAAuditResult {
+  membership_leakage_asr: number;
+  risk_tier: 'safe' | 'low_risk' | 'moderate_risk' | 'high_risk';
+  num_train_samples_audited: number;
+  num_test_samples_audited: number;
+  message?: string;
+}
 
+export interface ModelInversionAuditResult {
+  reconstruction_risk_score: number;
+  risk_tier: 'safe' | 'low_risk' | 'moderate_risk' | 'high_risk';
+  mean_gradient_norm: number;
+  std_gradient_norm: number;
+  num_gradients_audited: number;
+  message?: string;
+}
+
+export interface DLGAuditResult {
+  dlg_leakage_score: number;
+  risk_tier: 'safe' | 'low_risk' | 'moderate_risk' | 'high_risk';
+  params_audited: number;
+  message?: string;
+}
+
+export interface AggregationMethodInfo {
+  id: string;
+  label: string;
+  description: string;
+  byzantine_robust: boolean;
+  colluding_defense: boolean;
+  paper: string;
+}
+
+export interface BudgetLogEntry {
+  simulation_id: string;
+  total_epsilon: number;
+  delta: number;
+  rounds_spent: number;
+  epsilon_per_round: number;
+  epsilon_history: number[];
+  budget_exhausted: boolean;
+  epsilon_limit: number;
+}

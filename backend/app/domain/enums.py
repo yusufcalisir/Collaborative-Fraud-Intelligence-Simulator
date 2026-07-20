@@ -44,6 +44,8 @@ class AggregationMethod(StrEnum):
     COORDINATE_WISE_MEDIAN = "coordinate_wise_median"
     FED_ADAM = "fed_adam"
     FED_ADAGRAD = "fed_adagrad"
+    TRIMMED_MEAN = "trimmed_mean"
+    BULYAN = "bulyan"
 
 
 class ClientStatus(StrEnum):

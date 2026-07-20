@@ -13,6 +13,7 @@ import PsiPage from './pages/PsiPage';
 import SecurityPage from './pages/SecurityPage';
 import ObservabilityPage from './pages/ObservabilityPage';
 import CoordinatorPage from './pages/CoordinatorPage';
+import PrivacyDefensePage from './pages/PrivacyDefensePage';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
 
           {/* Enterprise Platform */}
           <Route path="/coordinator" element={<CoordinatorPage />} />
+          <Route path="/privacy-defense" element={<PrivacyDefensePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

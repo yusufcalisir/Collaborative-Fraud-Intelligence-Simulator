@@ -703,10 +703,75 @@ export function useNegotiatedParams(bankId: string, baseBatchSize: number, baseE
     },
     enabled: !!bankId,
   });
+
+
+// ── Privacy Defense Suite (Item 19) ──────────────────────────
+
+export function useAggregationMethods() {
+  return useQuery<import('./types').AggregationMethodInfo[]>({
+    queryKey: ['privacy-defense', 'aggregation-methods'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/privacy-defense/aggregation-methods');
+      return data;
+    },
+    staleTime: Infinity,
+  });
 }
 
+export function usePrivacyBudgetLog(epsilonLimit = 8.0) {
+  return useQuery<import('./types').BudgetLogEntry[]>({
+    queryKey: ['privacy-defense', 'budget-log', epsilonLimit],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/privacy-defense/budget-log', {
+        params: { epsilon_limit: epsilonLimit },
+      });
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
 
+export function useAuditMIA() {
+  return useMutation<
+    import('./types').MIAAuditResult,
+    Error,
+    { train_losses: number[]; test_losses: number[] }
+  >({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/privacy-defense/audit/mia', payload);
+      return data;
+    },
+  });
+}
 
+export function useAuditModelInversion() {
+  return useMutation<
+    import('./types').ModelInversionAuditResult,
+    Error,
+    { gradient_norms: number[] }
+  >({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post(
+        '/api/v1/privacy-defense/audit/model-inversion',
+        payload,
+      );
+      return data;
+    },
+  });
+}
+
+export function useAuditDLG() {
+  return useMutation<
+    import('./types').DLGAuditResult,
+    Error,
+    { original_gradients: number[]; received_gradients: number[] }
+  >({
+    mutationFn: async (payload) => {
+      const { data } = await apiClient.post('/api/v1/privacy-defense/audit/dlg', payload);
+      return data;
+    },
+  });
+}
 
 
 

@@ -279,3 +279,41 @@ The `CoordinatorService` introduces a dynamic network control plane with its own
 | **Information Disclosure** | Enumerate active banks via `/clients` list | Gateway RBAC restricts endpoint to authorized roles |
 | **Denial of Service** | Heartbeat flood to exhaust rate limits | Fixed-window rate limiter at gateway layer |
 | **Elevation of Privilege** | Dropout attack leaves one malicious node | Min-quorum enforcement + Krum/Median aggregation |
+
+---
+
+## 12. Advanced Privacy Defense & Attack Benchmarking Threat Surface (Item 19)
+
+The introduction of the `PrivacyAuditService` and new robust aggregation methods (Bulyan, Trimmed Mean) adds defense-in-depth but also introduces a new threat surface related to malicious evaluation inputs and budget exhaustion.
+
+### 12.1 Colluding Byzantine Byzantine Attackers (Spoofing & Tampering)
+
+**Threat**: A group of coordinated malicious banks submit colluding, poisoned model updates that fool single-median or simple Krum heuristics by clustering around a false point.
+**Mitigations**:
+* **Bulyan Aggregation**: The simulator implements **Bulyan** (El Mhamdi et al. 2018), which applies a nested selection process (Krum followed by Trimmed Mean). This successfully filters out colluding attackers when up to $f$ nodes are malicious (where $c \ge 4f + 3$).
+* **Coordinate-wise Trimmed Mean**: Discards the $f$ largest and $f$ smallest values along each coordinate, neutralizing gradient boosting or sign-flipping attacks.
+
+### 12.2 Privacy Budget Exhaustion Attack (Information Disclosure)
+
+**Threat**: A malicious participant initiates a high volume of federated learning simulations to sequentially extract small amounts of information from the model updates, accumulating total privacy leakage ($\epsilon$) beyond safe bounds.
+**Mitigations**:
+* **Enterprise Privacy Budget Log**: The `PrivacyService` tracks cumulative $\epsilon$ spend across all simulations.
+* **Hard Budget Limit & Fail-Safe**: If any simulation's cumulative $\epsilon$ exceeds `epsilon_limit` (default 8.0), the engine triggers a `PrivacyBudgetExceededError` and halts aggregation, preventing further information leakage.
+* **Exhaustion Audits**: The dashboard alerts administrators dynamically if any simulation enters the `EXHAUSTED` state.
+
+### 12.3 Attack Audit Poisoning (Tampering & Denial of Service)
+
+**Threat**: An adversary submits malformed, infinite, or NaN loss lists/gradient vectors to `/audit/mia` or `/audit/dlg` to cause division-by-zero or memory exhaustion on the server.
+**Mitigations**:
+* **Schema Validation & Fallbacks**: The inputs are validated through Pydantic. If empty lists or single elements are provided, the audit service falls back to safe defaults (e.g., ASR = 0.5, risk = safe) instead of crashing.
+* **NaN Handling**: Cosine similarity and Pearson correlation computations filter out NaN values and enforce bounds.
+
+| STRIDE Category | Privacy/Defense Threat | Mitigation |
+|:---|:---|:---|
+| **Spoofing** | Colluding nodes inject false model updates | Bulyan double-filtering strategy |
+| **Tampering** | Malformed gradient norms sent to DLG audit | Standard deviation bounds and NaN/empty list safeguards |
+| **Repudiation** | Deny initiating budget-exhausting simulations | Persistent budget logs tracked by simulation ID |
+| **Information Disclosure** | Scraping model secrets via repeated aggregation | Hard global privacy budget limits per simulation |
+| **Denial of Service** | Submitting infinite parameters to attack audits | Fixed-window rate limiter + Pydantic validation |
+| **Elevation of Privilege** | Bypassing DP noise checks | Global accountant checks at the coordinator boundary |
+
