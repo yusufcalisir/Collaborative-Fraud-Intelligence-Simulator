@@ -1,0 +1,23 @@
+{{- if .Values.flCoordinator.hpa.enabled -}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-fl-coordinator
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: fl-coordinator
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "cfi-platform.fullname" . }}-fl-coordinator
+  minReplicas: {{ .Values.flCoordinator.hpa.minReplicas }}
+  maxReplicas: {{ .Values.flCoordinator.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.flCoordinator.hpa.targetCPUUtilizationPercentage }}
+{{- end }}

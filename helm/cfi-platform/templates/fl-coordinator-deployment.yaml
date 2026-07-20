@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-fl-coordinator
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: fl-coordinator
+spec:
+  replicas: {{ .Values.flCoordinator.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cfi-platform.selectorLabels" . | nindent 6 }}
+      app: fl-coordinator
+  template:
+    metadata:
+      labels:
+        {{- include "cfi-platform.selectorLabels" . | nindent 8 }}
+        app: fl-coordinator
+    spec:
+      containers:
+        - name: fl-coordinator
+          image: "{{ .Values.flCoordinator.image.repository }}:{{ .Values.flCoordinator.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.flCoordinator.image.pullPolicy }}
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+          ports:
+            - name: http
+              containerPort: 8001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "cfi-platform.fullname" . }}-config
+          env:
+            - name: SERVICE_NAME
+              value: "fl-coordinator"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: JWT_SECRET
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: OIDC_CLIENT_SECRET
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: VAULT_TOKEN
+          resources:
+            {{- toYaml .Values.flCoordinator.resources | nindent 12 }}
+          volumeMounts:
+            - name: model-storage
+              mountPath: /app/app/storage
+      volumes:
+        - name: model-storage
+          {{- if .Values.flCoordinator.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "cfi-platform.fullname" . }}-fl-coordinator-models
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

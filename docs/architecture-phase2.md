@@ -397,7 +397,17 @@ To maintain continuous MLOps model quality and infrastructure health:
 4. **Model Calibration Monitoring**: Evaluates probability calibration via Brier score ($\frac{1}{N}\sum (p_i - y_i)^2$), Expected Calibration Error (ECE), and 10-bin reliability curve generation.
 5. **Automated Re-training Triggers**: When concept drift $PSI \ge 0.20$, the platform automatically alerts MLOps engineers and triggers a new federated training round (`trigger_auto_retraining()`).
 
+### 2.9 GitOps & Container Orchestration Pipeline (Kubernetes, Helm & ArgoCD)
+
+To ensure high availability, zero-downtime rolling updates, and declarative environment alignment:
+
+1. **Kubernetes Orchestration**: The containerized microservices are migrated from Docker Compose to managed Kubernetes clusters (AWS EKS or Google GKE), leveraging Horizontal Pod Autoscaling (HPA) to scale between 2 and 10 replicas based on CPU demand.
+2. **Helm Charts Packaging**: Standardizes packaging across services (`gateway`, `fl-coordinator`, `identity-graph`, `fraud-alert`, `frontend`) under a unified chart (`helm/cfi-platform/`). Parameters for resources, storage classes, ingress hosts, database connectivity, and secrets are dynamically injected via `values.yaml`.
+3. **Declarative GitOps (ArgoCD)**: An ArgoCD Application manifest (`argocd/application.yaml`) tracks target repositories and syncs Kubernetes resources automatically whenever changes are pushed to git, maintaining a strict source of truth.
+4. **CI Pipeline Linting**: The GitHub Actions pipeline (`ci.yml`) executes `helm lint` validation on all pull requests to verify manifest syntax correctness before build promotion.
+
 ### 3. Federated Graph Embedding (FedGNN)
+
 
 
 

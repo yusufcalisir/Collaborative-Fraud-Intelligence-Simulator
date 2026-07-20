@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-fl-coordinator
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: fl-coordinator
+spec:
+  type: {{ .Values.flCoordinator.service.type }}
+  ports:
+    - port: {{ .Values.flCoordinator.service.port }}
+      targetPort: 8001
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cfi-platform.selectorLabels" . | nindent 4 }}
+    app: fl-coordinator

@@ -1,0 +1,23 @@
+{{- if .Values.fraudAlert.hpa.enabled -}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-fraud-alert
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: fraud-alert
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "cfi-platform.fullname" . }}-fraud-alert
+  minReplicas: {{ .Values.fraudAlert.hpa.minReplicas }}
+  maxReplicas: {{ .Values.fraudAlert.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.fraudAlert.hpa.targetCPUUtilizationPercentage }}
+{{- end }}

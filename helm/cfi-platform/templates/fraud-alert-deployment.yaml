@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-fraud-alert
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: fraud-alert
+spec:
+  replicas: {{ .Values.fraudAlert.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cfi-platform.selectorLabels" . | nindent 6 }}
+      app: fraud-alert
+  template:
+    metadata:
+      labels:
+        {{- include "cfi-platform.selectorLabels" . | nindent 8 }}
+        app: fraud-alert
+    spec:
+      containers:
+        - name: fraud-alert
+          image: "{{ .Values.fraudAlert.image.repository }}:{{ .Values.fraudAlert.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.fraudAlert.image.pullPolicy }}
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8003"]
+          ports:
+            - name: http
+              containerPort: 8003
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "cfi-platform.fullname" . }}-config
+          env:
+            - name: SERVICE_NAME
+              value: "fraud-alert"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: JWT_SECRET
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: OIDC_CLIENT_SECRET
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: VAULT_TOKEN
+          resources:
+            {{- toYaml .Values.fraudAlert.resources | nindent 12 }}

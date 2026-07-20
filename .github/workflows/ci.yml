@@ -90,3 +90,16 @@ jobs:
         run: docker build ./backend -t fraud-intelligence-api:test
       - name: Build frontend image
         run: docker build ./frontend -t fraud-intelligence-frontend:test
+
+  helm-lint:
+    name: Helm Chart Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.14.0'
+      - name: Lint Helm Chart
+        run: helm lint helm/cfi-platform/
+

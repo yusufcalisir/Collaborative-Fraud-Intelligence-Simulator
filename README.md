@@ -317,7 +317,9 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **BankConnector Adapter Pattern** | Abstract `BankConnectorInterface` port; concrete adapters: `MockBankConnector` (in-process), `RESTBankConnector` (HTTP with OAuth2/mTLS/API Key), `RedisBankConnector` (pub/sub), `MQSkeletonBankConnector` (AMQP placeholder). `BankConnectorFactory` resolves per-bank adapter from config. | Decouples the FL platform from bank-specific integrations — swap a single config key to connect a real bank REST API without touching business logic. | Open/Closed principle; per-bank connector-type override |
 | **Production Enterprise Security Suite** | Enterprise security compliance architecture: **Mutual TLS 1.3 (mTLS)** with X.509 cert validation & SAN matching, **OIDC / OAuth2 JWT** bearer claims extraction, **Dynamic ABAC** policy engine (multi-tenant bank isolation, shift hour windows, approval tiers, clearance levels), **HashiCorp Vault** KV v2 secret engine client, and **Tamper-Proof Cryptographic Audit Chain** ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with retrospective integrity verification. | Meets ISO 27001, SOC2, and PCI-DSS compliance requirements for multi-tenant banking data isolation, key management, and immutable audit logs. | mTLS 1.3, OIDC JWT, ABAC evaluator, HashiCorp Vault KV v2, SHA-256 Audit Chain |
 | **Enterprise Observability & Drift Monitoring** | Production PLG log aggregation stack (**Grafana Loki** + **Promtail**), **Prometheus Alertmanager** metric alerting (gateway latency, client dropouts, concept drift $PSI > 0.20$, calibration $Brier > 0.15$), statistical **Model Drift Engine** (Kolmogorov-Smirnov 2-sample test, Wasserstein distance, Population Stability Index), **Model Calibration Monitoring** (Brier score & Expected Calibration Error), and **Automated Re-training Triggers**. | Provides full real-time visibility into model health, feature distribution shifts, prediction probability calibration, and automated MLOps retraining. | Grafana Loki, Promtail, Alertmanager, KS-test, Wasserstein, PSI, Brier Score, ECE |
+| **GitOps & K8s Orchestration Pipeline** | Managed Kubernetes deployment manifests (EKS/GKE), **Helm Charts packaging** (`helm/cfi-platform/`) with parameterizable secrets/ingress/replicas/node selectors, **Horizontal Pod Autoscaling (HPA)** for self-healing & elastic load distribution, and **ArgoCD GitOps application** spec (`argocd/application.yaml`) for declarative Git-based continuous delivery. | Automates infrastructure packaging, rolling updates, secure environment overrides, and auto-scaling logic for production multi-tenant environments. | Helm 3, Kubernetes, ArgoCD GitOps, HPA |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
+
 
 
 
@@ -502,10 +504,38 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   └── grafana/
 │       ├── provisioning/         # Auto-provisioned datasources (Prometheus, Jaeger) & dashboards
 │       └── dashboards/           # Pre-built JSON dashboard: CFI Platform Overview
+├── helm/                         # Kubernetes Helm charts packaging
+│   └── cfi-platform/             # Unified Helm chart for EKS/GKE deployment
+│       ├── Chart.yaml            # Chart metadata definition
+│       ├── values.yaml           # Parameterized environment configuration values
+│       └── templates/            # Resource templates
+│           ├── _helpers.tpl      # Standard Helm helper templates
+│           ├── configmap.yaml    # Shared non-sensitive environment configuration
+│           ├── secrets.yaml      # Shared Base64 sensitive secrets (DB, JWT, OIDC)
+│           ├── ingress.yaml      # Ingress rules mapping domains to frontend & gateway
+│           ├── gateway-deployment.yaml # Gateway deployment spec
+│           ├── gateway-service.yaml    # Gateway Service spec
+│           ├── gateway-hpa.yaml        # Gateway Horizontal Pod Autoscaler spec
+│           ├── fl-coordinator-pvc.yaml # FL Coordinator Persistent Volume Claim spec
+│           ├── fl-coordinator-deployment.yaml # FL Coordinator deployment spec
+│           ├── fl-coordinator-service.yaml    # FL Coordinator Service spec
+│           ├── fl-coordinator-hpa.yaml        # FL Coordinator Horizontal Pod Autoscaler spec
+│           ├── identity-graph-deployment.yaml # Identity Graph deployment spec
+│           ├── identity-graph-service.yaml    # Identity Graph Service spec
+│           ├── identity-graph-hpa.yaml        # Identity Graph Horizontal Pod Autoscaler spec
+│           ├── fraud-alert-deployment.yaml # Fraud Alert deployment spec
+│           ├── fraud-alert-service.yaml    # Fraud Alert Service spec
+│           ├── fraud-alert-hpa.yaml        # Fraud Alert Horizontal Pod Autoscaler spec
+│           ├── frontend-deployment.yaml # Frontend deployment spec
+│           ├── frontend-service.yaml    # Frontend Service spec
+│           └── frontend-hpa.yaml        # Frontend Horizontal Pod Autoscaler spec
+├── argocd/                       # Declarative GitOps continuous delivery config
+│   └── application.yaml          # ArgoCD Application resource specification
 ├── docker-compose.yml
 ├── Makefile
 └── .github/                      # CI/CD Workflows
 ```
+
 
 ***
 

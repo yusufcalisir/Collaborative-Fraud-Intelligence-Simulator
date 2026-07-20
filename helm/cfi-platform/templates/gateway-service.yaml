@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-gateway
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: gateway
+spec:
+  type: {{ .Values.gateway.service.type }}
+  ports:
+    - port: {{ .Values.gateway.service.port }}
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cfi-platform.selectorLabels" . | nindent 4 }}
+    app: gateway

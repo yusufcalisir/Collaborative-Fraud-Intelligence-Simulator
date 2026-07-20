@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-identity-graph
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: identity-graph
+spec:
+  replicas: {{ .Values.identityGraph.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cfi-platform.selectorLabels" . | nindent 6 }}
+      app: identity-graph
+  template:
+    metadata:
+      labels:
+        {{- include "cfi-platform.selectorLabels" . | nindent 8 }}
+        app: identity-graph
+    spec:
+      containers:
+        - name: identity-graph
+          image: "{{ .Values.identityGraph.image.repository }}:{{ .Values.identityGraph.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.identityGraph.image.pullPolicy }}
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]
+          ports:
+            - name: http
+              containerPort: 8002
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "cfi-platform.fullname" . }}-config
+          env:
+            - name: SERVICE_NAME
+              value: "identity-graph"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: JWT_SECRET
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: OIDC_CLIENT_SECRET
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfi-platform.fullname" . }}-secrets
+                  key: VAULT_TOKEN
+          resources:
+            {{- toYaml .Values.identityGraph.resources | nindent 12 }}

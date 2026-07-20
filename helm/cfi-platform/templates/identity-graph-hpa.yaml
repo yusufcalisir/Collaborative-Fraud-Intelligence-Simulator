@@ -1,0 +1,23 @@
+{{- if .Values.identityGraph.hpa.enabled -}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-identity-graph
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: identity-graph
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "cfi-platform.fullname" . }}-identity-graph
+  minReplicas: {{ .Values.identityGraph.hpa.minReplicas }}
+  maxReplicas: {{ .Values.identityGraph.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.identityGraph.hpa.targetCPUUtilizationPercentage }}
+{{- end }}

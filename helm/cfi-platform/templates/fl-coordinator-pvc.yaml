@@ -1,0 +1,18 @@
+{{- if .Values.flCoordinator.persistence.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "cfi-platform.fullname" . }}-fl-coordinator-models
+  labels:
+    {{- include "cfi-platform.labels" . | nindent 4 }}
+    app: fl-coordinator
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.flCoordinator.persistence.size }}
+  {{- if .Values.flCoordinator.persistence.storageClass }}
+  storageClassName: {{ .Values.flCoordinator.persistence.storageClass }}
+  {{- end }}
+{{- end }}

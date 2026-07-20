@@ -1,0 +1,169 @@
+# Global configurations
+global:
+  environment: production
+  domain: cfi.internal
+  namespace: cfi-production
+
+# PostgreSQL Database configurations
+postgresql:
+  host: postgres-service
+  port: 5432
+  dbName: cfi_db
+  username: cfi_admin
+  password: admin_secure_db_password_123
+
+# Redis cache and session store configurations
+redis:
+  host: redis-service
+  port: 6379
+
+# OpenTelemetry configuration
+otel:
+  enabled: true
+  exporterEndpoint: http://jaeger-service:4317
+
+# Gateway Microservice configuration
+gateway:
+  replicaCount: 3
+  image:
+    repository: yusufcalisir/cfi-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  env:
+    JWT_SECRET: super_secure_jwt_token_signing_secret_9988
+    OIDC_ISSUER: https://keycloak.internal/realms/cfi
+    OIDC_CLIENT_ID: cfi-gateway-client
+    OIDC_CLIENT_SECRET: client_oidc_secret_val_101
+    VAULT_URL: http://vault-service:8200
+    VAULT_TOKEN: vault_root_token_prod_super_secret
+
+# FL Coordinator Microservice configuration
+flCoordinator:
+  replicaCount: 2
+  image:
+    repository: yusufcalisir/cfi-fl-coordinator
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8001
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: gp3
+
+# Identity Graph Microservice configuration
+identityGraph:
+  replicaCount: 2
+  image:
+    repository: yusufcalisir/cfi-identity-graph
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8002
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 75
+
+# Fraud Alert Microservice configuration
+fraudAlert:
+  replicaCount: 2
+  image:
+    repository: yusufcalisir/cfi-fraud-alert
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8003
+  resources:
+    limits:
+      cpu: 1500m
+      memory: 1536Mi
+    requests:
+      cpu: 300m
+      memory: 384Mi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 75
+
+# Frontend configuration
+frontend:
+  replicaCount: 2
+  image:
+    repository: yusufcalisir/cfi-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+# Ingress Controller configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: cfi.internal
+      paths:
+        - path: /
+          pathType: Prefix
+          backendService: frontend
+          backendPort: 80
+        - path: /api
+          pathType: Prefix
+          backendService: gateway
+          backendPort: 8000
