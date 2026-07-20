@@ -59,7 +59,7 @@ class TestModelService:
     ) -> None:
         X, y = sample_data
         model = model_service.create_model()
-        model, loss_history = model_service.train_local(model, X, y, epochs=2)
+        model, loss_history, _ = model_service.train_local(model, X, y, epochs=2)
 
         assert len(loss_history) == 2
         assert all(isinstance(loss_val, float) for loss_val in loss_history)
@@ -71,7 +71,7 @@ class TestModelService:
     ) -> None:
         X, y = sample_data
         model = model_service.create_model()
-        model, loss_history = model_service.train_local(model, X, y, epochs=5)
+        model, loss_history, _ = model_service.train_local(model, X, y, epochs=5)
 
         # Loss should generally decrease (not guaranteed but very likely with 5 epochs)
         assert loss_history[-1] <= loss_history[0] * 1.5  # Allow some tolerance
@@ -83,7 +83,7 @@ class TestModelService:
     ) -> None:
         X, y = sample_data
         model = model_service.create_model()
-        model, _ = model_service.train_local(model, X, y, epochs=2)
+        model, _, _ = model_service.train_local(model, X, y, epochs=2)
         metrics = model_service.evaluate(model, X, y)
 
         assert "accuracy" in metrics
@@ -141,7 +141,7 @@ class TestModelService:
         global_weights = model_service.get_parameters(model)
 
         # Train with high proximal term to force model to stay close to original weights
-        model_prox, loss_history = model_service.train_local(
+        model_prox, loss_history, _ = model_service.train_local(
             model,
             X,
             y,
@@ -166,7 +166,7 @@ class TestModelService:
         prev_model = model_service.create_model()
         prev_weights = model_service.get_parameters(prev_model)
 
-        model_moon, loss_history = model_service.train_local(
+        model_moon, loss_history, _ = model_service.train_local(
             model,
             X,
             y,
