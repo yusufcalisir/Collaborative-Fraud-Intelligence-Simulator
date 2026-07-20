@@ -91,8 +91,7 @@ def load_elliptic(
 
     # ---- Mock generation ----
     logger.warning(
-        "[Elliptic] Dataset not found at %s — generating synthetic mock "
-        "(%d nodes, %d features)",
+        "[Elliptic] Dataset not found at %s — generating synthetic mock (%d nodes, %d features)",
         root,
         n_mock_nodes,
         ELLIPTIC_FEATURE_DIM,

@@ -26,6 +26,7 @@ from app.domain.value_objects import ModelWeights
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_settings() -> Settings:
     return Settings(  # type: ignore[call-arg]
         fedopt_server_lr=0.01,
@@ -56,6 +57,7 @@ def _make_client_weights(n: int = 3, dim: int = 100, noise: float = 0.1) -> list
 # ===========================================================================
 # Dataloader tests
 # ===========================================================================
+
 
 class TestEllipticLoader:
     def test_mock_returns_correct_shape(self):
@@ -123,6 +125,7 @@ class TestLoadDatasetRegistry:
 # ===========================================================================
 # FedYogi aggregation tests
 # ===========================================================================
+
 
 class TestFedYogi:
     def setup_method(self):
@@ -206,6 +209,7 @@ class TestFedYogi:
 # SCAFFOLD aggregation tests
 # ===========================================================================
 
+
 class TestSCAFFOLD:
     def setup_method(self):
         settings = _make_settings()
@@ -246,6 +250,7 @@ class TestSCAFFOLD:
 # ===========================================================================
 # SCAFFOLD client-side gradient correction (model_service)
 # ===========================================================================
+
 
 class TestSCAFFOLDClientSide:
     """Verify that the SCAFFOLD gradient correction in train_local is wired correctly."""

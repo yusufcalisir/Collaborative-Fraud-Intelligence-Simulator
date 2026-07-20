@@ -311,7 +311,9 @@ class TestByzantineRobustness:
             ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
             ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
             ModelWeights(layer_shapes=shapes, flat_weights=[2.0, 2.0, 2.0, 2.0]),
-            ModelWeights(layer_shapes=shapes, flat_weights=[100.0, 100.0, 100.0, 100.0]),  # Byzantine
+            ModelWeights(
+                layer_shapes=shapes, flat_weights=[100.0, 100.0, 100.0, 100.0]
+            ),  # Byzantine
         ]
         result = fl_engine.aggregate_parameters(
             weights,

@@ -283,9 +283,7 @@ class FederatedLearningEngine:
                     self._server_m_by_sim[sim_id] = np.zeros_like(w_avg)
                 if sim_id not in self._server_v_by_sim:
                     # Yogi initialises v as τ² to avoid zero-division
-                    self._server_v_by_sim[sim_id] = np.full_like(
-                        w_avg, self.settings.fedopt_tau**2
-                    )
+                    self._server_v_by_sim[sim_id] = np.full_like(w_avg, self.settings.fedopt_tau**2)
 
                 m_t = self._server_m_by_sim[sim_id]
                 v_t = self._server_v_by_sim[sim_id]
@@ -328,7 +326,6 @@ class FederatedLearningEngine:
 
         else:
             raise ValueError(f"Unsupported aggregation method: {method}")
-
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         logger.info(

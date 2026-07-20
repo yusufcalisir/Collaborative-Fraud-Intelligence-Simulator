@@ -239,7 +239,6 @@ class SimulationService:
                     batch_size=config.batch_size,
                 )
 
-
                 eval_dict = self.model_service.evaluate(model, data["X_test"], data["y_test"])
                 feat_imp = self.model_service.get_feature_importance(model)
                 bank.local_metrics = self.metrics_service.from_eval_dict(eval_dict, feat_imp)

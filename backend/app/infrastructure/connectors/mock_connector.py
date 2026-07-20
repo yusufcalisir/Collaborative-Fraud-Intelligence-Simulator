@@ -138,7 +138,6 @@ class MockBankConnector(BankConnectorInterface):
                     prev_local_weights=prev_local_weights,
                 )
 
-
             output_weights = self.model_service.get_parameters(trained_model)
             final_loss = loss_hist[-1] if loss_hist else 0.0
 

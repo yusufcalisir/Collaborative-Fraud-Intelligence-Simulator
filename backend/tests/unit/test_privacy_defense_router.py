@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import fastapi
 from fastapi.testclient import TestClient
 
 from app.presentation.routers.privacy_defense import router
-
-import fastapi
 
 _app = fastapi.FastAPI()
 _app.include_router(router)

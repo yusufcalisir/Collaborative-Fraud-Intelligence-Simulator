@@ -50,7 +50,6 @@ class AggregationMethod(StrEnum):
     SCAFFOLD = "scaffold"
 
 
-
 class ClientStatus(StrEnum):
     """Status of a bank client during a training round."""
 
