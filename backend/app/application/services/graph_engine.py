@@ -250,7 +250,7 @@ class GraphEngine:
         self._build_adjacency_list()
         visited: set[str] = {entity_id}
         queue: deque[tuple[str, int]] = deque([(entity_id, 0)])
-        neighbors: list[Entity] = []
+        neighbors = []
 
         while queue:
             current_id, current_depth = queue.popleft()
@@ -320,37 +320,37 @@ class GraphEngine:
             return clusters
 
         self._build_adjacency_list()
-        visited: set[str] = set()
-        clusters: list[list[str]] = []
+        fallback_visited: set[str] = set()
+        fallback_clusters: list[list[str]] = []
 
         raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
         for entity in raw_entities:
             entity_id = entity.id
-            if entity_id in visited:
+            if entity_id in fallback_visited:
                 continue
 
             # BFS to find the connected component
-            component: list[str] = []
-            queue: deque[str] = deque([entity_id])
+            fallback_component: list[str] = []
+            fallback_queue: deque[str] = deque([entity_id])
 
-            while queue:
-                current = queue.popleft()
-                if current in visited:
+            while fallback_queue:
+                current = fallback_queue.popleft()
+                if current in fallback_visited:
                     continue
-                visited.add(current)
-                component.append(current)
+                fallback_visited.add(current)
+                fallback_component.append(current)
 
                 for neighbor_id, _ in self._adjacency.get(current, set()):
-                    if neighbor_id not in visited:
-                        queue.append(neighbor_id)
+                    if neighbor_id not in fallback_visited:
+                        fallback_queue.append(neighbor_id)
 
-            if len(component) >= min_size:
-                clusters.append(component)
+            if len(fallback_component) >= min_size:
+                fallback_clusters.append(fallback_component)
 
         # Sort clusters by size, largest first
-        clusters.sort(key=len, reverse=True)
-        logger.info("Found %d clusters (min_size=%d)", len(clusters), min_size)
-        return clusters
+        fallback_clusters.sort(key=len, reverse=True)
+        logger.info("Found %d clusters (min_size=%d)", len(fallback_clusters), min_size)
+        return fallback_clusters
 
     def get_subgraph(
         self,
@@ -479,23 +479,23 @@ class GraphEngine:
             return GraphSubgraph(center_entity_id=center_entity_id, depth=radius)
 
         # Collect nodes via BFS
-        visited: set[str] = {center_entity_id}
-        queue: deque[tuple[str, int]] = deque([(center_entity_id, 0)])
-        node_ids: list[str] = [center_entity_id]
+        fb_visited: set[str] = {center_entity_id}
+        fb_queue: deque[tuple[str, int]] = deque([(center_entity_id, 0)])
+        fb_node_ids: list[str] = [center_entity_id]
 
-        while queue:
-            current_id, current_depth = queue.popleft()
+        while fb_queue:
+            current_id, current_depth = fb_queue.popleft()
             if current_depth >= radius:
                 continue
             for neighbor_id, _ in self._adjacency.get(current_id, set()):
-                if neighbor_id not in visited:
-                    visited.add(neighbor_id)
-                    node_ids.append(neighbor_id)
-                    queue.append((neighbor_id, current_depth + 1))
+                if neighbor_id not in fb_visited:
+                    fb_visited.add(neighbor_id)
+                    fb_node_ids.append(neighbor_id)
+                    fb_queue.append((neighbor_id, current_depth + 1))
 
         # Build React Flow nodes
         nodes = []
-        for i, nid in enumerate(node_ids):
+        for i, nid in enumerate(fb_node_ids):
             entity_val = self._entities.get(nid)
             if not entity_val:
                 continue
@@ -505,14 +505,14 @@ class GraphEngine:
             import math
 
             if nid == center_entity_id:
-                x: float = 400.0
-                y: float = 300.0
+                x = 400.0
+                y = 300.0
             else:
-                angle = 2 * math.pi * (i - 1) / max(1, len(node_ids) - 1)
+                angle = 2 * math.pi * (i - 1) / max(1, len(fb_node_ids) - 1)
                 layer = 1
                 for depth_check in range(radius):
                     # Rough depth estimation
-                    if i > len(node_ids) * (depth_check + 1) / (radius + 1):
+                    if i > len(fb_node_ids) * (depth_check + 1) / (radius + 1):
                         layer = depth_check + 2
                 r = 150 * layer
                 x = 400 + r * math.cos(angle)
@@ -548,7 +548,8 @@ class GraphEngine:
 
         # Build React Flow edges
         edges = []
-        node_id_set = set(node_ids)
+        node_id_set = set(fb_node_ids)
+
         raw_relationships = [_dict_to_relationship(v) for v in self._relationships.list_values()]
         for rel in raw_relationships:
             if rel.source_entity_id in node_id_set and rel.target_entity_id in node_id_set:
@@ -663,18 +664,18 @@ class GraphEngine:
                     "database_backend": self.db_type.capitalize(),
                 }
 
-        type_counts: dict[str, int] = defaultdict(int)
-        risk_counts: dict[str, int] = defaultdict(int)
+        fb_type_counts: dict[str, int] = defaultdict(int)
+        fb_risk_counts: dict[str, int] = defaultdict(int)
         raw_entities = [_dict_to_entity(v) for v in self._entities.list_values()]
         for entity in raw_entities:
-            type_counts[entity.entity_type.value] += 1
-            risk_counts[entity.risk_level.value] += 1
+            fb_type_counts[entity.entity_type.value] += 1
+            fb_risk_counts[entity.risk_level.value] += 1
 
         return {
             "total_nodes": self.node_count,
             "total_edges": self.edge_count,
-            "nodes_by_type": dict(type_counts),
-            "nodes_by_risk": dict(risk_counts),
+            "nodes_by_type": dict(fb_type_counts),
+            "nodes_by_risk": dict(fb_risk_counts),
             "cluster_count": len(self.detect_clusters(min_size=3)),
             "database_backend": "Redis (in-memory)",
         }
