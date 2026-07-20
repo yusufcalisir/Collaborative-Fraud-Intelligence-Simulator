@@ -23,6 +23,12 @@ const NAV_SECTIONS = [
   },
 
   {
+    label: 'Enterprise Platform',
+    items: [
+      { path: '/coordinator', label: 'FL Coordinator Suite', icon: '🛰️' },
+    ],
+  },
+  {
     label: 'Observability',
     items: [
       { path: '/observability', label: 'Observability & Drift', icon: '📊' },
@@ -48,6 +54,7 @@ const NAV_SECTIONS = [
     ],
   },
 ];
+
 
 interface SidebarProps {
   isOpen: boolean;

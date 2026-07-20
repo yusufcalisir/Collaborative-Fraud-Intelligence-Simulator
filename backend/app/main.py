@@ -25,6 +25,7 @@ from app.presentation.routers import (
     bank_client,
     banks,
     cases,
+    coordinator,
     dashboard,
     entities,
     graph,
@@ -380,6 +381,7 @@ elif service_name == "fl-coordinator":
     app.include_router(training.router)
     app.include_router(model_registry.router)
     app.include_router(training_ws.router)
+    app.include_router(coordinator.router)
 
 elif service_name == "identity-graph":
     app.include_router(health.router)
@@ -428,6 +430,7 @@ else:
     app.include_router(psd2.router)
     app.include_router(security.router)
     app.include_router(monitoring.router)
+    app.include_router(coordinator.router)
 
 
 @app.get("/", tags=["root"])

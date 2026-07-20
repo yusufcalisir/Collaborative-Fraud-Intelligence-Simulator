@@ -12,6 +12,7 @@ import PoliciesPage from './pages/PoliciesPage';
 import PsiPage from './pages/PsiPage';
 import SecurityPage from './pages/SecurityPage';
 import ObservabilityPage from './pages/ObservabilityPage';
+import CoordinatorPage from './pages/CoordinatorPage';
 
 export default function App() {
   return (
@@ -33,10 +34,14 @@ export default function App() {
           <Route path="/observability" element={<ObservabilityPage />} />
           <Route path="/scenarios" element={<ScenariosPage />} />
           <Route path="/graph" element={<GraphPage />} />
+
+          {/* Enterprise Platform */}
+          <Route path="/coordinator" element={<CoordinatorPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
   );
 }
+
 
 

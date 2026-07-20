@@ -318,8 +318,8 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Production Enterprise Security Suite** | Enterprise security compliance architecture: **Mutual TLS 1.3 (mTLS)** with X.509 cert validation & SAN matching, **OIDC / OAuth2 JWT** bearer claims extraction, **Dynamic ABAC** policy engine (multi-tenant bank isolation, shift hour windows, approval tiers, clearance levels), **HashiCorp Vault** KV v2 secret engine client, and **Tamper-Proof Cryptographic Audit Chain** ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with retrospective integrity verification. | Meets ISO 27001, SOC2, and PCI-DSS compliance requirements for multi-tenant banking data isolation, key management, and immutable audit logs. | mTLS 1.3, OIDC JWT, ABAC evaluator, HashiCorp Vault KV v2, SHA-256 Audit Chain |
 | **Enterprise Observability & Drift Monitoring** | Production PLG log aggregation stack (**Grafana Loki** + **Promtail**), **Prometheus Alertmanager** metric alerting (gateway latency, client dropouts, concept drift $PSI > 0.20$, calibration $Brier > 0.15$), statistical **Model Drift Engine** (Kolmogorov-Smirnov 2-sample test, Wasserstein distance, Population Stability Index), **Model Calibration Monitoring** (Brier score & Expected Calibration Error), and **Automated Re-training Triggers**. | Provides full real-time visibility into model health, feature distribution shifts, prediction probability calibration, and automated MLOps retraining. | Grafana Loki, Promtail, Alertmanager, KS-test, Wasserstein, PSI, Brier Score, ECE |
 | **GitOps & K8s Orchestration Pipeline** | Managed Kubernetes deployment manifests (EKS/GKE), **Helm Charts packaging** (`helm/cfi-platform/`) with parameterizable secrets/ingress/replicas/node selectors, **Horizontal Pod Autoscaling (HPA)** for self-healing & elastic load distribution, and **ArgoCD GitOps application** spec (`argocd/application.yaml`) for declarative Git-based continuous delivery. | Automates infrastructure packaging, rolling updates, secure environment overrides, and auto-scaling logic for production multi-tenant environments. | Helm 3, Kubernetes, ArgoCD GitOps, HPA |
+| **Enterprise Federated Coordinator Suite** | `CoordinatorService` provides: (1) **Dynamic Handshake & Registration** — REST `/handshake` API validates PyTorch ≥ 2.x & Python ≥ 3.10 runtime compatibility before admitting bank nodes; (2) **Live Heartbeat Monitoring** — 15-second timeout window marks dropped nodes OFFLINE, reports to Prometheus `cfi_active_clients_count` gauge; (3) **Heterogeneous Parameter Negotiation** — CUDA nodes ≥16 GB RAM receive full base parameters while CPU/low-RAM nodes get reduced batch size, epochs, and increased gradient accumulation steps to prevent bottlenecks. Frontend page at `/coordinator` shows live registry, heartbeat health, and API reference. | Transforms static hardcoded topology into a production-grade, self-healing FL network capable of elastic bank onboarding without redeployment. | Dynamic registry, 15s heartbeat SLA, hardware-aware parameter scaling |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
-
 
 
 
@@ -357,6 +357,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── phase2.py     # Pydantic schemas for Phase 2 entities (Alerts, Cases, Graphs)
 │   │   │   │   └── simulation.py # Pydantic schemas for Phase 1 simulation configuration and details
 │   │   │   └── services/
+│   │   │       ├── coordinator_service.py # Enterprise Federated Coordinator: dynamic registration, heartbeat monitor, heterogeneous parameter negotiation
 │   │   │       ├── alert_service.py # Aggregates and alerts on suspicious transactions
 │   │   │       ├── case_service.py  # Coordinates multi-bank AML investigation cases
 │   │   │       ├── data_generator.py # Synthetic Non-IID transaction generation
@@ -409,6 +410,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       └── simulation_repository.py # Manages simulation runs and configurations in database
 │   │   ├── presentation/         # API Controllers and endpoints
 │   │   │   ├── routers/
+│   │   │   │   ├── coordinator.py # REST endpoints: /handshake, /heartbeat, /clients, /negotiate
 │   │   │   │   ├── alerts.py     # Transaction alerts query, resolution, and explanations
 │   │   │   │   ├── bank_client.py # Local training & evaluation endpoints on bank clients
 │   │   │   │   ├── banks.py      # Bank profiles, distributions, feature drift & concept drift endpoints
@@ -463,6 +465,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_enterprise_security_suite.py # Tests mTLS, OIDC, ABAC, Vault, and SHA-256 audit chain
 │   │   │   ├── test_drift_and_monitoring.py # Tests Kolmogorov-Smirnov test, PSI, Brier score, and Alertmanager
 │   │   │   ├── test_psi_service.py    # Tests zero-knowledge DH-PSI commutative matching
+│   │   │   ├── test_coordinator_service.py # Validates dynamic registration, heartbeat timeout, and parameter negotiation
 │   │   │   ├── test_fuzzy_psi.py      # Tests standardization, MinHash LSH, and Fuzzy PSI thresholds
 
 │   │   ├── test_alert_service.py  # Tests alert generation rules and severity classification

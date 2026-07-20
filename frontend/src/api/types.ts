@@ -799,6 +799,44 @@ export interface RetrainTriggerResponse {
   triggered_at: string;
 }
 
+// ── Coordinator Types (Item 18) ─────────────────────────────
+
+export interface HandshakeRequest {
+  bank_id: string;
+  pytorch_version: string;
+  python_version: string;
+  hardware_type: string;
+  ram_gb: number;
+  device_count?: number;
+}
+
+export interface HandshakeResponse {
+  registered: boolean;
+  status: 'COMPATIBLE' | 'INCOMPATIBLE';
+  reason?: string | null;
+  registered_at: number;
+}
+
+export interface ClientCapabilityItem {
+  bank_id: string;
+  pytorch_version: string;
+  python_version: string;
+  hardware_type: string;
+  ram_gb: number;
+  device_count: number;
+  status: 'ONLINE' | 'OFFLINE';
+  last_heartbeat_ago_seconds: number;
+}
+
+export interface NegotiatedParamsResponse {
+  bank_id: string;
+  batch_size: number;
+  local_epochs: number;
+  gradient_accumulation_steps: number;
+  use_cuda: boolean;
+  status: 'COMPATIBLE' | 'DEGRADED';
+}
+
 
 
 

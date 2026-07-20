@@ -76,6 +76,9 @@ cfi_model_brier_score: Any = _NoOpGauge()
 cfi_model_ece: Any = _NoOpGauge()
 cfi_active_alerts_count: Any = _NoOpGauge()
 
+# Enterprise FL Coordinator Metrics
+cfi_active_clients_count: Any = _NoOpGauge()
+
 
 class JSONLogFormatter(logging.Formatter):
     """Structured JSON formatter for Loki log aggregation via Promtail."""
@@ -199,6 +202,7 @@ def setup_telemetry(app: FastAPI) -> None:
     global active_simulations, alerts_generated_total, http_request_duration_seconds  # noqa: PLW0603
     global cfi_concept_drift_psi, cfi_feature_drift_ks_stat  # noqa: PLW0603
     global cfi_model_brier_score, cfi_model_ece, cfi_active_alerts_count  # noqa: PLW0603
+    global cfi_active_clients_count  # noqa: PLW0603
 
     simulation_rounds_total = meter.create_counter(
         name="simulation_rounds_total",
@@ -248,6 +252,11 @@ def setup_telemetry(app: FastAPI) -> None:
     cfi_active_alerts_count = meter.create_gauge(
         name="cfi_active_alerts_count",
         description="Number of active firing Alertmanager alerts",
+        unit="1",
+    )
+    cfi_active_clients_count = meter.create_gauge(
+        name="cfi_active_clients_count",
+        description="Number of dynamically registered active FL client nodes",
         unit="1",
     )
 

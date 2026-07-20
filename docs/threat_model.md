@@ -232,3 +232,50 @@ Adversarial ML risks are audited against the **MITRE ATLAS** (Adversarial Threat
 *   **CockroachDB Serializable Isolation**: When configured with `database_type=cockroachdb`, the platform operates under strict SERIALIZABLE isolation, preventing phantom reads and write skew anomalies.
 *   **Application-Level Transaction Retries**: The `run_cockroach_transaction` utility automatically retries on SQLSTATE 40001 (serialization conflict) with configurable max retries, ensuring transactional consistency without silent failures.
 
+---
+
+## 11. Enterprise Federated Coordinator Threat Surface (Item 18)
+
+The `CoordinatorService` introduces a dynamic network control plane with its own threat surface:
+
+### 11.1 Rogue Node Registration (Spoofing)
+
+**Threat**: An unauthorized actor sends a `POST /handshake` request impersonating a legitimate bank node to inject malicious training parameters or access the active client list.
+
+**Mitigations**:
+* **Runtime Compatibility Gate**: The handshake validates `pytorch_version ≥ 2.x` and `python_version ≥ 3.10`. Nodes failing version checks are rejected before registration.
+* **Gateway HMAC Signing**: All requests transit the API Gateway, which enforces `X-Payload-Signature` HMAC-SHA256 header validation with a 5-minute replay prevention window.
+* **Future Enhancement**: Token-based bank identity assertion (OAuth2 Client Credentials per bank) should be layered on the handshake for production deployments.
+
+### 11.2 Heartbeat Flooding (Denial of Service)
+
+**Threat**: An adversary floods `/heartbeat` endpoints to keep a malicious node marked ONLINE indefinitely, or to exhaust API Gateway rate limits.
+
+**Mitigations**:
+* **Fixed-Window Rate Limiter**: The API Gateway applies per-client rate limits to all coordinator endpoints.
+* **Bank ID Allowlist**: Only bank IDs present in the active registry can submit heartbeats; unregistered IDs return HTTP 404.
+
+### 11.3 Parameter Manipulation (Tampering)
+
+**Threat**: A compromised bank node queries `/negotiate` with falsified hardware specifications (e.g., claiming 64GB CUDA) to receive full training parameters while running on an under-provisioned CPU node, causing gradient staleness and aggregation divergence.
+
+**Mitigations**:
+* **Server-Side Capability Store**: Hardware capability is stored server-side at registration time. The negotiate endpoint reads from the registry — the client cannot alter its stored hardware profile via the negotiate query.
+* **Parameter Validation**: Batch size and epoch values are clamped server-side regardless of reported hardware.
+
+### 11.4 Client Dropout & Quorum Attack (Elevation of Privilege)
+
+**Threat**: A coordinated DoS attack sends no heartbeats from legitimate nodes, causing them to be marked OFFLINE. The attacker's compromised node becomes the sole ONLINE participant and dominates aggregation.
+
+**Mitigations**:
+* **Minimum Quorum Enforcement**: The FL engine's `min_clients_per_round` setting aborts rounds when active ONLINE clients fall below threshold, preventing single-node dominance.
+* **Byzantine-Robust Aggregation**: Even if only attacker nodes participate, Krum and Coordinate-wise Median reject outlier updates.
+
+| STRIDE Category | Coordinator Threat | Mitigation |
+|:---|:---|:---|
+| **Spoofing** | Rogue bank registration via `/handshake` | HMAC gateway signing, runtime version gate |
+| **Tampering** | False hardware specs to `/negotiate` | Server-side capability registry (read-only from client) |
+| **Repudiation** | Deny sending malicious heartbeats | Heartbeat timestamps logged to registry with `time.time()` |
+| **Information Disclosure** | Enumerate active banks via `/clients` list | Gateway RBAC restricts endpoint to authorized roles |
+| **Denial of Service** | Heartbeat flood to exhaust rate limits | Fixed-window rate limiter at gateway layer |
+| **Elevation of Privilege** | Dropout attack leaves one malicious node | Min-quorum enforcement + Krum/Median aggregation |

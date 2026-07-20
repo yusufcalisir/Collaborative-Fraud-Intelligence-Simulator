@@ -45,7 +45,10 @@ import type {
   CalibrationReport,
   ActiveAlertItem,
   RetrainTriggerResponse,
+  ClientCapabilityItem,
+  NegotiatedParamsResponse,
 } from './types';
+
 
 
 
@@ -675,6 +678,33 @@ export function useTriggerAutoRetrain() {
     },
   });
 }
+
+// ── Coordinator Hooks (Item 18) ───────────────────────────────
+
+export function useRegisteredClients() {
+  return useQuery<ClientCapabilityItem[]>({
+    queryKey: ['coordinator', 'clients'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/coordinator/clients');
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+}
+
+export function useNegotiatedParams(bankId: string, baseBatchSize: number, baseEpochs: number) {
+  return useQuery<NegotiatedParamsResponse>({
+    queryKey: ['coordinator', 'negotiate', bankId, baseBatchSize, baseEpochs],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/coordinator/negotiate', {
+        params: { bank_id: bankId, base_batch_size: baseBatchSize, base_epochs: baseEpochs },
+      });
+      return data;
+    },
+    enabled: !!bankId,
+  });
+}
+
 
 
 

@@ -527,3 +527,82 @@ The platform exposes standardized endpoints compliant with the PSD2 XS2A (Access
 * **Concrete RabbitMQ Connector**: Implements `BankConnectorInterface` using the `pika` library. It publishes tasks to durable queues (`fl.queue.{bank_id}.train`, etc.) and consumes responses on dynamic, exclusive callback queues using matching correlation IDs.
 * **Resilient Failover**: If the RabbitMQ broker is unreachable, the connector falls back to local in-memory nodes (`MockBankConnector`), preventing orchestration failure during local testing.
 
+---
+
+## Item 18: Enterprise Federated Coordinator Suite
+
+### Overview
+
+The `CoordinatorService` transforms the static hardcoded bank topology into a production-grade, self-healing FL network where bank nodes register dynamically, send heartbeats, and receive hardware-aware training parameters.
+
+### Architecture
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Bank as Bank Node (Client)
+    participant Coord as CoordinatorService
+    participant Prom as Prometheus Gauge
+
+    Note over Bank, Coord: Phase 1 — Handshake & Version Validation
+    Bank->>Coord: POST /api/v1/coordinator/handshake<br/>{bank_id, pytorch_version, python_version, hardware_type, ram_gb}
+    Coord->>Coord: Validate PyTorch ≥ 2.x AND Python ≥ 3.10
+    alt Compatible
+        Coord-->>Bank: {registered: true, status: "COMPATIBLE"}
+        Coord->>Coord: Store ClientCapability in registry dict
+    else Incompatible
+        Coord-->>Bank: {registered: false, status: "INCOMPATIBLE", reason: "..."}
+    end
+
+    Note over Bank, Coord: Phase 2 — Live Heartbeat Loop (every ~10s)
+    loop Every 10 seconds while ONLINE
+        Bank->>Coord: POST /api/v1/coordinator/heartbeat<br/>{bank_id}
+        Coord->>Coord: Update last_heartbeat = time.time()
+        Coord-->>Bank: {alive: true, status: "ONLINE"}
+    end
+
+    Note over Coord, Prom: Background Monitor (sweeps every call to get_active_clients)
+    Coord->>Coord: For each client: if now - last_heartbeat > timeout → mark OFFLINE
+    Coord->>Prom: cfi_active_clients_count.record(len(active_clients))
+
+    Note over Bank, Coord: Phase 3 — Parameter Negotiation
+    Bank->>Coord: GET /api/v1/coordinator/negotiate?bank_id=X&base_batch_size=64&base_epochs=5
+    Coord->>Coord: Lookup hardware_type and ram_gb from registry
+    alt CUDA and RAM ≥ 16 GB
+        Coord-->>Bank: {batch_size: 64, local_epochs: 5, gradient_accumulation_steps: 1, use_cuda: true, status: "COMPATIBLE"}
+    else CPU or RAM < 8 GB
+        Coord-->>Bank: {batch_size: 16, local_epochs: 3, gradient_accumulation_steps: 4, use_cuda: false, status: "DEGRADED"}
+    end
+```
+
+### Components
+
+| Component | File | Responsibility |
+|:---|:---|:---|
+| `CoordinatorService` | `app/application/services/coordinator_service.py` | Registry dict, heartbeat monitor, version validator, parameter negotiator |
+| `coordinator` Router | `app/presentation/routers/coordinator.py` | REST endpoints: `/handshake`, `/heartbeat`, `/clients`, `/negotiate` |
+| `cfi_active_clients_count` | `app/infrastructure/telemetry.py` | Prometheus gauge tracking live online client count |
+| `CoordinatorPage` | `frontend/src/pages/CoordinatorPage.tsx` | Live registry UI, heartbeat health indicators, API reference |
+
+### Heartbeat Timeout Logic
+
+The coordinator uses a passive sweep model — there is no background thread. Instead, `get_active_clients()` iterates the registry on every call and marks clients `OFFLINE` whose `last_heartbeat` timestamp exceeds the configurable `heartbeat_timeout_seconds` (default: 15s). This design avoids thread-safety issues and works transparently with FastAPI's async request handlers.
+
+### Parameter Negotiation Strategy
+
+| Hardware Profile | Batch Size | Local Epochs | Gradient Accumulation | CUDA | Status |
+|:---|:---|:---|:---|:---|:---|
+| CUDA + RAM ≥ 16 GB | Base (e.g. 64) | Base (e.g. 5) | 1 | ✅ | COMPATIBLE |
+| CUDA + RAM 8–16 GB | Base × 0.75 | Base − 1 | 2 | ✅ | COMPATIBLE |
+| CPU + RAM ≥ 8 GB | 32 | min(base, 3) | 2 | ❌ | DEGRADED |
+| CPU + RAM < 8 GB | 16 | min(base, 3) | 4 | ❌ | DEGRADED |
+| Unregistered | 16 | min(base, 3) | 4 | ❌ | DEGRADED |
+
+### REST API Endpoints
+
+| Method | Path | Description |
+|:---|:---|:---|
+| `POST` | `/api/v1/coordinator/handshake` | Register a new bank node with runtime version validation |
+| `POST` | `/api/v1/coordinator/heartbeat` | Record a heartbeat ping for a registered bank |
+| `GET` | `/api/v1/coordinator/clients` | List all registered clients with status and heartbeat age |
+| `GET` | `/api/v1/coordinator/negotiate` | Return negotiated training parameters for a bank's hardware |
