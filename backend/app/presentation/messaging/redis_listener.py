@@ -184,7 +184,7 @@ class RedisBankClientListener:
                     batch_size=data.get("batch_size", 32),
                 )
             else:
-                trained_model, loss_hist = _model_service.train_local(
+                trained_model, loss_hist, _ = _model_service.train_local(
                     model,
                     _client_state.X_train,
                     _client_state.y_train,

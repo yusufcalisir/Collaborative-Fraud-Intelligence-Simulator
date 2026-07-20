@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 
@@ -197,7 +198,7 @@ class PrivacyService:
         """Remove privacy budget for a completed simulation."""
         self._budgets.pop(simulation_id, None)
 
-    def get_all_budgets_summary(self, epsilon_limit: float = 8.0) -> list[dict]:
+    def get_all_budgets_summary(self, epsilon_limit: float = 8.0) -> list[dict[str, Any]]:
         """Return cumulative privacy budget summary across all tracked simulations.
 
         Provides an enterprise-level view of epsilon consumption across multiple
@@ -211,7 +212,7 @@ class PrivacyService:
         Returns:
             List of dicts, one per simulation_id, with budget details.
         """
-        summaries = []
+        summaries: list[dict[str, Any]] = []
         for simulation_id, budget in self._budgets.items():
             total_eps = budget.total_epsilon
             exhausted = total_eps > epsilon_limit
@@ -235,5 +236,5 @@ class PrivacyService:
                 }
             )
         # Sort by total_epsilon descending (highest consumption first)
-        summaries.sort(key=lambda x: x["total_epsilon"], reverse=True)
+        summaries.sort(key=lambda x: float(x["total_epsilon"]), reverse=True)  # type: ignore[arg-type]
         return summaries

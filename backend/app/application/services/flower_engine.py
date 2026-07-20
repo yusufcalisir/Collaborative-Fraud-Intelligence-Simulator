@@ -142,7 +142,7 @@ class FlowerFLEngine:
                     )
                     metrics = {"loss": loss_hist[-1], "epsilon": epsilon}
                 else:
-                    self.model, loss_hist = model_service.train_local(
+                    self.model, loss_hist, _ = model_service.train_local(
                         self.model,
                         self.data["X_train"],
                         self.data["y_train"],

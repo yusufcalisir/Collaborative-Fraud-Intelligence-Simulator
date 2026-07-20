@@ -295,7 +295,7 @@ async def train_local_weights(payload: BankTrainRequest) -> BankTrainResponse:
                 prev_local_weights=prev_weights,
             )
         else:
-            local_model, loss_hist = _model_service.train_local(
+            local_model, loss_hist, _ = _model_service.train_local(
                 local_model,
                 _client_state.X_train,
                 _client_state.y_train,
