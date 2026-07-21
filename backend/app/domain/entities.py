@@ -32,6 +32,8 @@ class Bank:
     data_profile: BankDataProfile | None = None
     local_metrics: EvaluationMetrics | None = None
     federated_metrics: EvaluationMetrics | None = None
+    contribution_score: float = 0.0
+    quarantined: bool = False
 
     @property
     def improvement(self) -> dict[str, float] | None:

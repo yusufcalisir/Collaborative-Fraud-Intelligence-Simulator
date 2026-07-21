@@ -134,6 +134,8 @@ export interface BankResult {
   federated_metrics: EvaluationMetrics | null;
   improvement: Record<string, number> | null;
   data_profile: DataProfile | null;
+  contribution_score?: number;
+  quarantined?: boolean;
 }
 
 export interface CanaryEvaluation {

@@ -340,6 +340,32 @@ class FederatedLearningEngine:
             flat_weights=avg_weights,
         )
 
+    def aggregate_leave_one_out_parameters(
+        self,
+        client_weights: list[ModelWeights],
+        client_samples: list[int],
+        excluded_index: int,
+        method: AggregationMethod,
+        global_weights: ModelWeights | None = None,
+        simulation_id: str | None = None,
+    ) -> ModelWeights:
+        """Aggregate model weights excluding one client. Used for Shapley value contribution auditing."""
+        subset_weights = [w for idx, w in enumerate(client_weights) if idx != excluded_index]
+        subset_samples = [s for idx, s in enumerate(client_samples) if idx != excluded_index]
+        if not subset_weights:
+            if global_weights:
+                return global_weights
+            if client_weights:
+                return client_weights[0]
+            raise ValueError("No weights available to aggregate LOO model")
+        return self.aggregate_parameters(
+            client_weights=subset_weights,
+            client_samples=subset_samples,
+            method=method,
+            global_weights=global_weights,
+            simulation_id=simulation_id,
+        )
+
     def simulate_client_availability(
         self,
         bank_ids: list[str],

@@ -174,6 +174,8 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
             federated_metrics=_build_metrics_response(bank_data.get("federated_metrics")),
             improvement=bank_data.get("improvement"),
             data_profile=_build_profile_response(bank_data.get("data_profile")),
+            contribution_score=bank_data.get("contribution_score", 0.0),
+            quarantined=bank_data.get("quarantined", False),
         )
         bank_responses.append(bank_resp)
 
@@ -404,6 +406,8 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
                 bank_dict["federated_metrics"] = asdict(bank.federated_metrics)
             if bank.improvement:
                 bank_dict["improvement"] = bank.improvement
+            bank_dict["contribution_score"] = float(getattr(bank, "contribution_score", 0.0))
+            bank_dict["quarantined"] = bool(getattr(bank, "quarantined", False))
             result["banks"].append(bank_dict)
 
         # Preserve config in the stored result

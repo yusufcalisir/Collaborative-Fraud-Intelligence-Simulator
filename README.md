@@ -351,6 +351,8 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Enterprise Privacy Budget Log** | Per-simulation $\epsilon$ accumulation tracker with configurable limit threshold and automated exhaustion alerts. | Provides compliance-grade audit trail for multi-simulation DP budget governance. | Sequential composition bound; automated epsilon limit triggers |
 | **Bias Mitigation (Covariance Penalty)** | Covariance-based loss regularization added to local training epochs: $\mathcal{L}_{fair} = \lambda \cdot \operatorname{cov}(p, A)^2$. | Minimizes discriminatory correlation between global model projections and protected sensitive attributes (nationality/region). | Mathematically forces predictions to be independent of protected groups |
 | **Federated Fairness Auditing** | Safe sum aggregation of local counts to compute global Disparate Impact and Equal Opportunity Recall deltas. | Provides enterprise-grade bias audit reporting (gated at DI $\ge 0.8$, EO Diff $< 0.10$) matching EU AI Act requirements. | Decentralized count-based zero-knowledge privacy audit |
+| **Federated Shapley Value (SV)** | Leave-One-Out (LOO) model aggregation and validation F1 performance delta evaluation. | Quantifies the marginal utility contribution of each participant bank node to the global model. | Fair data contribution auditing |
+| **Free-Rider & Poisoning Quarantine** | Variance-based parameter update monitoring (quarantines variance < $10^{-6}$) and Shapley score gating (quarantines SV $\le -0.05$). | Automatically isolates and quarantines malicious or zero-variance nodes, excluding them from training rounds. | Automated outlier isolation and network defense |
 
 
 ### 🟣 Real-World AML Benchmarks & Heterogeneous FL Optimizers
@@ -527,7 +529,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   ├── api/                  # API client instance, queries, mutations (React Query)
 │   │   ├── components/           # Reusable UI elements
 │   │   │   ├── layout/           # Sidebar, Header, Page layout wrappers
-│   │   │   ├── dashboard/        # BankCard, DataDriftPanel (Feature/Concept Drift tabs), ComplianceReportPanel (EU AI Act & Bias Auditing), FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline, PrivacyMonitor, FeatureImportanceTimeline, ModelRegistryPanel
+│   │   │   ├── dashboard/        # BankCard, DataDriftPanel (Feature/Concept Drift tabs), ComplianceReportPanel (EU AI Act & Bias Auditing), IncentiveRegistryPanel, FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline, PrivacyMonitor, FeatureImportanceTimeline, ModelRegistryPanel
 │   │   │   └── charts/           # LossChart, ROCCurve, ConfusionMatrix, FeatureImportance, MetricsRadar
 │   │   ├── pages/                # Application views: Dashboard, SimulationView, AlertsPage, CasesPage, CaseDetailPage, InvestigationDashboard, ScenariosPage, GraphPage, PsiPage
 │   │   └── utils/                # Numerical formatters and constants

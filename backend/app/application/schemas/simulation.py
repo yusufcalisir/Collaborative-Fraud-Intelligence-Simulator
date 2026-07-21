@@ -152,6 +152,9 @@ class BankResponse(BaseModel):
     federated_metrics: MetricsResponse | None = None
     improvement: dict[str, float] | None = None
     data_profile: DataProfileResponse | None = None
+    contribution_score: float = 0.0
+    quarantined: bool = False
+
 
 
 class MetricsResponse(BaseModel):

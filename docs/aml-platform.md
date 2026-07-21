@@ -141,3 +141,27 @@ To support full-lineage auditing, secure dual-authorization, and role-based trac
 - **Compliance Activity Logging**: Active logs track analyst actions including case accesses (`access_case`), entity profile queries (`query_entity`), cross-bank resolution requests (`cross_bank_resolve`), and Private Set Intersection matching (`cross_bank_psi`).
 - **Session Duration Tracking**: Logs session durations to detect anomalous queries or internal threats.
 - Exposed in a real-time investigator activity audit trail grid at the bottom of the main Investigation Dashboard.
+
+---
+
+## 🤝 Consortium Incentive Mechanisms & Client Contribution Auditing (Phase 2 Task 22)
+
+To align institutional incentives and enforce accountability in commercial federated anti-fraud network consortia:
+
+### 1. Federated Shapley Value (SV) Estimation
+- **Leave-One-Out (LOO) Shapley Evaluation**: At the end of a simulation, the coordinator automatically computes the marginal utility contribution of each participant bank.
+- **Auditing Protocol**:
+  1. Measures the baseline performance (F1-score) of the aggregate global model ($F_{\text{global}}$) on the shared global validation dataset.
+  2. Aggregates subsets of client parameters excluding one client at a time (LOO model).
+  3. Evaluates the LOO model to find its validation performance ($F_{-i}$).
+  4. Calculates the marginal contribution score: $SV_i = F_{\text{global}} - F_{-i}$.
+
+### 2. Free-Rider & Poisoning Detection (Quarantine Trigger)
+- **Free-Rider Identification**: The auditing service monitors the variance of client parameter updates relative to the global model state. A client update with variance below $10^{-6}$ indicates zero-variance training (a client returning raw base weights or random noise to acquire global weights without training).
+- **Poisoning Isolation**: If a client's marginal contribution score $SV_i \le -0.05$, it means including their updates significantly degrades the overall model accuracy, indicating malicious parameter poisoning.
+- **Client Quarantine**: Flagged clients are dynamically set to `QUARANTINED` and their connection status becomes `ClientStatus.OFFLINE`. They are automatically excluded from participating in subsequent aggregation rounds.
+
+### 3. Consortium Clearing Ledger
+- Contribution scores are translated into relative payout weights on a virtual $100,000 USD incentive pool.
+- Every contribution calculation and quarantine action is written as a signed cryptographic event to the immutable SHA-256 audit ledger (`immutable_audit_chain.py`) to prevent tampering and support settlement verification.
+

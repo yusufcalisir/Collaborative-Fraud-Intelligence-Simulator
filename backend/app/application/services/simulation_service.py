@@ -448,9 +448,17 @@ class SimulationService:
                     else:
                         client_statuses = {b.id: ClientStatus.ACTIVE for b in banks}
 
+                    # Force quarantined banks to stay OFFLINE/QUARANTINED
+                    for bank in banks:
+                        if getattr(bank, "quarantined", False):
+                            client_statuses[bank.id] = ClientStatus.OFFLINE
+
                     # Update bank statuses
                     for bank in banks:
-                        bank.status = client_statuses.get(bank.id, ClientStatus.ACTIVE)
+                        if getattr(bank, "quarantined", False):
+                            bank.status = ClientStatus.OFFLINE
+                        else:
+                            bank.status = client_statuses.get(bank.id, ClientStatus.ACTIVE)
 
                     participating = [
                         b
@@ -674,6 +682,11 @@ class SimulationService:
                     rounds.append(training_round)
                     simulation.rounds_run = round_num
                     simulation.rounds = rounds
+
+                    if round_num == config.num_rounds:
+                        final_round_weights = list(client_weights)
+                        final_round_samples = list(client_samples)
+                        final_round_participating = list(participating)
 
                     logger.info(
                         "[Federated FL] Round %d/%d — loss: %.4f, participants: %d, dropped: %d, duration: %.0fms",
@@ -974,10 +987,10 @@ class SimulationService:
             for bank in banks:
                 if bank.federated_metrics:
                     metrics_dict = self.metrics_service.metrics_to_dict(bank.federated_metrics)
-                    metrics_dict["disparate_impact"] = float(g_disparate_impact)
-                    metrics_dict["equal_opportunity_diff"] = float(g_equal_opportunity_diff)
-                    metrics_dict["protected_selection_rate"] = float(g_prot_sel)
-                    metrics_dict["reference_selection_rate"] = float(g_ref_sel)
+                    metrics_dict["disparate_impact"] = g_disparate_impact
+                    metrics_dict["equal_opportunity_diff"] = g_equal_opportunity_diff
+                    metrics_dict["protected_selection_rate"] = g_prot_sel
+                    metrics_dict["reference_selection_rate"] = g_ref_sel
                     bank.federated_metrics = self.metrics_service.from_eval_dict(
                         metrics_dict,
                         bank.federated_metrics.feature_importance,
@@ -991,6 +1004,95 @@ class SimulationService:
                         bank.federated_metrics.auc_roc,
                         bank.local_metrics.auc_roc if bank.local_metrics else 0,
                     )
+
+            contribution_scores = {}
+            if "final_round_weights" in locals() and final_round_weights and len(final_round_weights) > 1:
+                try:
+                    # 1. Base evaluation of the full global model
+                    base_eval = self.model_service.evaluate(
+                        global_model,
+                        X_val_global,
+                        y_val_global,
+                    )
+                    base_f1 = base_eval.get("f1_score", 0.8)
+
+                    # Determine aggregation method
+                    agg_method = AggregationMethod(config.aggregation_method)
+
+                    # Iterate over participating banks in the final round
+                    for idx, bank in enumerate(final_round_participating):
+                        # 2. Aggregate parameters excluding bank i
+                        loo_weights = self.fl_engine.aggregate_leave_one_out_parameters(
+                            client_weights=final_round_weights,
+                            client_samples=final_round_samples,
+                            excluded_index=idx,
+                            method=agg_method,
+                            global_weights=global_weights,
+                            simulation_id=simulation.id,
+                        )
+
+                        # 3. Instantiate temporary model with LOO weights
+                        loo_model = self.model_service.create_model()
+                        loo_model = self.model_service.set_parameters(loo_model, loo_weights)
+
+                        # 4. Evaluate LOO model
+                        loo_eval = self.model_service.evaluate(
+                            loo_model,
+                            X_val_global,
+                            y_val_global,
+                        )
+                        loo_f1 = loo_eval.get("f1_score", 0.0)
+
+                        # 5. Marginal contribution (F1 drop when excluding this bank)
+                        marginal_contrib = base_f1 - loo_f1
+                        contribution_scores[bank.id] = marginal_contrib
+                except Exception as e:
+                    logger.error("Failed to compute Shapley contributions: %s", e)
+
+            # Update contribution scores and run quarantine checks
+            for bank in banks:
+                score = contribution_scores.get(bank.id, 0.0)
+                bank.contribution_score = score
+
+                # Check for free-riding (parameters update variance is near 0)
+                is_free_rider = False
+                if "final_round_weights" in locals() and final_round_weights:
+                    try:
+                        bank_idx = final_round_participating.index(bank)
+                        weights_flat = np.array(final_round_weights[bank_idx].flat_weights)
+                        if global_weights is not None:
+                            prev_flat = np.array(global_weights.flat_weights)
+                            update_var = float(np.var(weights_flat - prev_flat))
+                            if update_var < 1e-6:
+                                is_free_rider = True
+                                logger.warning("Free-riding detected for client %s! Variance: %e", bank.name, update_var)
+                    except ValueError:
+                        pass # Did not participate in final round
+
+                # Quarantine if contribution is highly negative or it's a free-rider
+                if score <= -0.05 or is_free_rider:
+                    bank.quarantined = True
+                    bank.status = ClientStatus.OFFLINE
+                    logger.warning("Bank %s QUARANTINED! (Shapley: %.4f, Free-rider: %s)", bank.name, score, is_free_rider)
+                else:
+                    bank.quarantined = False
+
+            # Log consortium audit payout event to the immutable registry
+            try:
+                from app.infrastructure.security.immutable_audit_chain import ImmutableAuditChain
+                audit_chain = ImmutableAuditChain.get_instance()
+                audit_chain.append_event(
+                    event_type="consortium_incentive_payout",
+                    actor="coordinator",
+                    target_id=simulation.id,
+                    details={
+                        "contributions": {b.name: b.contribution_score for b in banks},
+                        "quarantine_statuses": {b.name: b.quarantined for b in banks},
+                    }
+                )
+                logger.info("Immutable ledger log created for consortium incentive payout.")
+            except Exception as e:
+                logger.warning("Failed to log consortium incentive to audit chain: %s", e)
 
             # Generate automated regulatory compliance log
             import json
