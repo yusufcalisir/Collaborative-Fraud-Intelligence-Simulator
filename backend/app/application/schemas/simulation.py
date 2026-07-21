@@ -156,7 +156,6 @@ class BankResponse(BaseModel):
     quarantined: bool = False
 
 
-
 class MetricsResponse(BaseModel):
     """Evaluation metrics for a model."""
 

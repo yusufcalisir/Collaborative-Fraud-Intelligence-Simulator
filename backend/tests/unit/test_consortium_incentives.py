@@ -108,7 +108,7 @@ class TestConsortiumIncentives:
             details={
                 "contributions": {"Bank A": 0.08, "Bank B": -0.02, "Bank C": 0.00},
                 "quarantine_statuses": {"Bank A": False, "Bank B": False, "Bank C": True},
-            }
+            },
         )
         assert len(audit_chain.chain) == initial_length + 1
 

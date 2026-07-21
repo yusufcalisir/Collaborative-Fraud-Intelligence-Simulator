@@ -1006,7 +1006,11 @@ class SimulationService:
                     )
 
             contribution_scores = {}
-            if "final_round_weights" in locals() and final_round_weights and len(final_round_weights) > 1:
+            if (
+                "final_round_weights" in locals()
+                and final_round_weights
+                and len(final_round_weights) > 1
+            ):
                 try:
                     # 1. Base evaluation of the full global model
                     base_eval = self.model_service.evaluate(
@@ -1065,21 +1069,31 @@ class SimulationService:
                             update_var = float(np.var(weights_flat - prev_flat))
                             if update_var < 1e-6:
                                 is_free_rider = True
-                                logger.warning("Free-riding detected for client %s! Variance: %e", bank.name, update_var)
+                                logger.warning(
+                                    "Free-riding detected for client %s! Variance: %e",
+                                    bank.name,
+                                    update_var,
+                                )
                     except ValueError:
-                        pass # Did not participate in final round
+                        pass  # Did not participate in final round
 
                 # Quarantine if contribution is highly negative or it's a free-rider
                 if score <= -0.05 or is_free_rider:
                     bank.quarantined = True
                     bank.status = ClientStatus.OFFLINE
-                    logger.warning("Bank %s QUARANTINED! (Shapley: %.4f, Free-rider: %s)", bank.name, score, is_free_rider)
+                    logger.warning(
+                        "Bank %s QUARANTINED! (Shapley: %.4f, Free-rider: %s)",
+                        bank.name,
+                        score,
+                        is_free_rider,
+                    )
                 else:
                     bank.quarantined = False
 
             # Log consortium audit payout event to the immutable registry
             try:
                 from app.infrastructure.security.immutable_audit_chain import ImmutableAuditChain
+
                 audit_chain = ImmutableAuditChain.get_instance()
                 audit_chain.append_event(
                     event_type="consortium_incentive_payout",
@@ -1088,7 +1102,7 @@ class SimulationService:
                     details={
                         "contributions": {b.name: b.contribution_score for b in banks},
                         "quarantine_statuses": {b.name: b.quarantined for b in banks},
-                    }
+                    },
                 )
                 logger.info("Immutable ledger log created for consortium incentive payout.")
             except Exception as e:

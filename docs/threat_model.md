@@ -328,7 +328,7 @@ The platform implements fairness auditing and debiasing layers to comply with th
 * **Threat**: A GNN model trained across non-IID bank datasets learns systemic demographic biases, causing high false-positive fraud flags on specific nationalities or age groups (e.g., flagging international transactions).
 * **Mitigations**:
   * **Covariance Penalization Loss (Local Debiasing)**: If `enable_bias_mitigation` is active, client nodes compute the covariance between prediction probabilities ($p$) and sensitive attributes ($A$):
-    $$\mathcal{L}_{\text{fair}} = \lambda \cdot \operatorname{cov}(p, A)^2$$
+    $$\mathcal{L}_{\text{fair}} = \lambda \cdot \text{cov}(p, A)^2$$
     This penalizes parameter states that correlate fraud decisions with demographic slices.
   * **Decentralized Auditing**: Clients safely compute and send local count vectors to calculate global Disparate Impact and Equal Opportunity statistics without sharing raw sensitive attributes.
 
