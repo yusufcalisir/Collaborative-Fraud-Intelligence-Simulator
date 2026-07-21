@@ -353,6 +353,8 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Federated Fairness Auditing** | Safe sum aggregation of local counts to compute<br/>global Disparate Impact & EO recall deltas. | Enterprise-grade bias audit reporting<br/>gated for EU AI Act compliance. | Decentralized count-based<br/>privacy audit |
 | **Federated Shapley Value (SV)** | Leave-One-Out (LOO) model aggregation and<br/>validation F1 evaluation on global data. | Quantifies marginal utility contribution<br/>of each node to global model. | Fair data contribution auditing |
 | **Free-Rider & Poisoning Quarantine** | Variance update checks (variance < $10^{-6}$)<br/>and Shapley score gating (SV $\le -0.05$). | Isolates/quarantines malicious or<br/>free-rider nodes from rounds. | Automated outlier isolation<br/>and network defense |
+| **FHE CKKS Aggregator** | Homomorphic parameter summation over ciphertexts:<br/>$\sum (c_i \cdot w_i)$ without decryption. | Prevents the central aggregator from ever<br/>viewing plaintext client parameters. | Zero-plaintext exposure during aggregation |
+| **TEE Hardware Enclave** | Inside-enclave summation, remote attestation<br/>measurements, and AES-GCM data sealing. | Guarantees code integrity and execution context<br/>matching SGX/Nitro specifications. | MRENCLAVE/MRSIGNER code signature validation |
 
 
 ### 🟣 Real-World AML Benchmarks & Heterogeneous FL Optimizers

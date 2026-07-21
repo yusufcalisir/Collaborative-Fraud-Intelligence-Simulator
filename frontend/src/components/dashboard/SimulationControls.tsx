@@ -346,6 +346,28 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
               </div>
             </div>
 
+            {/* Hardware & Cryptographic Isolation */}
+            <div>
+              <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+                Hardware & Cryptographic Isolation
+              </h4>
+              <div>
+                <label className="block text-xs text-[var(--color-text-muted)] mb-1">Isolation Mode</label>
+                <select
+                  value={config.hardware_isolation_mode || 'none'}
+                  onChange={(e) => updateConfig('hardware_isolation_mode', e.target.value as any)}
+                  className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-indigo)] transition-colors"
+                >
+                  <option value="none">None (Plaintext computation)</option>
+                  <option value="tee">Trusted Execution Environment (TEE - Intel SGX / Nitro)</option>
+                  <option value="fhe">Fully Homomorphic Encryption (FHE - CKKS)</option>
+                </select>
+                <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+                  TEE runs secure summation inside isolated enclaves; FHE uses encrypted parameter addition.
+                </p>
+              </div>
+            </div>
+
             {/* Data Volume */}
             <div>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">

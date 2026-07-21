@@ -96,6 +96,7 @@ async def create_simulation(
         "fedopt_tau": config.fedopt_tau,
         "enable_bias_mitigation": config.enable_bias_mitigation,
         "fairness_lambda": config.fairness_lambda,
+        "hardware_isolation_mode": config.hardware_isolation_mode,
     }
 
     # Store pending status
@@ -222,6 +223,7 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
             enable_poisoning_simulation=config.get("enable_poisoning_simulation", False),
             poisoning_bank_id=config.get("poisoning_bank_id", "bank_c"),
             poisoning_scale=config.get("poisoning_scale", 5.0),
+            hardware_isolation_mode=config.get("hardware_isolation_mode", "none"),
         ),
         current_round=sim.get("current_round", 0),
         total_rounds=sim.get("total_rounds", 10),
@@ -233,6 +235,12 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
         error_message=sim.get("error_message"),
         banks=bank_responses,
         rounds=[],  # Rounds are in the training router
+        tee_mrenclave=sim.get("tee_mrenclave"),
+        tee_mrsigner=sim.get("tee_mrsigner"),
+        tee_attestation_signature=sim.get("tee_attestation_signature"),
+        fhe_poly_degree=sim.get("fhe_poly_degree"),
+        fhe_noise_bound=sim.get("fhe_noise_bound"),
+        fhe_key_id=sim.get("fhe_key_id"),
     )
 
 
@@ -387,6 +395,12 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
             "duration_seconds": simulation.duration_seconds,
             "error_message": simulation.error_message,
             "banks": [],
+            "tee_mrenclave": simulation.tee_mrenclave,
+            "tee_mrsigner": simulation.tee_mrsigner,
+            "tee_attestation_signature": simulation.tee_attestation_signature,
+            "fhe_poly_degree": simulation.fhe_poly_degree,
+            "fhe_noise_bound": simulation.fhe_noise_bound,
+            "fhe_key_id": simulation.fhe_key_id,
         }
 
         for bank in simulation.banks:

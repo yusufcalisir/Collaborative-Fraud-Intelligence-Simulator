@@ -97,6 +97,10 @@ class SimulationConfigRequest(BaseModel):
     fairness_lambda: float = Field(
         default=0.5, ge=0.0, le=2.0, description="Weight on covariance constraint for debiasing"
     )
+    hardware_isolation_mode: str = Field(
+        default="none",
+        description="Hardware isolation / Cryptographic mode: none, tee, fhe",
+    )
 
 
 class SimulationSummaryResponse(BaseModel):
@@ -128,6 +132,14 @@ class SimulationDetailResponse(BaseModel):
     error_message: str | None = None
     banks: list[BankResponse] = []
     rounds: list[RoundResponse] = []
+
+    # Hardware/Cryptographic Isolation telemetry
+    tee_mrenclave: str | None = None
+    tee_mrsigner: str | None = None
+    tee_attestation_signature: str | None = None
+    fhe_poly_degree: int | None = None
+    fhe_noise_bound: float | None = None
+    fhe_key_id: str | None = None
 
 
 class SimulationCreateResponse(BaseModel):

@@ -69,6 +69,14 @@ class SimulationRun:
     rounds: list[TrainingRound] = field(default_factory=list)
     rounds_run: int = 0
 
+    # Hardware/Cryptographic Isolation telemetry
+    tee_mrenclave: str | None = None
+    tee_mrsigner: str | None = None
+    tee_attestation_signature: str | None = None
+    fhe_poly_degree: int | None = None
+    fhe_noise_bound: float | None = None
+    fhe_key_id: str | None = None
+
     @property
     def duration_seconds(self) -> float | None:
         """Wall-clock duration of the simulation."""

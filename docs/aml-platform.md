@@ -165,3 +165,18 @@ To align institutional incentives and enforce accountability in commercial feder
 - Contribution scores are translated into relative payout weights on a virtual $100,000 USD incentive pool.
 - Every contribution calculation and quarantine action is written as a signed cryptographic event to the immutable SHA-256 audit ledger (`immutable_audit_chain.py`) to prevent tampering and support settlement verification.
 
+---
+
+## 🔒 Hardware and Cryptographic Security Drivers (TEE & FHE)
+
+To maximize the security of the collaborative AML platform, hardware and cryptographic isolation mechanisms have been added:
+
+### 1. Trusted Execution Environment (TEE - Intel SGX / AWS Nitro)
+- **Secure Memory Aggregation:** Raw model parameters from clients are collected as plaintext only within the isolated hardware memory regions (enclave) of the TEE. No actor outside the enclave, including the host operating system or hypervisor, can access these parameters.
+- **Remote Attestation:** The integrity of the code running inside the enclave is verified using `MRENCLAVE` (code measurement) and `MRSIGNER` (signing authority) digests. Training rounds do not start unless the cryptographic signature verification is successful.
+
+### 2. Fully Homomorphic Encryption (FHE - CKKS)
+- **Computation on Encrypted Data:** Clients send their model updates encrypted with the FHE public key. The server aggregates these updates homomorphically (homomorphic average) directly over the ciphertexts without decrypting them. The server never observes plaintext parameters at any stage.
+- **Noise and Dimension Management:** Performance/security tradeoffs are monitored dynamically via CKKS noise accumulation and key management simulation.
+
+

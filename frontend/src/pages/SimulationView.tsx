@@ -17,6 +17,7 @@ import MetricsRadar from '../components/charts/MetricsRadar';
 import { formatDuration, formatPercent } from '../utils/formatters';
 import ComplianceReportPanel from '../components/dashboard/ComplianceReportPanel';
 import { IncentiveRegistryPanel } from '../components/dashboard/IncentiveRegistryPanel';
+import { SecureHardwarePanel } from '../components/dashboard/SecureHardwarePanel';
 
 
 export default function SimulationView() {
@@ -215,6 +216,7 @@ export default function SimulationView() {
             <MetricsRadar banks={banks} />
             <ComplianceReportPanel simulationId={simulation.id} banks={banks} />
             <IncentiveRegistryPanel banks={banks} />
+            <SecureHardwarePanel simulation={simulation} />
 
 
              {/* ROC Curves - side by side */}

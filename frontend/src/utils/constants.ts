@@ -25,6 +25,7 @@ export const DEFAULT_SIMULATION_CONFIG = {
   fl_engine_type: 'custom' as const,
   enable_bias_mitigation: false,
   fairness_lambda: 0.5,
+  hardware_isolation_mode: 'none' as const,
 };
 
 

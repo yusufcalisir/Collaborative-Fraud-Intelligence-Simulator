@@ -304,6 +304,65 @@ class SimulationService:
             global_weights = self.model_service.get_parameters(global_model)
             privacy_service = PrivacyService()
 
+            # Initialize hardware/cryptographic isolation if configured
+            hw_mode = getattr(config, "hardware_isolation_mode", "none")
+            enclave_ctx = None
+            fhe_keyring = None
+
+            if hw_mode == "tee":
+                from app.infrastructure.security.tee_driver import TEEDriver
+
+                enclave_ctx = TEEDriver.create_enclave(simulation.id)
+                report = TEEDriver.generate_attestation_report(enclave_ctx)
+                simulation.tee_mrenclave = enclave_ctx.mrenclave
+                simulation.tee_mrsigner = enclave_ctx.mrsigner
+                simulation.tee_attestation_signature = report.signature
+
+                try:
+                    from app.infrastructure.security.immutable_audit_chain import (
+                        ImmutableAuditChain,
+                    )
+
+                    audit_chain = ImmutableAuditChain.get_instance()
+                    audit_chain.append_event(
+                        event_type="tee_enclave_activated",
+                        actor="coordinator",
+                        target_id=simulation.id,
+                        details={
+                            "mrenclave": enclave_ctx.mrenclave,
+                            "mrsigner": enclave_ctx.mrsigner,
+                            "signature": report.signature,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning("Failed to log TEE activation to audit chain: %s", e)
+
+            elif hw_mode == "fhe":
+                from app.infrastructure.security.fhe_driver import FHEDriver
+
+                fhe_keyring = FHEDriver.generate_keys(simulation.id)
+                simulation.fhe_poly_degree = fhe_keyring.poly_degree
+                simulation.fhe_key_id = fhe_keyring.key_id
+                simulation.fhe_noise_bound = 1e-9
+
+                try:
+                    from app.infrastructure.security.immutable_audit_chain import (
+                        ImmutableAuditChain,
+                    )
+
+                    audit_chain = ImmutableAuditChain.get_instance()
+                    audit_chain.append_event(
+                        event_type="fhe_keyring_generated",
+                        actor="coordinator",
+                        target_id=simulation.id,
+                        details={
+                            "key_id": fhe_keyring.key_id,
+                            "poly_degree": fhe_keyring.poly_degree,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning("Failed to log FHE activation to audit chain: %s", e)
+
             fl_engine_type = getattr(config, "fl_engine_type", "custom")
 
             rounds: list[TrainingRound] = []
@@ -591,46 +650,56 @@ class SimulationService:
                     # Reset tenant context to system/central for aggregation
                     active_tenant.set(None)
 
-                    # Apply secure aggregation masks
-                    if enable_sa and len(client_weights) > 1:
-                        client_weights = self.fl_engine.apply_secure_aggregation_masks(
-                            client_weights,
-                            client_samples=client_samples,
-                            rng=rng,
-                        )
-
-                    # Check for Byzantine/Malicious clients & defense mechanism
+                    agg_start = time.perf_counter()
                     if len(client_weights) > 0:
-                        is_malicious = [
-                            config.enable_poisoning_simulation and b.id == config.poisoning_bank_id
-                            for b in participating
-                        ]
-                        agg_start = time.perf_counter()
+                        if hw_mode == "fhe" and fhe_keyring:
+                            from app.infrastructure.security.fhe_driver import FHEDriver
 
-                        # If poisoning is detected/defended, filter weights
-                        if (
-                            config.enable_poisoning_simulation
-                            and config.byzantine_defense != "none"
-                        ):
-                            client_weights = self.fl_engine.apply_byzantine_defense(
+                            enc_updates = [
+                                FHEDriver.encrypt_weights(w, fhe_keyring, rng)
+                                for w in client_weights
+                            ]
+                            enc_avg = FHEDriver.homomorphic_average(enc_updates, client_samples)
+                            simulation.fhe_noise_bound = enc_avg.noise_bound
+                            global_weights = FHEDriver.decrypt_weights(
+                                enc_avg, fhe_keyring, global_weights.layer_shapes
+                            )
+                        elif hw_mode == "tee" and enclave_ctx:
+                            from app.infrastructure.security.tee_driver import TEEDriver
+
+                            global_weights = TEEDriver.execute_secure_aggregation(
+                                enclave_ctx, client_weights, client_samples
+                            )
+                        else:
+                            if enable_sa and len(client_weights) > 1:
+                                client_weights = self.fl_engine.apply_secure_aggregation_masks(
+                                    client_weights,
+                                    client_samples=client_samples,
+                                    rng=rng,
+                                )
+
+                            if (
+                                config.enable_poisoning_simulation
+                                and config.byzantine_defense != "none"
+                            ):
+                                client_weights = self.fl_engine.apply_byzantine_defense(
+                                    client_weights,
+                                    defense_type=config.byzantine_defense,
+                                )
+                                logger.info(
+                                    "Round %d: Byzantine defense (%s) applied",
+                                    round_num,
+                                    config.byzantine_defense,
+                                )
+
+                            agg_method = AggregationMethod(config.aggregation_method)
+                            global_weights = self.fl_engine.aggregate_parameters(
                                 client_weights,
-                                defense_type=config.byzantine_defense,
+                                client_samples=client_samples,
+                                method=agg_method,
+                                global_weights=global_weights,
+                                simulation_id=simulation.id,
                             )
-                            logger.info(
-                                "Round %d: Byzantine defense (%s) applied",
-                                round_num,
-                                config.byzantine_defense,
-                            )
-
-                        # Perform aggregation (FedAvg/Weighted/etc.)
-                        agg_method = AggregationMethod(config.aggregation_method)
-                        global_weights = self.fl_engine.aggregate_parameters(
-                            client_weights,
-                            client_samples=client_samples,
-                            method=agg_method,
-                            global_weights=global_weights,
-                            simulation_id=simulation.id,
-                        )
                         agg_time = (time.perf_counter() - agg_start) * 1000
                     else:
                         agg_time = 0.0

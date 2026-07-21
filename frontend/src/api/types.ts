@@ -30,6 +30,9 @@ export interface SimulationConfig {
   // Regulatory Compliance & Fairness (AI Act)
   enable_bias_mitigation?: boolean;
   fairness_lambda?: number;
+
+  // Hardware & Cryptographic Isolation
+  hardware_isolation_mode?: 'none' | 'tee' | 'fhe';
 }
 
 export interface EvaluationMetrics {
@@ -215,6 +218,14 @@ export interface SimulationDetail {
   error_message: string | null;
   banks: BankResult[];
   rounds: TrainingRound[];
+
+  // Hardware/Cryptographic Isolation telemetry
+  tee_mrenclave?: string | null;
+  tee_mrsigner?: string | null;
+  tee_attestation_signature?: string | null;
+  fhe_poly_degree?: number | null;
+  fhe_noise_bound?: number | null;
+  fhe_key_id?: string | null;
 }
 
 export interface SimulationCreateResponse {

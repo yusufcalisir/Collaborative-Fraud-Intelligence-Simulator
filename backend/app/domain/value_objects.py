@@ -155,3 +155,6 @@ class SimulationConfig:
     # Bias mitigation & regulatory fairness
     enable_bias_mitigation: bool = False
     fairness_lambda: float = 0.5
+
+    # Hardware & Cryptographic Isolation
+    hardware_isolation_mode: str = "none"  # "none", "tee", "fhe"
