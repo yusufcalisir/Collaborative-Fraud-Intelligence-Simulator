@@ -1188,7 +1188,7 @@ class SimulationService:
             )
             compliance_score = 95.0 if compliance_status == "COMPLIANT" else 75.0
 
-            report = {
+            compliance_report = {
                 "timestamp": _now().isoformat(),
                 "simulation_id": simulation.id,
                 "model_fairness_assessment": {
@@ -1243,7 +1243,7 @@ class SimulationService:
                 storage_dir, f"ai_act_compliance_report_{simulation.id}.json"
             )
             with open(report_path, "w", encoding="utf-8") as f:
-                json.dump(report, f, indent=4)
+                json.dump(compliance_report, f, indent=4)
             logger.info("Generated and saved EU AI Act Compliance Report to %s", report_path)
 
             # Finalize
