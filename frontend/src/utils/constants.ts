@@ -26,6 +26,7 @@ export const DEFAULT_SIMULATION_CONFIG = {
   enable_bias_mitigation: false,
   fairness_lambda: 0.5,
   hardware_isolation_mode: 'none' as const,
+  enable_streaming_gnn: false,
 };
 
 

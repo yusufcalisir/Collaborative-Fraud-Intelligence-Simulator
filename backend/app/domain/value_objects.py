@@ -158,3 +158,6 @@ class SimulationConfig:
 
     # Hardware & Cryptographic Isolation
     hardware_isolation_mode: str = "none"  # "none", "tee", "fhe"
+
+    # Real-Time Streaming GNN Settings
+    enable_streaming_gnn: bool = False

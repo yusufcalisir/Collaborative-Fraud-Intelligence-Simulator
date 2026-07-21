@@ -77,6 +77,11 @@ class SimulationRun:
     fhe_noise_bound: float | None = None
     fhe_key_id: str | None = None
 
+    # Streaming GNN Telemetry
+    streaming_gnn_node_count: int = 0
+    streaming_gnn_edge_count: int = 0
+    streaming_gnn_loss_history: list[float] = field(default_factory=list)
+
     @property
     def duration_seconds(self) -> float | None:
         """Wall-clock duration of the simulation."""

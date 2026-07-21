@@ -101,6 +101,10 @@ class SimulationConfigRequest(BaseModel):
         default="none",
         description="Hardware isolation / Cryptographic mode: none, tee, fhe",
     )
+    enable_streaming_gnn: bool = Field(
+        default=False,
+        description="Enable real-time streaming GNN (Graph Attention Network) online training",
+    )
 
 
 class SimulationSummaryResponse(BaseModel):
@@ -140,6 +144,11 @@ class SimulationDetailResponse(BaseModel):
     fhe_poly_degree: int | None = None
     fhe_noise_bound: float | None = None
     fhe_key_id: str | None = None
+
+    # Streaming GNN Telemetry
+    streaming_gnn_node_count: int = 0
+    streaming_gnn_edge_count: int = 0
+    streaming_gnn_loss_history: list[float] = []
 
 
 class SimulationCreateResponse(BaseModel):

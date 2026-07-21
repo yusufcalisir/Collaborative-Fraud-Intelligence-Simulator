@@ -200,6 +200,12 @@ To complement heuristic-based graph analytics (PageRank risk propagation), the p
 4. **Federated Parameter Aggregation**: Only model projection matrices ($W_{self}, W_{neigh}$) and classification head weights are shared with the coordinator for standard Byzantine-robust FedAvg or Krum aggregation. **Raw graph structures, customer PII, and computed embedding vectors never leave local bank boundaries.**
 5. **Similarity Search & Clustering**: The synchronized global model projects localized nodes into a shared 64-dimensional space, enabling cross-bank cosine similarity search and greedy community clustering to isolate distributed laundering rings.
 
+#### ⚡ Real-Time Streaming GNN & GAT Dynamics
+To capture the continuous flow of transaction streams across participating institutions:
+1. **Sliding-Window Graph Buffer**: Incoming transactions from REST/AMQP connectors dynamically update an in-memory graph stream. Old connections and orphan nodes are pruned based on a sliding time-window (e.g. 60 minutes) to prevent memory bloating.
+2. **Graph Attention Networks (GAT)**: Employs custom multi-head attention layers that compute dynamic attention coefficients between accounts and device node features.
+3. **Incremental Online Training**: Triggers step-by-step backpropagation iterations locally at each bank node as transaction events flow, updating attention projection weights in a streaming federated network.
+
 ### Track 3: Production Microservices & Secure API Gateway (Phase 3)
 To transform the prototype into a production-oriented distributed system:
 1.  **Microservices Decomposition**: Decoupled the backend into 4 autonomous, independent services: `gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert` (dynamically loaded in [main.py](file:///backend/app/main.py#L236-L300) and orchestrated in [docker-compose.yml](file:///docker-compose.yml)).
@@ -430,6 +436,8 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── risk_engine.py   # Computes composite risk scores via 9-signal pipeline
 │   │   │       ├── scenario_service.py # Scripted transaction AML scenarios loader
 │   │   │       ├── simulation_service.py # Orchestrates local training, FL loops, canary evaluation, comparisons
+│   │   │       ├── streaming_gnn_model.py # Graph Attention Network (GAT) model with online learning updates
+│   │   │       ├── streaming_graph_service.py # Sliding-window transaction graph stream and features
 │   │   │       └── streaming_engine.py # Event emitter for scenario replay
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
 │   │   │   ├── cache.py          # Local in-memory caching fallback logic
@@ -443,7 +451,9 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── immutable_audit_chain.py # Tamper-proof SHA-256 cryptographic audit chain (H_i = SHA256(L_i || H_{i-1}))
 │   │   │   │   ├── mtls_manager.py # Mutual TLS 1.3 PKI certificate generator, SAN matcher, and CRL revocation
 │   │   │   │   ├── oidc_authenticator.py # OIDC RS256/HS256 JWT bearer token authenticator and claims extractor
-│   │   │   │   └── vault_client.py # HashiCorp Vault KV v2 secret engine client with environment fallback
+│   │   │   │   ├── vault_client.py # HashiCorp Vault KV v2 secret engine client with environment fallback
+│   │   │   │   ├── fhe_driver.py # Fully Homomorphic Encryption (FHE CKKS) driver context and operators
+│   │   │   │   └── tee_driver.py # Trusted Execution Environment (TEE Intel SGX/Nitro) enclave driver
 │   │   │   ├── connectors/       # Bank Connector adapter implementations (BankConnector port)
 
 │   │   │   │   ├── factory.py    # Configuration-driven connector resolver (mock/rest/redis/mq)
@@ -521,6 +531,8 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   ├── test_gateway.py        # Tests API Gateway rate-limiting and authorization policies
 │   │   ├── test_graph_engine.py   # Tests graph adjacency building and React Flow serializers
 │   │   ├── test_risk_engine.py    # Tests weighted multi-signal heuristic risk score combining
+│   │   ├── test_streaming_gnn.py  # Tests sliding-window graph stream and GAT online training
+│   │   ├── test_tee_fhe_drivers.py # Tests FHE keyrings, homomorphic operations, and TEE enclaves
 │   │   └── test_simulation_router.py # Tests simulation creation and status check API routing
 │   │
 │   ├── Dockerfile

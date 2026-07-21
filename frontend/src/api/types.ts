@@ -33,6 +33,7 @@ export interface SimulationConfig {
 
   // Hardware & Cryptographic Isolation
   hardware_isolation_mode?: 'none' | 'tee' | 'fhe';
+  enable_streaming_gnn?: boolean;
 }
 
 export interface EvaluationMetrics {
@@ -226,6 +227,11 @@ export interface SimulationDetail {
   fhe_poly_degree?: number | null;
   fhe_noise_bound?: number | null;
   fhe_key_id?: string | null;
+
+  // Streaming GNN Telemetry
+  streaming_gnn_node_count?: number;
+  streaming_gnn_edge_count?: number;
+  streaming_gnn_loss_history?: number[];
 }
 
 export interface SimulationCreateResponse {

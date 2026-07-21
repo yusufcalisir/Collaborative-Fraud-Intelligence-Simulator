@@ -368,6 +368,27 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
               </div>
             </div>
 
+            {/* Real-Time Streaming GNN Settings */}
+            <div>
+              <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+                Graph Neural Network Dynamics
+              </h4>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.enable_streaming_gnn || false}
+                    onChange={(e) => updateConfig('enable_streaming_gnn', e.target.checked)}
+                    className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-accent-indigo)] focus:ring-[var(--color-accent-indigo)]"
+                  />
+                  <span className="text-xs text-[var(--color-text-secondary)]">Enable Streaming GNN (GraphSAGE/GAT)</span>
+                </label>
+                <p className="text-[10px] text-[var(--color-text-muted)]">
+                  Enables online self-supervised training on transaction graph updates as payments stream in.
+                </p>
+              </div>
+            </div>
+
             {/* Data Volume */}
             <div>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">

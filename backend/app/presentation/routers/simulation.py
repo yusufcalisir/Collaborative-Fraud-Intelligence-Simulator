@@ -97,6 +97,7 @@ async def create_simulation(
         "enable_bias_mitigation": config.enable_bias_mitigation,
         "fairness_lambda": config.fairness_lambda,
         "hardware_isolation_mode": config.hardware_isolation_mode,
+        "enable_streaming_gnn": config.enable_streaming_gnn,
     }
 
     # Store pending status
@@ -224,6 +225,7 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
             poisoning_bank_id=config.get("poisoning_bank_id", "bank_c"),
             poisoning_scale=config.get("poisoning_scale", 5.0),
             hardware_isolation_mode=config.get("hardware_isolation_mode", "none"),
+            enable_streaming_gnn=config.get("enable_streaming_gnn", False),
         ),
         current_round=sim.get("current_round", 0),
         total_rounds=sim.get("total_rounds", 10),
@@ -241,6 +243,9 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
         fhe_poly_degree=sim.get("fhe_poly_degree"),
         fhe_noise_bound=sim.get("fhe_noise_bound"),
         fhe_key_id=sim.get("fhe_key_id"),
+        streaming_gnn_node_count=sim.get("streaming_gnn_node_count", 0),
+        streaming_gnn_edge_count=sim.get("streaming_gnn_edge_count", 0),
+        streaming_gnn_loss_history=sim.get("streaming_gnn_loss_history", []),
     )
 
 
@@ -401,6 +406,9 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
             "fhe_poly_degree": simulation.fhe_poly_degree,
             "fhe_noise_bound": simulation.fhe_noise_bound,
             "fhe_key_id": simulation.fhe_key_id,
+            "streaming_gnn_node_count": simulation.streaming_gnn_node_count,
+            "streaming_gnn_edge_count": simulation.streaming_gnn_edge_count,
+            "streaming_gnn_loss_history": simulation.streaming_gnn_loss_history,
         }
 
         for bank in simulation.banks:

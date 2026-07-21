@@ -18,6 +18,7 @@ import { formatDuration, formatPercent } from '../utils/formatters';
 import ComplianceReportPanel from '../components/dashboard/ComplianceReportPanel';
 import { IncentiveRegistryPanel } from '../components/dashboard/IncentiveRegistryPanel';
 import { SecureHardwarePanel } from '../components/dashboard/SecureHardwarePanel';
+import StreamingGNNPanel from '../components/dashboard/StreamingGNNPanel';
 
 
 export default function SimulationView() {
@@ -217,6 +218,7 @@ export default function SimulationView() {
             <ComplianceReportPanel simulationId={simulation.id} banks={banks} />
             <IncentiveRegistryPanel banks={banks} />
             <SecureHardwarePanel simulation={simulation} />
+            <StreamingGNNPanel simulation={simulation} />
 
 
              {/* ROC Curves - side by side */}

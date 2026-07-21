@@ -179,4 +179,19 @@ To maximize the security of the collaborative AML platform, hardware and cryptog
 - **Computation on Encrypted Data:** Clients send their model updates encrypted with the FHE public key. The server aggregates these updates homomorphically (homomorphic average) directly over the ciphertexts without decrypting them. The server never observes plaintext parameters at any stage.
 - **Noise and Dimension Management:** Performance/security tradeoffs are monitored dynamically via CKKS noise accumulation and key management simulation.
 
+---
+
+## ⚡ Real-Time Streaming GNN Dynamics
+
+To capture the temporal and structural evolution of financial networks, the platform supports real-time streaming GNNs:
+
+### 1. Dynamic Sliding-Window Graph Stream
+- **Dynamic Ingestion:** Incoming mock transactions from REST/AMQP queues are streamed into a graph buffer in real time, dynamically building/updating nodes (accounts, devices) and edges (transactions).
+- **Time-bound Pruning:** Old edges and disconnected nodes are automatically pruned using a sliding-window threshold (e.g. 60 minutes) to prevent memory leakages and focus on recent active patterns.
+
+### 2. Incremental Online GNN Training
+- **Graph Attention Network (GAT):** Implements multi-head self-attention coefficients dynamically over topological neighborhoods to learn complex fraud propagation paths.
+- **Incremental Training:** Runs continuous online backpropagation training steps directly on active transaction streams, computing self-supervised contrastive or classification loss metrics to dynamically refine model state.
+- **Telemetry & Visualization:** Live stats (node/edge counts), attention distributions, and online loss convergence charts are rendered dynamically on the frontend.
+
 

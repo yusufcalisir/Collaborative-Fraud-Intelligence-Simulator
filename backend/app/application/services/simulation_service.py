@@ -363,6 +363,31 @@ class SimulationService:
                 except Exception as e:
                     logger.warning("Failed to log FHE activation to audit chain: %s", e)
 
+            # Initialize streaming GNN components if enabled
+            streaming_graph = None
+            streaming_gnn = None
+            if getattr(config, "enable_streaming_gnn", False):
+                from app.application.services.streaming_gnn_model import StreamingGATModel
+                from app.application.services.streaming_graph_service import StreamingGraphService
+
+                streaming_graph = StreamingGraphService()
+                streaming_gnn = StreamingGATModel(in_dim=12)
+
+                # Feed initial transaction data streams to populate the streaming graph
+                for bank_id, (features_df, labels) in datasets.items():
+                    # Take up to 100 transactions per bank to represent a warm-start stream
+                    for i, (idx, row) in enumerate(features_df.head(100).iterrows()):
+                        is_fraud = bool(labels[i] == 1.0) if i < len(labels) else False
+                        tx_dict = {
+                            "sender_id": f"cust_{row.get('sender_account_id', hash(idx))}",
+                            "receiver_id": f"cust_{row.get('receiver_account_id', hash(i + 10000))}",
+                            "amount": float(row.get("amount", 100.0)),
+                            "timestamp": _now().isoformat(),
+                            "bank_id": bank_id,
+                            "is_fraud": is_fraud,
+                        }
+                        streaming_graph.add_transaction(tx_dict)
+
             fl_engine_type = getattr(config, "fl_engine_type", "custom")
 
             rounds: list[TrainingRound] = []
@@ -733,6 +758,37 @@ class SimulationService:
                     round_feature_importance = self.model_service.get_feature_importance(
                         global_model, ref_X
                     )
+
+                    # Run online training step for streaming GNN
+                    if streaming_graph is not None and streaming_gnn is not None:
+                        h, edge_index, y_labels = streaming_graph.get_active_subgraph_tensors()
+                        if h.size(0) > 0 and edge_index.size(1) > 0:
+                            import torch
+
+                            y_tensor = torch.tensor(y_labels, dtype=torch.float32)
+                            loss_val = streaming_gnn.online_train_step(h, edge_index, y_tensor)
+                            simulation.streaming_gnn_loss_history.append(loss_val)
+
+                            # Log to immutable audit chain
+                            try:
+                                from app.infrastructure.security.immutable_audit_chain import (
+                                    ImmutableAuditChain,
+                                )
+
+                                audit_chain = ImmutableAuditChain.get_instance()
+                                audit_chain.append_event(
+                                    event_type="streaming_gnn_round_updated",
+                                    actor="coordinator",
+                                    target_id=simulation.id,
+                                    details={
+                                        "round_number": round_num,
+                                        "nodes_in_window": h.size(0),
+                                        "edges_in_window": edge_index.size(1) // 2,
+                                        "loss": loss_val,
+                                    },
+                                )
+                            except Exception as e:
+                                logger.warning("Failed to log GNN event to audit chain: %s", e)
 
                     round_duration = (time.perf_counter() - round_start) * 1000
 
@@ -1247,6 +1303,11 @@ class SimulationService:
             logger.info("Generated and saved EU AI Act Compliance Report to %s", report_path)
 
             # Finalize
+            if streaming_graph is not None:
+                summary = streaming_graph.get_status_summary()
+                simulation.streaming_gnn_node_count = summary["node_count"]
+                simulation.streaming_gnn_edge_count = summary["edge_count"]
+
             active_simulations.add(-1)
             simulation.status = SimulationStatus.COMPLETED
             simulation.completed_at = _now()
