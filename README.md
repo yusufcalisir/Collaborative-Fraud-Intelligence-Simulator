@@ -328,7 +328,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Distributed Microservices** | Mapped endpoints decoupled to `gateway`, `fl-coordinator`, `identity-graph`, and `fraud-alert` processes. | Simulates production horizontal scaling in a distributed cloud environment. | Clean operational separation of concerns |
 | **State Synchronizer** | `RedisStore` handling key-value, lists, and lists-push updates with sub-second in-memory fallback. | Synchronizes microservices' state across multiple running containers. | Event-consistent cache synchronization |
 | **Gateway Security Suite** | Fixed-window client rate limiting, path prefix versioning, RBAC policies, and logging middleware. | Centralizes traffic filtering and prevents cross-tenant data leakage. | Multi-tenant tenant boundary isolation |
-| **BankConnector Adapter Pattern** | Abstract `BankConnectorInterface` port; concrete adapters: `MockBankConnector` (in-process), `RESTBankConnector` (HTTP with OAuth2/mTLS/API Key), `RedisBankConnector` (pub/sub), `MQSkeletonBankConnector` (AMQP placeholder). `BankConnectorFactory` resolves per-bank adapter from config. | Decouples the FL platform from bank-specific integrations — swap a single config key to connect a real bank REST API without touching business logic. | Open/Closed principle; per-bank connector-type override |
+| **BankConnector Adapter Pattern** | Abstract `BaseBankConnector` ABC and `NormalizedTransaction` schema; concrete production adapters: `StreamingPaymentConnector` (high-throughput real-time streams), `ISO20022MessagingConnector` (ISO 20022 MX `pacs.008`/`pacs.009` XML & SWIFT MT103/MT202 parsing), `BatchEODFileConnector` (EOD CSV/Parquet dumps), `RESTBankConnector` (HTTP webhooks with OAuth2/mTLS), `RabbitMQBankConnector` (AMQP message streams), and `MockBankConnector` (in-process simulator fallback). `BankConnectorFactory` dynamically resolves adapters from configuration settings. | Decouples the FL platform from bank-specific core banking systems and payment feeds — replacing synthetic data assumptions with standardized real-time ISO 20022 and streaming payment feeds. | Open/Closed principle; strict `NormalizedTransaction` contract; per-bank connector-type override |
 | **Production Enterprise Security Suite** | Enterprise security compliance architecture: **Mutual TLS 1.3 (mTLS)** with X.509 cert validation & SAN matching, **OIDC / OAuth2 JWT** bearer claims extraction, **Dynamic ABAC** policy engine (multi-tenant bank isolation, shift hour windows, approval tiers, clearance levels), **HashiCorp Vault** KV v2 secret engine client, and **Tamper-Proof Cryptographic Audit Chain** ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with retrospective integrity verification. | Meets ISO 27001, SOC2, and PCI-DSS compliance requirements for multi-tenant banking data isolation, key management, and immutable audit logs. | mTLS 1.3, OIDC JWT, ABAC evaluator, HashiCorp Vault KV v2, SHA-256 Audit Chain |
 | **Enterprise Federated Coordinator Suite** | `CoordinatorService` provides: (1) **Dynamic Handshake & Registration** — REST `/handshake` API validates PyTorch ≥ 2.x & Python ≥ 3.10 runtime compatibility before admitting bank nodes; (2) **Live Heartbeat Monitoring** — 15-second timeout window marks dropped nodes OFFLINE, reports to Prometheus `cfi_active_clients_count` gauge; (3) **Heterogeneous Parameter Negotiation** — CUDA nodes ≥16 GB RAM receive full base parameters while CPU/low-RAM nodes get reduced batch size, epochs, and increased gradient accumulation steps to prevent bottlenecks. Frontend page at `/coordinator` shows live registry, heartbeat health, and API reference. | Transforms static hardcoded topology into a production-grade, self-healing FL network capable of elastic bank onboarding without redeployment. | Dynamic registry, 15s heartbeat SLA, hardware-aware parameter scaling |
 
@@ -501,10 +501,13 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── tee_driver.py # Trusted Execution Environment (TEE Intel SGX/Nitro) enclave driver
 │   │   │   │   └── smart_contract_driver.py # Singleton Web3 driver executing ConsortiumIncentiveSettlement.sol payouts
 │   │   │   ├── connectors/       # Bank Connector adapter implementations (BankConnector port)
-
-│   │   │   │   ├── factory.py    # Configuration-driven connector resolver (mock/rest/redis/mq)
+│   │   │   │   ├── base_connector.py  # Standardized BaseBankConnector ABC and NormalizedTransaction Pydantic schema
+│   │   │   │   ├── streaming_connector.py # Streaming payment connector for Kafka, RabbitMQ, and Redis streams
+│   │   │   │   ├── iso20022_connector.py # ISO 20022 MX (pacs.008, pacs.009) and SWIFT MT103/MT202 message parser
+│   │   │   │   ├── batch_connector.py # Batch EOD file connector for CSV and Parquet transaction dumps
+│   │   │   │   ├── factory.py    # Configuration-driven connector resolver (mock/rest/redis/mq/streaming/iso20022/batch)
 │   │   │   │   ├── mock_connector.py  # In-process simulator connector (default)
-│   │   │   │   ├── rest_connector.py  # HTTP REST connector with OAuth2, mTLS, API Key auth
+│   │   │   │   ├── rest_connector.py  # HTTP REST connector with OAuth2, mTLS, API Key auth, and webhook parsing
 │   │   │   │   ├── redis_connector.py # Event-driven Redis pub/sub connector
 │   │   │   │   └── rabbitmq_connector.py # Concrete AMQP/RabbitMQ message queue connector
 │   │   │   └── repositories/     # Data access layer implementing repository pattern
@@ -573,6 +576,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_fuzzy_psi.py      # Tests standardization, MinHash LSH, and Fuzzy PSI thresholds
 │   │   │   ├── test_web3_settlement.py # Tests Web3 smart contract settlement driver and LOO Shapley payouts
 │   │   │   ├── test_vault_pki_mtls.py # Tests HashiCorp Vault PKI Secrets Engine cert issuance, rotation, and CRL revocation
+│   │   │   ├── test_bank_connectors.py # Tests BaseBankConnector, Streaming, ISO 20022 MX/SWIFT MT103, Batch EOD, and REST webhooks
 
 │   │   ├── test_alert_service.py  # Tests alert generation rules and severity classification
 │   │   ├── test_case_service.py   # Tests multi-bank case coordination and event logs

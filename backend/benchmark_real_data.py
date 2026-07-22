@@ -65,10 +65,22 @@ DATASETS = ["elliptic", "amlsim", "paysim"]
 
 OPTIMIZERS: dict[str, dict[str, Any]] = {
     "FedAvg": {"aggregation_method": AggregationMethod.FED_AVG, "fedprox_mu": 0.0, "moon_mu": 0.0},
-    "FedProx": {"aggregation_method": AggregationMethod.FED_AVG, "fedprox_mu": 0.01, "moon_mu": 0.0},
-    "SCAFFOLD": {"aggregation_method": AggregationMethod.SCAFFOLD, "fedprox_mu": 0.0, "moon_mu": 0.0},
+    "FedProx": {
+        "aggregation_method": AggregationMethod.FED_AVG,
+        "fedprox_mu": 0.01,
+        "moon_mu": 0.0,
+    },
+    "SCAFFOLD": {
+        "aggregation_method": AggregationMethod.SCAFFOLD,
+        "fedprox_mu": 0.0,
+        "moon_mu": 0.0,
+    },
     "MOON": {"aggregation_method": AggregationMethod.FED_AVG, "fedprox_mu": 0.0, "moon_mu": 1.0},
-    "FedYogi": {"aggregation_method": AggregationMethod.FED_YOGI, "fedprox_mu": 0.0, "moon_mu": 0.0},
+    "FedYogi": {
+        "aggregation_method": AggregationMethod.FED_YOGI,
+        "fedprox_mu": 0.0,
+        "moon_mu": 0.0,
+    },
 }
 
 DEFENSES: dict[str, AggregationMethod | None] = {
@@ -80,6 +92,7 @@ DEFENSES: dict[str, AggregationMethod | None] = {
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def _split_across_banks(
     X: np.ndarray, y: np.ndarray, n_banks: int = 3, rng: np.random.Generator | None = None
@@ -157,11 +170,16 @@ def _run_single_experiment(
         def __init__(self, input_dim: int) -> None:
             super().__init__()
             self.net = nn.Sequential(
-                nn.Linear(input_dim, 64), nn.ReLU(),
-                nn.BatchNorm1d(64), nn.Dropout(0.3),
-                nn.Linear(64, 32), nn.ReLU(),
-                nn.BatchNorm1d(32), nn.Dropout(0.2),
-                nn.Linear(32, 1), nn.Sigmoid(),
+                nn.Linear(input_dim, 64),
+                nn.ReLU(),
+                nn.BatchNorm1d(64),
+                nn.Dropout(0.3),
+                nn.Linear(64, 32),
+                nn.ReLU(),
+                nn.BatchNorm1d(32),
+                nn.Dropout(0.2),
+                nn.Linear(32, 1),
+                nn.Sigmoid(),
             )
 
         def forward(self, x: torch.Tensor, return_features: bool = False) -> Any:
@@ -189,9 +207,11 @@ def _run_single_experiment(
             numel = 1
             for s in shape:
                 numel *= s
-            param.data = torch.FloatTensor(
-                weights.flat_weights[offset: offset + numel]
-            ).reshape(shape).to(device)
+            param.data = (
+                torch.FloatTensor(weights.flat_weights[offset : offset + numel])
+                .reshape(shape)
+                .to(device)
+            )
             offset += numel
         return model
 
@@ -250,7 +270,12 @@ def _run_single_experiment(
                             prox = prox + (p - gp).pow(2).sum()
                         loss = loss + (fedprox_mu / 2.0) * prox
                     # MOON term
-                    if moon_mu > 0.0 and feats is not None and global_ref is not None and prev_model is not None:
+                    if (
+                        moon_mu > 0.0
+                        and feats is not None
+                        and global_ref is not None
+                        and prev_model is not None
+                    ):
                         with torch.no_grad():
                             _, gf = global_ref(Xb, return_features=True)
                             _, pf = prev_model(Xb, return_features=True)
@@ -283,9 +308,7 @@ def _run_single_experiment(
     y_test_all = np.concatenate([sp[3] for sp in bank_splits], axis=0)
 
     with torch.no_grad():
-        probs = global_model(
-            torch.FloatTensor(X_test_all).to(device)
-        ).cpu().numpy()
+        probs = global_model(torch.FloatTensor(X_test_all).to(device)).cpu().numpy()
 
     preds = (probs >= 0.5).astype(int)
 
@@ -302,6 +325,7 @@ def _run_single_experiment(
 # ---------------------------------------------------------------------------
 # Main benchmark loop
 # ---------------------------------------------------------------------------
+
 
 def run_benchmark(
     n_rounds: int = 5,
@@ -378,10 +402,7 @@ def run_benchmark(
 
     header_row = "| " + " | ".join(headers) + " |"
     sep_row = "|" + "|".join([":---"] * len(headers)) + "|"
-    data_rows = [
-        "| " + " | ".join(str(row.get(k, "")) for k in col_keys) + " |"
-        for row in rows
-    ]
+    data_rows = ["| " + " | ".join(str(row.get(k, "")) for k in col_keys) + " |" for row in rows]
 
     md = (
         "# Benchmark Results — Item 20: Public Dataset & Advanced FL Optimization\n\n"
@@ -407,7 +428,9 @@ if __name__ == "__main__":
     parser.add_argument("--rounds", type=int, default=5, help="Federated rounds per run")
     parser.add_argument("--epochs", type=int, default=2, help="Local training epochs per round")
     parser.add_argument("--n-samples", type=int, default=1_000, help="Mock dataset size")
-    parser.add_argument("--mock-only", action="store_true", help="Force mock data regardless of files")
+    parser.add_argument(
+        "--mock-only", action="store_true", help="Force mock data regardless of files"
+    )
     parser.add_argument("--output", type=str, default="storage/benchmark_results.md")
     args = parser.parse_args()
 

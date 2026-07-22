@@ -77,31 +77,29 @@ To handle production scale and meet strict SLA latency bounds (<50ms), the platf
 - Provides point-in-time joins (`get_historical_features`) over historical logs.
 - Guarantees data leakage prevention by ensuring features represent the state of entities exactly as they existed at the transaction timestamp.
 
-### 3. Dynamic Streaming Pipelines (Apache Flink / Spark Streaming)
-- Transactions ingested into the API stream directly update sliding window features:
-  - `rolling_velocity_1h`: Counts customer transactions in the last hour.
-  - `avg_amount_24h`: Running average amount of customer transactions in the last 24 hours.
-- Updates are pushed instantly to the Online Store to protect downstream scoring from high-velocity rings.
+## 🏦 Real-Bank Connector Integrations & Ingestion Adapters
 
----
+To interface with live production financial systems and process real-time transaction streams without relying solely on synthetic data, the platform provides concrete connector implementations and financial message parsing services under `backend/app/infrastructure/connectors/`:
 
-## 🏦 Real-Bank Connector Integrations (Phase 2 Task 6)
+### 1. Standardized `NormalizedTransaction` Domain Contract
+All incoming feeds (ISO XML, SWIFT MT103, REST webhooks, streaming queues, EOD files) are converted into a unified `NormalizedTransaction` Pydantic model (`base_connector.py`), enforcing consistent field extraction downstream:
+* `transaction_id`: Cryptographic or message reference ID.
+* `account_id` / `counterparty_account_id`: Originating debtor and target creditor accounts.
+* `amount` / `currency`: Transaction amount and ISO 4217 currency code.
+* `timestamp`: UTC event timestamp.
+* `merchant_category_code` (MCC): 4-digit ISO 18245 code.
+* `origin_country` / `destination_country`: ISO 3166-1 alpha-2 country codes.
+* `channel_type`: High-level channel identifier (`ISO20022_PACS008`, `SWIFT_MT103`, `STREAMING`, `REST_WEBHOOK`, `BATCH_EOD`).
 
-To interface with live production financial systems, the platform provides three concrete connector implementations and parsing services:
+### 2. Concrete Adapter Implementations
+* **Streaming Payment Connector (`StreamingPaymentConnector`)**: Ingests high-volume continuous payment events from Kafka, RabbitMQ, or Redis streams, updating the in-memory graph stream and streaming GAT models.
+* **ISO 20022 & SWIFT Message Parser (`ISO20022MessagingConnector`)**: Financial message parser supporting ISO 20022 MX (`pacs.008.001.08` & `pacs.009` XML) and legacy SWIFT MT103/MT202 records.
+* **Batch EOD File Connector (`BatchEODFileConnector`)**: End-Of-Day file parser for batch CSV and Parquet transaction dumps.
+* **Core Banking System REST Adapter (`RESTBankConnector`)**: Dynamically handles OAuth2 Client Credentials authentication token refresh, mTLS certificate validation, HMAC payload signing, and real-time webhook ingestion.
+* **Message Queue AMQP Connector (`RabbitMQBankConnector`)**: Subscribes asynchronously to CBS AMQP queues (using `pika`) with graceful fallback if the broker is offline.
 
-### 1. Core Banking System (CBS) Adapters
-- **REST Connector (`RESTBankConnector`)**: Dynamically initiates an OAuth2 Client Credentials flow, retrieves, caches, and automatically refreshes access tokens, and uses mutual TLS (mTLS) client certificate verification to authenticate calls to partner bank REST APIs.
-
-### 2. Message Queue AMQP Connector
-- **RabbitMQ Connector (`RabbitMQBankConnector`)**: Subscribes asynchronously to CBS message queues (using `pika`) to ingest live transactions, with automatic fallback to a local mock interface if the message broker is unreachable.
-
-### 3. Open Banking PSD2 Interface
-- Exposes standard AISP endpoints (`/api/v1/psd2/accounts` and `/api/v1/psd2/transactions`) using Bearer JWT authentication for third-party access, validating user consent records prior to data dispatch.
-
-### 4. Financial Message Parsers
-- **ISO 20022 XML (`pacs.008.001.08`)**: Extracts transaction values, currencies, senders, and receivers from structured XML payment instructions.
-- **SWIFT MT103**: Parses legacy text-based SWIFT blocks, fields (e.g. `:32A:` for amounts/currencies), and sender/receiver accounts.
-- **SEPA Credit Transfers**: Ingests European credit transfer payloads mapped to standard transaction fields.
+### 3. Configurable Factory Resolution (`factory.py`)
+* `BankConnectorFactory` inspects per-bank configuration settings (`{bank_id}_connector_type`) and instantiates the matching adapter (`mock`, `rest`, `redis`, `rabbitmq`, `streaming`, `iso20022`, `batch`), enabling seamless bank-specific adapter swapping.
 
 ---
 

@@ -8,15 +8,18 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 from app.application.interfaces.bank_connector import BankConnectorInterface
+from app.infrastructure.connectors.base_connector import BaseBankConnector, NormalizedTransaction
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from app.domain.value_objects import ModelWeights
 
 logger = logging.getLogger(__name__)
 
 
-class RESTBankConnector(BankConnectorInterface):
-    """Sends FL commands to bank nodes over HTTP REST APIs."""
+class RESTBankConnector(BankConnectorInterface, BaseBankConnector):
+    """Sends FL commands to bank nodes over HTTP REST APIs and ingests real-time webhook payloads."""
 
     def __init__(
         self,
@@ -207,3 +210,35 @@ class RESTBankConnector(BankConnectorInterface):
             res_data = resp.json()
             res_data["correlation_id"] = correlation_id
             return res_data
+
+    def consume_stream(self) -> Generator[NormalizedTransaction, None, None]:
+        """Yields transactions received via HTTP REST webhook endpoint."""
+        if not hasattr(self, "_webhook_queue"):
+            self._webhook_queue: list[NormalizedTransaction] = []
+        while self._webhook_queue:
+            yield self._webhook_queue.pop(0)
+
+    def parse_batch(self, payload: Any) -> list[NormalizedTransaction]:
+        """Parses webhook JSON body payload into NormalizedTransaction instances."""
+        if not hasattr(self, "_webhook_queue"):
+            self._webhook_queue = []
+
+        if isinstance(payload, dict):
+            payload = [payload]
+
+        results: list[NormalizedTransaction] = []
+        if isinstance(payload, list):
+            for item in payload:
+                tx = NormalizedTransaction(
+                    transaction_id=str(item.get("transaction_id", f"wh_{len(results)}")),
+                    account_id=str(item.get("account_id", "UNKNOWN")),
+                    counterparty_account_id=str(item.get("counterparty_account_id", "UNKNOWN")),
+                    amount=float(item.get("amount", 0.0)),
+                    currency=str(item.get("currency", "USD")),
+                    merchant_category_code=str(item.get("merchant_category_code", "0000")),
+                    channel_type="REST_WEBHOOK",
+                )
+                results.append(tx)
+
+        self._webhook_queue.extend(results)
+        return results

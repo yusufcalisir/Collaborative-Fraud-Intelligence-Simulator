@@ -50,6 +50,13 @@ Concrete implementation of dependencies. Adapts foreign libraries and databases.
 
 *   `database.py` & `models.py`: SQLAlchemy 2.0 async engine and relational database tables.
 *   `redis_store.py`: A fault-tolerant state manager. It synchronizes simulation configurations and round metrics to Redis. If Redis is unreachable, it falls back to a thread-safe, in-memory cache to maintain liveness.
+*   `connectors/`: Production Bank Connector sub-system implementing Hexagonal Ports & Adapters:
+    *   `base_connector.py`: Defines the `BaseBankConnector` abstract interface and unified `NormalizedTransaction` Pydantic domain schema.
+    *   `streaming_connector.py`: High-throughput real-time payment event streaming connector for Kafka, RabbitMQ, and Redis streams.
+    *   `iso20022_connector.py`: Financial message parser converting ISO 20022 MX (`pacs.008`, `pacs.009`) XML and SWIFT MT103/MT202 text records into normalized transactions.
+    *   `batch_connector.py`: End-Of-Day (EOD) file batch parser for CSV and Parquet transaction dumps.
+    *   `rest_connector.py`: HTTP REST adapter supporting mTLS, OAuth2, HMAC payload signing, and real-time webhook ingestion.
+    *   `factory.py`: Configuration-driven `BankConnectorFactory` resolving per-bank connector implementations.
 *   `security/smart_contract_driver.py`: Web3 & CBDC settlement driver executing automated token disbursements (`wCBDC`, `USDC`, `e-TRY`) on `ConsortiumIncentiveSettlement.sol` based on LOO Shapley values.
 *   `telemetry.py`: Bypasses metrics or mounts a `/metrics` ASGI app for Prometheus based on configurations.
 *   `celery_app.py`: Background worker queue for handling long-running PyTorch training loops without blocking FastAPI.

@@ -286,12 +286,12 @@ def test_rabbitmq_fallback_to_mock() -> None:
     )
 
 
-@patch("pika.BlockingConnection")
-def test_rabbitmq_success_flow(mock_blocking_conn: MagicMock) -> None:
+@patch("app.infrastructure.connectors.rabbitmq_connector.pika")
+def test_rabbitmq_success_flow(mock_pika: MagicMock) -> None:
     # Setup mock connection and channel
     mock_conn = MagicMock()
     mock_channel = MagicMock()
-    mock_blocking_conn.return_value = mock_conn
+    mock_pika.BlockingConnection.return_value = mock_conn
     mock_conn.channel.return_value = mock_channel
 
     mock_channel.queue_declare.return_value = MagicMock()

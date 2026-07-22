@@ -5,11 +5,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from app.infrastructure.connectors.batch_connector import BatchEODFileConnector
+from app.infrastructure.connectors.iso20022_connector import ISO20022MessagingConnector
 from app.infrastructure.connectors.mock_connector import MockBankConnector
 from app.infrastructure.connectors.mq_skeleton_connector import MQSkeletonBankConnector
 from app.infrastructure.connectors.rabbitmq_connector import RabbitMQBankConnector
 from app.infrastructure.connectors.redis_connector import RedisBankConnector
 from app.infrastructure.connectors.rest_connector import RESTBankConnector
+from app.infrastructure.connectors.streaming_connector import StreamingPaymentConnector
 
 if TYPE_CHECKING:
     from app.application.interfaces.bank_connector import BankConnectorInterface
@@ -59,6 +62,12 @@ class BankConnectorFactory:
         elif connector_type == "mq_skeleton":
             broker_uri = getattr(settings, "mq_broker_uri", "amqp://guest:guest@localhost:5672//")
             return MQSkeletonBankConnector(broker_uri=broker_uri)
+        elif connector_type == "streaming":
+            return StreamingPaymentConnector(topic=f"payments.{bank_id}")
+        elif connector_type == "iso20022":
+            return ISO20022MessagingConnector()
+        elif connector_type == "batch":
+            return BatchEODFileConnector()
         elif connector_type == "rabbitmq":
             mock_fallback = None
             if model_service is not None and data_generator is not None:

@@ -2,14 +2,16 @@
 
 from logging.config import fileConfig
 
-from alembic import context
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, pool
 
+from alembic import context
 from app.config import get_settings
 from app.infrastructure.database import Base
-from app.infrastructure.models import SimulationRunModel, BankConfigModel, TrainingRoundModel  # noqa: F401
+from app.infrastructure.models import (  # noqa: F401
+    BankConfigModel,
+    SimulationRunModel,
+    TrainingRoundModel,
+)
 
 config = context.config
 settings = get_settings()

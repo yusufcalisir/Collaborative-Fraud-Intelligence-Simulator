@@ -11,7 +11,10 @@ import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
-import pika
+try:
+    import pika
+except ImportError:
+    pika = None
 
 from app.application.interfaces.bank_connector import BankConnectorInterface
 
@@ -23,6 +26,9 @@ logger = logging.getLogger(__name__)
 
 class RabbitMQBankConnector(BankConnectorInterface):
     """Sends FL commands to bank nodes over AMQP/RabbitMQ."""
+
+    credentials: Any | None = None
+    connection_params: Any | None = None
 
     def __init__(
         self,
@@ -39,17 +45,23 @@ class RabbitMQBankConnector(BankConnectorInterface):
         self.password = password
         self.queue_prefix = queue_prefix
         self.fallback_connector = fallback_connector
-        self.credentials = pika.PlainCredentials(self.username, self.password)
-        self.connection_params = pika.ConnectionParameters(
-            host=self.host,
-            port=self.port,
-            credentials=self.credentials,
-            connection_attempts=3,
-            retry_delay=2,
-        )
+        if pika is not None:
+            self.credentials = pika.PlainCredentials(self.username, self.password)
+            self.connection_params = pika.ConnectionParameters(
+                host=self.host,
+                port=self.port,
+                credentials=self.credentials,
+                connection_attempts=3,
+                retry_delay=2,
+            )
+        else:
+            self.credentials = None
+            self.connection_params = None
 
-    def _get_connection(self) -> pika.BlockingConnection | None:
+    def _get_connection(self) -> Any | None:
         """Establish blocking connection to RabbitMQ with clean fallback."""
+        if pika is None:
+            return None
         try:
             return pika.BlockingConnection(self.connection_params)
         except Exception as exc:
@@ -151,6 +163,7 @@ class RabbitMQBankConnector(BankConnectorInterface):
             )
 
             # Publish message
+            assert pika is not None
             properties = pika.BasicProperties(
                 reply_to=callback_queue,
                 correlation_id=corr_id,
