@@ -305,3 +305,52 @@ Implement property-based tests using `hypothesis` to check mathematical invarian
 
 Property-based testing is slower than simple unit tests. The real dataset benchmark is heavy and requires downloading a ~150MB CSV.
 
+---
+
+## ED-013: Smart Contract Web3 / CBDC Incentive Settlement vs In-Memory Ledger
+
+**Date**: 2026-07-21
+**Status**: Accepted
+
+### Context
+
+Cross-bank federated collaboration requires economic incentives (Shapley payout distribution) to prevent free-riding. In-memory virtual ledgers lack financial trust, auditability, and decentralized enforcement.
+
+### Decision
+
+Implement on-chain automated payouts using an EVM Solidity smart contract (`ConsortiumIncentiveSettlement.sol`) integrated via Web3 (`smart_contract_driver.py`).
+
+### Rationale
+
+1. **Decentralized Trust**: Payouts are executed on-chain via smart contracts using 18-decimal wei fixed math, removing central coordinator manipulation.
+2. **Automated Quarantine**: Nodes with negative contribution ($SV_i \le -0.05$) or zero variance update attacks are quarantined on-chain (`setNodeQuarantine()`), freezing their wallet claims.
+3. **Immutable Audit Binding**: Settlement transaction hashes (`settlement_tx_hash`) and block numbers are recorded immutably in the SHA-256 audit ledger.
+
+### Tradeoff
+
+Introduces EVM runtime dependency (`web3`, `py-solc-x`) and gas costs/latency during automated transaction execution. Fallback drivers are provided when an EVM node is offline.
+
+---
+
+## ED-014: Zero-Inbound Port Egress Bank Client Daemon Architecture
+
+**Date**: 2026-07-21
+**Status**: Accepted
+
+### Context
+
+Enterprise bank firewalls strictly forbid opening inbound listening ports to external traffic (such as the central FL coordinator).
+
+### Decision
+
+Deploy a standalone client daemon (`cfi-bank-client`) inside bank enclaves that communicates strictly via outbound-only mTLS connections to the central coordinator.
+
+### Rationale
+
+1. **Zero-Inbound Port Compliance**: Satisfies strict financial security policies by preventing incoming connections through perimeter firewalls.
+2. **Local Vault Protection**: Local PyTorch model artifacts, key material, and session state are encrypted on disk with AES-256-GCM and PBKDF2 (100,000 iterations).
+3. **Resilient Reconnection**: `ExponentialBackoffReconnector` manages network dropouts using exponential backoff with full jitter.
+
+### Tradeoff
+
+Long-lived streaming outbound channels require heartbeats and session token management to handle transient network drops.

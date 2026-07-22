@@ -84,11 +84,17 @@
 
 **Status**: Out of scope for this simulator (data is synthetically generated and controlled).
 
-### 3.3 Free-Riding
+### 3.3 Free-Riding & Malicious Contribution
 
-**Threat**: A bank sends random or minimal updates while benefiting from the global model.
+**Threat**: A participating bank sends zero-gradient/stale updates or minimal effort contributions while benefiting from the collaboratively trained global model (free-riding), or actively submits poisoned updates to sabotage convergence.
 
-**Status**: Not mitigated. Could be detected via update norm monitoring.
+**Status in simulator**: Fully mitigated via automated contribution auditing, Leave-One-Out (LOO) Shapley evaluation, and Web3 Smart Contract Quarantine enforcement.
+
+**Simulator mitigations**:
+- **Federated Shapley Value (SV) Estimation**: Leave-One-Out (LOO) evaluation computes the marginal F1 score contribution ($SV_i$) of each bank node at the end of rounds.
+- **Update Variance Filtering**: Client parameter updates with near-zero variance ($\text{var} < 10^{-6}$) are flagged as free-riders.
+- **On-Chain Smart Contract Quarantine Locks**: When a node is flagged for poisoning or free-riding ($SV_i \le -0.05$), the coordinator calls `setNodeQuarantine()` on `ConsortiumIncentiveSettlement.sol`. The contract locks the node's wallet on-chain, preventing token settlement and marking payout status as `BLOCKED_QUARANTINE`.
+
 
 ---
 
@@ -152,7 +158,7 @@ The system architecture and interfaces are mapped against the **STRIDE** securit
 
 | Threat Category | Specific Threat Description | Affected Components | Active Mitigations | Production Gap / Residual Risk |
 |:---|:---|:---|:---|:---|
-| **Spoofing** | A compromised or malicious node masquerades as a verified participating bank to send false parameters or steal global weights. | FL Aggregation Coordinator, WebSockets | **mTLS 1.3 X.509 PKI** with SAN verification, HashiCorp Vault Root CA (`init_vault_pki.py`), dynamic cert rotation (`mtls_manager.py`), OIDC JWT validation | Certificate revocation propagation latency. |
+| **Spoofing** | A compromised or malicious node masquerades as a verified participating bank to send false parameters or steal global weights, or exploits listening client ports. | FL Aggregation Coordinator, Client Network Interface | **mTLS 1.3 X.509 PKI** with SAN verification, HashiCorp Vault Root CA (`init_vault_pki.py`), dynamic cert rotation (`mtls_manager.py`), OIDC JWT validation, and **Zero-Inbound Port Standalone Bank Client Daemon (`cfi-bank-client`)** initiating outbound-only egress mTLS streams to coordinator port `50051` (zero listening ports on client subnet). | Certificate revocation propagation latency. |
 | **Tampering** | A participant alters local parameters to degrade model performance (Model Poisoning) or inject backdoors. | Pytorch Training, FedAvg Engine | Byzantine-Robust aggregation (Krum, Coordinate-wise Median), **SHA-256 Cryptographic Audit Chain** | Attack scale threshold limits. If $>50\%$ of nodes are compromised, median fails. |
 | **Repudiation** | An attacker performs malicious actions (e.g., model poisoning) and denies execution due to lack of non-repudiation logs. | Microservices Gateway | **Tamper-Proof SHA-256 Audit Chain ($H_i = \text{SHA256}(L_i \Vert H_{i-1})$)** with 1-click retrospective verification | Offline ledger backup frequency. |
 | **Information Disclosure** | Passive intercept of model weights allows gradient inversion, reconstructing raw transaction features or identity fields. | Network Gateway, Aggregation Engine | Differential Privacy (L2 clipping + noise), Secure Aggregation masking, **HashiCorp Vault KV v2 & PKI Secrets Engine Isolation** | Basic composition limits budget tracking. Requires advanced accounting. |
@@ -346,5 +352,69 @@ The platform implements fairness auditing and debiasing layers to comply with th
 | **Information Disclosure** | Leaking raw client nationalities or ages during audit | Decentralized count-only aggregation (no raw PII transmitted) |
 | **Denial of Service** | Triggering infinite bias warnings to lock down downstream nodes | Standardized gating limits (Disparate Impact $\ge 0.8$, Equal Opportunity Difference $< 0.1$) |
 | **Elevation of Privilege** | Bypassing AI Act gating limits to deploy biased champions | Automatic gate gating: Champion registry requires approved compliance check |
+
+---
+
+## 14. Web3 & CBDC Smart Contract Settlement Threat Surface
+
+The integration of `ConsortiumIncentiveSettlement.sol` and `smart_contract_driver.py` for automated Shapley-based token payouts introduces blockchain and smart contract threat vectors:
+
+### 14.1 Reentrancy & Double-Payout Attacks (Tampering & Elevation of Privilege)
+* **Threat**: A compromised bank node or malicious recipient contract invokes callback hooks during token withdrawal or payout execution to drain consortium liquidity.
+* **Mitigations**:
+  * **OpenZeppelin ReentrancyGuard**: All external state-changing payout methods (`distributeIncentives()`, `withdrawTokens()`) utilize OpenZeppelin `nonReentrant` modifiers.
+  * **Checks-Effects-Interactions Pattern**: Contract state variables and bank balances are updated prior to executing token transfers.
+
+### 14.2 Free-Rider & Malicious Contribution Settlement Exploits (Tampering)
+* **Threat**: Adversarial nodes submit zero-variance updates (free-riding) or model poisoning attacks while attempting to claim CBDC incentive payouts.
+* **Mitigations**:
+  * **Shapley Gating & Variance Checks**: The coordinator evaluates Leave-One-Out (LOO) Shapley contribution scores ($SV_i$) and gradient variance ($\text{var} < 10^{-6}$).
+  * **On-Chain Quarantine Locking (`setNodeQuarantine`)**: Nodes flagged for poisoning or free-riding ($SV_i \le -0.05$) are programmatically locked on-chain (`BLOCKED_QUARANTINE`), halting token distribution and burning/reclaiming unallocated rewards.
+
+### 14.3 Settlement Tx Hash Spoofing & Audit Chain Disconnect (Repudiation)
+* **Threat**: A malicious participant claims an on-chain token settlement occurred without a corresponding transaction on the EVM blockchain.
+* **Mitigations**:
+  * **SHA-256 Immutable Audit Ledger Binding**: The Python Web3 driver extracts the deterministic transaction hash (`settlement_tx_hash`) and block number (`settlement_block_number`), binding them directly into the signed SHA-256 immutable audit ledger (`immutable_audit_chain.py`).
+
+| STRIDE Category | Web3 / Settlement Threat | Mitigation |
+|:---|:---|:---|
+| **Spoofing** | Falsifying on-chain transaction hashes | Web3 driver verification, transaction hash & block binding to SHA-256 audit ledger |
+| **Tampering** | Reentrancy attack to drain contract funds | OpenZeppelin `ReentrancyGuard` (`nonReentrant`), Checks-Effects-Interactions |
+| **Repudiation** | Denying on-chain quarantine or token claim | On-chain EVM event logs (`NodeQuarantined`, `IncentivesDistributed`), block hash verification |
+| **Information Disclosure** | Exposing internal bank account numbers on-chain | Public key/wallet address pseudonymity; only EVM addresses and basis points recorded |
+| **Denial of Service** | Gas exhaustion or tx spamming | Batch payout distribution (`distributeIncentives`), 18-decimal wei fixed math |
+| **Elevation of Privilege** | Bypassing quarantine to claim token payouts | On-chain mapping check (`quarantinedNodes[bank]`), owner-only quarantine authorization |
+
+---
+
+## 15. Zero-Inbound Port Egress Topology & Standalone Bank Client Daemon Threat Surface
+
+The `cfi-bank-client` daemon introduces a zero-inbound port topology to satisfy financial network perimeter security requirements:
+
+### 15.1 Inbound Network Intrusion Defense (Spoofing & Elevation of Privilege)
+* **Threat**: Attacker attempts to initiate unsolicited inbound gRPC/REST connections to a participating bank's internal network zone.
+* **Mitigations**:
+  * **Zero-Inbound Port Architecture**: The daemon (`cfi-bank-client`) establishes outbound-only mTLS streaming channels to the central coordinator on port 50051. Banking firewalls enforce strict inbound DENY ALL rules into enclave/database subnet zones.
+
+### 15.2 Checkpoint & Local Gradient Storage Tampering (Tampering & Information Disclosure)
+* **Threat**: Local attacker with host-level access to the bank client container attempts to inspect or corrupt unencrypted PyTorch model checkpoints, gradients, or session tokens.
+* **Mitigations**:
+  * **Encrypted Local Vault Storage (`local_vault.py`)**: All local checkpoints, gradients, and session credentials are encrypted at rest using AES-256-GCM with PBKDF2 key derivation (100,000 iterations) inside the enclave (`LocalVault`).
+
+### 15.3 Connection Loss & Stream Flooding (Denial of Service)
+* **Threat**: Rapid network disconnects trigger unbounded reconnection attempts, overwhelming client CPU or network gateways.
+* **Mitigations**:
+  * **Exponential Backoff Reconnector (`ExponentialBackoffReconnector`)**: Implements randomized exponential backoff with full jitter to gracefully recover gRPC channels without losing local checkpoint state.
+
+| STRIDE Category | Bank Client Daemon Threat | Mitigation |
+|:---|:---|:---|
+| **Spoofing** | Unsolicited inbound intrusion to bank database | Zero-inbound port egress-only mTLS architecture |
+| **Tampering** | Unencrypted checkpoint modification on disk | Encrypted `LocalVault` (AES-256 PBKDF2) |
+| **Repudiation** | Unauthenticated daemon stream initiation | Mutual TLS (mTLS) with client certificate verification |
+| **Information Disclosure** | Leakage of local gradient states on disk | Encrypted `LocalVault` storage |
+| **Denial of Service** | Reconnection storm on central coordinator | Exponential backoff reconnector with full jitter |
+| **Elevation of Privilege** | Container escape to host network | Outbound-only non-root daemon container isolation |
+
+
 
 

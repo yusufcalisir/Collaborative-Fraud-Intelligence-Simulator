@@ -159,6 +159,7 @@ To provide real-time transaction screening and investigation capabilities:
 8.  **Evidence Registry & Hashing:** Integrates a case evidence registry compiling KYC profiles, document references, and ledger proofs, validated with SHA-256 content hashes to establish chain-of-custody.
 9.  **Supervisor Dual-Authorization (Four-Eyes Principle):** Enforces a multi-signature supervisor signature verification check to validate and approve all final case closure status changes.
 10. **Investigator Role Activity Audits:** Logs analyst session durations, case accesses, entity views, and cross-bank search queries in an immutable compliance audit trail.
+11. **Web3 & CBDC Smart Contract Incentive Settlement:** Replaces virtual clearing house estimates with programmatic, automated EVM smart contract token disbursements (`wCBDC`, `USDC`, `e-TRY`) on `ConsortiumIncentiveSettlement.sol` based on Leave-One-Out (LOO) Shapley basis points, while executing on-chain quarantine locks (`BLOCKED_QUARANTINE`) for free-riders and poisoners.
 
 #### 🧬 Diffie-Hellman Private Set Intersection (DH-PSI) & Fuzzy Matching (LSH)
 
@@ -228,6 +229,14 @@ To bring the platform closer to production ML operations standards:
 6.  **True Multi-Tenancy & Cryptographic Key Isolation (KMS/HSM):** Physical database-per-tenant isolation assigns each bank its own SQLite/PostgreSQL instance (`cfi_bank_a.db`, `cfi_bank_b.db`, `cfi_bank_c.db`) with zero cross-tenant query access.  A simulated KMS/HSM vault (`storage/{bank_id}/kms/`) manages per-tenant HMAC keys, DH-PSI private exponents, and secure aggregation mask seeds.  Local model checkpoints are persisted in isolated vaults (`storage/{bank_id}/model_vault/`), and application logs are routed to tenant-specific files (`storage/logs/{bank_id}.log`).  The `active_tenant` context variable and FastAPI middleware automate tenant routing for all downstream operations.
 7.  **Dynamic Policy & Rule Engine Integration (DSL/Drools):** A declarative JSON-based AST condition evaluator recursive parser supports logical and comparison constraints over transaction contexts. Risk analysts register, toggle active state, and hot-reload rules in real time via database-backed registries. Integrates into the `/predict` gateway routing to yield `BLOCK_TRANSACTION` actions immediately if matched.
 8.  **Advanced Privacy Defense & Attack Benchmarking (Bulyan, Leakage Audits, MIA/Model Inversion/DLG Evaluators):** Integrates coordinate-wise Trimmed Mean and multi-attacker Bulyan robust aggregation algorithms to neutralize colluding Byzantine nodes. Adds active privacy audit suites evaluating Membership Inference, Model Inversion, and Deep Leakage from Gradients (DLG) via Pearson correlation, coupled with a multi-simulation enterprise privacy budget log with automated epsilon limit triggers.
+
+### Standalone Bank Client Node Architecture (Zero-Inbound Port Topology)
+
+To satisfy strict financial network boundary compliance (banking firewall rules prohibiting inbound traffic into internal database zones):
+1. **Outbound-Only mTLS Connection (`cfi-bank-client`):** Participating bank nodes run a containerized standalone client daemon (`cfi-bank-client`). The daemon initiates outbound-only gRPC/REST connections to the central FL coordinator on port 50051 using mutual TLS (X.509 client certificates).
+2. **Encrypted Local Vault Storage (`local_vault.py`):** Checkpoints, session tokens, and local PyTorch gradient states are stored locally in an AES-256 PBKDF2-derived encrypted vault (`LocalVault`) inside each bank's enclave.
+3. **Resilient Reconnector:** Employs an exponential backoff reconnector (`ExponentialBackoffReconnector`) with full jitter to automatically restore gRPC streaming channels during network disruptions without losing local checkpoint state.
+4. **Hardware Acceleration:** Auto-detects available PyTorch hardware acceleration (`CUDA`, Apple Silicon `MPS`, or `CPU`) for local bank model training routines.
 
 
 #### 🔍 The 9-Signal Risk Evaluation Pipeline
@@ -404,6 +413,12 @@ To meet enterprise banking compliance standards (ISO 27001, SOC2, PCI-DSS), the 
    - **Dynamic ABAC Engine**: Enforces tenant isolation, shift hour restrictions (`08:00-18:00`), and approval tier limits ($\$50,000$).
    - **Tamper-Proof Audit Chain**: Hashes all system events using cryptographic SHA-256 chain linking ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with automated integrity verification.
 
+5. **Standalone Bank Client Daemon Architecture (`cfi-bank-client`)**:
+   - **Zero-Inbound Port Topology**: Initiates outbound-only mTLS connections to coordinator port `50051` via gRPC streaming (`daemon.py`), keeping zero open listening ports on the bank's internal subnet.
+   - **Encrypted Local Storage Vault (`local_vault.py`)**: Persists session tokens, local gradient states, and round checkpoints using AES-256 Fernet encryption (`PBKDF2HMAC`).
+   - **Exponential Backoff Reconnector (`reconnector.py`)**: Manages long-lived outbound gRPC connection loops with randomized full jitter.
+   - **Hardware Acceleration Auto-Detection (`hardware.py`)**: Automatically detects CUDA GPUs (NVIDIA) and Apple Silicon MPS, falling back gracefully to multi-core CPU threads.
+
 | **FHE CKKS Aggregator** | Homomorphic parameter summation over ciphertexts:<br/>$\sum (c_i \cdot w_i)$ without decryption. | Prevents the central aggregator from ever<br/>viewing plaintext client parameters. | Zero-plaintext exposure during aggregation |
 | **TEE Hardware Enclave** | Inside-enclave summation, remote attestation<br/>measurements, and AES-GCM data sealing. | Guarantees code integrity and execution context<br/>matching SGX/Nitro specifications. | MRENCLAVE/MRSIGNER code signature validation |
 
@@ -462,29 +477,15 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── entity_resolution.py # Matches cross-bank users deterministically via HMACs and fuzzily via MinHash LSH signatures stored in entity attributes; resolve_fuzzy_entities() for probabilistic cross-bank matching
 │   │   │       ├── explainability_service.py # SHAP attribution, Counterfactual remediation engine, Deterministic Decision Replay, and GNNExplainer attribution
 
-│   │   │       ├── financial_message_parser.py # Normalizes ISO 20022, SWIFT MT103, and SEPA credit transfers
-│   │   │       ├── fl_engine.py     # Custom FedAvg simulator (latent simulation, secure aggregation, client dropout)
-│   │   │       ├── flower_engine.py # Flower framework adapter service using Ray simulation backend
-│   │   │       ├── graph_analytics_service.py # PageRank risk propagation, community analytics, and temporal velocity metrics (Cypher/Neo4j-aware)
-│   │   │       ├── graph_embedding_model.py # GraphSAGE neural network model definition (PyTorch)
-│   │   │       ├── graph_embedding_service.py # GNN training orchestration, embedding cache, and similarity index
-│   │   │       ├── graph_engine.py  # Assembles node-link models for React Flow; executes Cypher queries on Neo4j/Memgraph
-
-│   │   │       ├── metrics_service.py # Calculations for F1, Accuracy, Precision, and Recall improvements
-│   │   │       ├── psi_service.py   # Zero-knowledge Diffie-Hellman Private Set Intersection (DH-PSI)
-│   │   │       ├── kms_service.py   # Per-tenant KMS/HSM key vault simulator (HMAC, PSI, SecAgg seeds)
-│   │   │       ├── model_registry.py # Versioned model registry: save, list, rollback, manifest
-│   │   │       ├── model_service.py # PyTorch MLP creation, training loops, evaluation
-│   │   │       ├── policy_engine.py # Declarative JSON AST business policy rules interpreter
-│   │   │       ├── privacy_service.py # Differential privacy noise, gradient clipping, budgets
-│   │   │       ├── regulatory_reporter.py # Compiles regulatory FinCEN SAR XML reports
-│   │   │       ├── risk_engine.py   # Computes composite risk scores via 9-signal pipeline
-│   │   │       ├── scenario_service.py # Scripted transaction AML scenarios loader
-│   │   │       ├── simulation_service.py # Orchestrates local training, FL loops, canary evaluation, comparisons
-│   │   │       ├── streaming_gnn_model.py # Graph Attention Network (GAT) model with online learning updates
-│   │   │       ├── streaming_graph_service.py # Sliding-window transaction graph stream and features
-│   │   │       └── streaming_engine.py # Event emitter for scenario replay
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
+│   │   │   ├── client_daemon/    # Standalone bank client daemon (cfi-bank-client)
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── config.py     # ClientDaemonConfig (mTLS, backoff, vault path)
+│   │   │   │   ├── daemon.py     # BankClientDaemon execution engine & event loop
+│   │   │   │   ├── hardware.py   # Hardware acceleration detector (CUDA / MPS / CPU fallback)
+│   │   │   │   └── reconnector.py # Exponential backoff with full jitter for outbound gRPC
+│   │   │   ├── storage/          # Encrypted local storage vault
+│   │   │   │   └── local_vault.py # LocalVault AES-256 Fernet encrypted checkpoint & token store
 │   │   │   ├── grpc/             # High-Performance Bidirectional Streaming gRPC Transport Layer over HTTP/2
 │   │   │   │   ├── proto/
 │   │   │   │   │   └── fl_service.proto # Protocol Buffers specification for client registration, heartbeat streaming, parameter aggregation, and model downloading
@@ -556,6 +557,35 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_explainability_api.py # Verifies alert-id and transaction-id explain endpoints
 │   │   │   ├── test_graph_analytics_api.py # Asserts PSI, risk propagation, and temporal anomaly routes
 │   │   │   └── test_simulation_integration.py # Exercises multi-round federated training with DP
+│   │   ├── unit/                 # Domain, algorithm, and service unit tests
+│   │   │   ├── test_bank_client_daemon.py # Unit tests for cfi-bank-client daemon, LocalVault, hardware detector & backoff reconnector
+│   │   │   ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
+│   │   │   ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
+│   │   │   ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks
+│   │   │   ├── test_event_driven_fl.py # Asserts event-driven Redis pub/sub training rounds
+│   │   │   ├── test_explainability_service.py # Verifies SHAP kernel value estimation and fallback heuristic rules
+│   │   │   ├── test_fl_engine.py # Tests secure aggregation, Byzantine robust Krum/Median defense
+│   │   │   ├── test_flower_engine.py # Exercises Flower NumPyClient with standard vs Opacus DP modes
+│   │   │   ├── test_graph_analytics.py # Asserts risk propagation decay and community metrics
+│   │   │   ├── test_graph_embedding.py # Verifies GraphSAGE forward pass, loss, parameter aggregation, and similarity search
+│   │   │   ├── test_metrics_service.py # Asserts correctness of evaluation metrics serialization
+│   │   │   ├── test_model_registry.py # Validates model saving, versioning, promotion, and canary
+│   │   │   ├── test_model_service.py # Validates forward pass shape, loss decrements, parameter roundtrips
+│   │   │   ├── test_opacus_integration.py # Asserts standard model fails DP check while Opacus passes
+│   │   │   ├── test_policy_engine.py  # Tests recursive AST condition parsing, DB storage, and gateway blocking
+│   │   │   ├── test_predict.py        # Validates real-time serving inference, risk mapping, and alerts creation
+│   │   │   ├── test_privacy_service.py # Tests Differential Privacy noise and budget accountant
+│   │   │   ├── test_property_based.py # Property-based tests verifying core mathematical invariants
+│   │   │   ├── test_multi_tenancy.py  # Tests DB-per-tenant isolation, KMS key vaults, model vaults, logging
+│   │   │   ├── test_model_governance.py # Tests shadow deployment, canary promotion, automatic rollback
+│   │   │   ├── test_enterprise_security_suite.py # Tests mTLS, OIDC, ABAC, Vault, and SHA-256 audit chain
+│   │   │   ├── test_drift_and_monitoring.py # Tests Kolmogorov-Smirnov test, PSI, Brier score, and Alertmanager
+│   │   │   ├── test_psi_service.py    # Tests zero-knowledge DH-PSI commutative matching
+│   │   │   ├── test_coordinator_service.py # Validates dynamic registration, heartbeat timeout, and parameter negotiation
+│   │   │   ├── test_fuzzy_psi.py      # Tests standardization, MinHash LSH, and Fuzzy PSI thresholds
+│   │   │   ├── test_web3_settlement.py # Tests Web3 smart contract settlement driver and LOO Shapley payouts
+│   │   │   ├── test_vault_pki_mtls.py # Tests HashiCorp Vault PKI Secrets Engine cert issuance, rotation, and CRL revocation
+│   │   │   ├── test_bank_connectors.py # Tests BaseBankConnector, Streaming, ISO 20022 MX/SWIFT MT103, Batch EOD, and REST webhooks │   └── test_simulation_integration.py # Exercises multi-round federated training with DP
 │   │   ├── unit/                 # Domain, algorithm, and service unit tests
 │   │   │   ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
 │   │   │   ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
@@ -800,6 +830,49 @@ open http://localhost:3001
 # Login: admin / admin
 ```
 
+***
+
+## Clean Architecture Directory Structure
+
+```
+Collaborative-Fraud-Intelligence-Simulator/
+├── backend/
+│   ├── app/
+│   │   ├── domain/               # Domain Entities, Interfaces, Value Objects
+│   │   │   ├── entities/         # Transaction, BankNode, Alert, Case, SAR
+│   │   │   ├── interfaces/       # Repository & Service Port Protocols
+│   │   │   └── value_objects/    # RiskScore, EncryptionKey, EpsilonBudget
+│   │   ├── application/          # Use Cases, DTOs, Application Services
+│   │   │   ├── schemas/          # Pydantic Schemas & DTO Validation
+│   │   │   └── use_cases/        # Simulation, FL Engine, Alert, Graph Use Cases
+│   │   ├── infrastructure/       # External Adapters, Persistence, Security
+│   │   │   ├── client_daemon/    # Standalone Bank Client Daemon (cfi-bank-client)
+│   │   │   │   ├── daemon.py     # Outbound gRPC Event Loop & Lifecycle
+│   │   │   │   ├── config.py     # Daemon & Vault Configuration Schema
+│   │   │   │   ├── hardware.py   # CUDA / MPS / CPU Accelerator Detector
+│   │   │   │   └── reconnector.py# Exponential Backoff Outbound Reconnector
+│   │   │   ├── storage/          # Encrypted Vault & Persistence Adapters
+│   │   │   │   └── local_vault.py# AES-256 Encrypted Local Storage Vault
+│   │   │   ├── security/         # DH-PSI, KMS, Smart Contract Web3 Driver
+│   │   │   ├── ml/               # PyTorch MLP, FedGNN, Opacus, SHAP Engine
+│   │   │   └── database/         # PostgreSQL, CockroachDB & SQLite Models
+│   │   └── presentation/         # API Gateways, Routers, WebSockets
+│   │       ├── routers/          # FastAPI Routers (simulations, alerts, etc.)
+│   │       └── gateway.py        # Gateway Rate-Limiting & Security Middleware
+│   └── tests/
+│       ├── unit/                 # Domain & Application Unit Tests
+│       └── integration/          # Microservices & API Integration Tests
+├── contracts/                    # Solidity Smart Contracts (Web3 / CBDC Settlement)
+│   └── ConsortiumIncentiveSettlement.sol
+├── frontend/                     # React 19 Glassmorphic Dashboard (TypeScript + Vite)
+│   ├── src/
+│   │   ├── components/           # UI Components (FL, AML, Web3, Graph, Analytics)
+│   │   └── services/             # API Client & WebSocket Event Dispatcher
+└── docs/                         # Architecture, System Design & Threat Models
+```
+
+***
+
 ## Configuration Options
 
 When initializing a simulation run, the platform exposes fine-grained parameters to customize model performance and security strength:
@@ -890,6 +963,13 @@ When initializing a simulation run, the platform exposes fine-grained parameters
 *   `POST /api/v1/graph/embeddings/propagate-risk` - Propagates risk along graph edges weighted by GNN embedding similarities.
 *   `POST /api/v1/graph/embeddings/clusters` - Clusters entities by GNN embedding similarity to identify unconnected fraud rings.
 *   `GET /api/v1/graph/embeddings/stats` - Returns statistics about the trained embedding space.
+
+### Phase 6: Web3 & CBDC Smart Contract Incentive Settlement
+
+*   `GET /api/v1/settlement/contract-info` - Returns metadata, deployment addresses, and ABI for the `ConsortiumIncentiveSettlement.sol` smart contract.
+*   `GET /api/v1/settlement/history` - Retrieves the execution log of all processed on-chain token settlement receipts.
+*   `POST /api/v1/settlement/trigger` - Triggers automated smart contract token disbursements (`wCBDC`, `USDC`, `e-TRY`) based on Leave-One-Out (LOO) Shapley basis points and quarantine locks.
+
 
 ### Sample API Payloads
 
