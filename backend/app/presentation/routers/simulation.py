@@ -226,6 +226,11 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
             poisoning_scale=config.get("poisoning_scale", 5.0),
             hardware_isolation_mode=config.get("hardware_isolation_mode", "none"),
             enable_streaming_gnn=config.get("enable_streaming_gnn", False),
+            enable_web3_settlement=config.get("enable_web3_settlement", False),
+            settlement_currency=config.get("settlement_currency", "wCBDC"),
+            smart_contract_address=config.get(
+                "smart_contract_address", "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+            ),
         ),
         current_round=sim.get("current_round", 0),
         total_rounds=sim.get("total_rounds", 10),
@@ -246,6 +251,10 @@ async def get_simulation(simulation_id: str) -> SimulationDetailResponse:
         streaming_gnn_node_count=sim.get("streaming_gnn_node_count", 0),
         streaming_gnn_edge_count=sim.get("streaming_gnn_edge_count", 0),
         streaming_gnn_loss_history=sim.get("streaming_gnn_loss_history", []),
+        settlement_tx_hash=sim.get("settlement_tx_hash"),
+        settlement_block_number=sim.get("settlement_block_number"),
+        settlement_status=sim.get("settlement_status"),
+        on_chain_payouts=sim.get("on_chain_payouts", []),
     )
 
 
@@ -409,6 +418,10 @@ def _run_simulation_in_process(simulation_id: str, config_dict: dict) -> None:
             "streaming_gnn_node_count": simulation.streaming_gnn_node_count,
             "streaming_gnn_edge_count": simulation.streaming_gnn_edge_count,
             "streaming_gnn_loss_history": simulation.streaming_gnn_loss_history,
+            "settlement_tx_hash": simulation.settlement_tx_hash,
+            "settlement_block_number": simulation.settlement_block_number,
+            "settlement_status": simulation.settlement_status,
+            "on_chain_payouts": simulation.on_chain_payouts,
         }
 
         for bank in simulation.banks:

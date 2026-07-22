@@ -161,3 +161,8 @@ class SimulationConfig:
 
     # Real-Time Streaming GNN Settings
     enable_streaming_gnn: bool = False
+
+    # Web3 & CBDC Smart Contract Incentive Settlement
+    enable_web3_settlement: bool = False
+    settlement_currency: str = "wCBDC"
+    smart_contract_address: str = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"

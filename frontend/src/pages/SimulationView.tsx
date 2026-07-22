@@ -19,6 +19,7 @@ import ComplianceReportPanel from '../components/dashboard/ComplianceReportPanel
 import { IncentiveRegistryPanel } from '../components/dashboard/IncentiveRegistryPanel';
 import { SecureHardwarePanel } from '../components/dashboard/SecureHardwarePanel';
 import StreamingGNNPanel from '../components/dashboard/StreamingGNNPanel';
+import { Web3SettlementPanel } from '../components/dashboard/Web3SettlementPanel';
 
 
 export default function SimulationView() {
@@ -217,6 +218,15 @@ export default function SimulationView() {
             <MetricsRadar banks={banks} />
             <ComplianceReportPanel simulationId={simulation.id} banks={banks} />
             <IncentiveRegistryPanel banks={banks} />
+            <Web3SettlementPanel
+              enableWeb3Settlement={simulation.config.enable_web3_settlement}
+              settlementCurrency={simulation.config.settlement_currency}
+              smartContractAddress={simulation.config.smart_contract_address}
+              settlementTxHash={simulation.settlement_tx_hash}
+              settlementBlockNumber={simulation.settlement_block_number}
+              settlementStatus={simulation.settlement_status}
+              onChainPayouts={simulation.on_chain_payouts}
+            />
             <SecureHardwarePanel simulation={simulation} />
             <StreamingGNNPanel simulation={simulation} />
 

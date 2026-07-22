@@ -34,6 +34,11 @@ export interface SimulationConfig {
   // Hardware & Cryptographic Isolation
   hardware_isolation_mode?: 'none' | 'tee' | 'fhe';
   enable_streaming_gnn?: boolean;
+
+  // Web3 & CBDC Smart Contract Settlement
+  enable_web3_settlement?: boolean;
+  settlement_currency?: string;
+  smart_contract_address?: string;
 }
 
 export interface EvaluationMetrics {
@@ -232,6 +237,24 @@ export interface SimulationDetail {
   streaming_gnn_node_count?: number;
   streaming_gnn_edge_count?: number;
   streaming_gnn_loss_history?: number[];
+
+  // Web3 & CBDC Settlement Telemetry
+  settlement_tx_hash?: string | null;
+  settlement_block_number?: number | null;
+  settlement_status?: string | null;
+  on_chain_payouts?: OnChainPayout[];
+}
+
+export interface OnChainPayout {
+  bank_name: string;
+  wallet_address: string;
+  shapley_score: number;
+  shapley_basis_points: number;
+  share_percent: number;
+  payout_usd: number;
+  payout_wei: string;
+  is_quarantined: boolean;
+  status: 'DISTRIBUTED' | 'BLOCKED_QUARANTINE';
 }
 
 export interface SimulationCreateResponse {

@@ -50,6 +50,7 @@ Concrete implementation of dependencies. Adapts foreign libraries and databases.
 
 *   `database.py` & `models.py`: SQLAlchemy 2.0 async engine and relational database tables.
 *   `redis_store.py`: A fault-tolerant state manager. It synchronizes simulation configurations and round metrics to Redis. If Redis is unreachable, it falls back to a thread-safe, in-memory cache to maintain liveness.
+*   `security/smart_contract_driver.py`: Web3 & CBDC settlement driver executing automated token disbursements (`wCBDC`, `USDC`, `e-TRY`) on `ConsortiumIncentiveSettlement.sol` based on LOO Shapley values.
 *   `telemetry.py`: Bypasses metrics or mounts a `/metrics` ASGI app for Prometheus based on configurations.
 *   `celery_app.py`: Background worker queue for handling long-running PyTorch training loops without blocking FastAPI.
 

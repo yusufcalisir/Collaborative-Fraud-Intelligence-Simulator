@@ -38,6 +38,7 @@ from app.presentation.routers import (
     rules,
     scenarios,
     security,
+    settlement,
     simulation,
     training,
 )
@@ -384,6 +385,7 @@ elif service_name == "fl-coordinator":
     app.include_router(training_ws.router)
     app.include_router(coordinator.router)
     app.include_router(privacy_defense.router)
+    app.include_router(settlement.router)
 
 elif service_name == "identity-graph":
     app.include_router(health.router)
@@ -434,6 +436,7 @@ else:
     app.include_router(monitoring.router)
     app.include_router(coordinator.router)
     app.include_router(privacy_defense.router)
+    app.include_router(settlement.router)
 
 
 @app.get("/", tags=["root"])

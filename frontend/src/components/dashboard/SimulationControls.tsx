@@ -389,6 +389,41 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
               </div>
             </div>
 
+            {/* Web3 & CBDC Smart Contract Incentive Settlement */}
+            <div>
+              <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+                Web3 & CBDC Smart Contract Settlement
+              </h4>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.enable_web3_settlement || false}
+                    onChange={(e) => updateConfig('enable_web3_settlement', e.target.checked)}
+                    className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-accent-indigo)] focus:ring-[var(--color-accent-indigo)]"
+                  />
+                  <span className="text-xs text-[var(--color-text-secondary)]">Enable Automated On-Chain Settlement</span>
+                </label>
+                {config.enable_web3_settlement && (
+                  <div>
+                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">Settlement Asset / Token</label>
+                    <select
+                      value={config.settlement_currency || 'wCBDC'}
+                      onChange={(e) => updateConfig('settlement_currency', e.target.value)}
+                      className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-indigo)] transition-colors"
+                    >
+                      <option value="wCBDC">Wholesale CBDC (Central Bank Digital Currency)</option>
+                      <option value="USDC">USDC (Fiat-Backed Stablecoin)</option>
+                      <option value="e-TRY">Digital Lira (e-TRY CBDC Testnet)</option>
+                    </select>
+                    <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+                      Disburses token payouts automatically to consortium bank wallets upon simulation completion based on LOO Shapley scores.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Data Volume */}
             <div>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">

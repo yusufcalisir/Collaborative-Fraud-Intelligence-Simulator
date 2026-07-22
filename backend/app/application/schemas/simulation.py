@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -105,6 +106,18 @@ class SimulationConfigRequest(BaseModel):
         default=False,
         description="Enable real-time streaming GNN (Graph Attention Network) online training",
     )
+    enable_web3_settlement: bool = Field(
+        default=False,
+        description="Enable Web3 & CBDC Smart Contract automated incentive settlement",
+    )
+    settlement_currency: str = Field(
+        default="wCBDC",
+        description="Settlement currency: wCBDC, USDC, or e-TRY",
+    )
+    smart_contract_address: str = Field(
+        default="0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+        description="Deployed Consortium Settlement Smart Contract Address",
+    )
 
 
 class SimulationSummaryResponse(BaseModel):
@@ -149,6 +162,12 @@ class SimulationDetailResponse(BaseModel):
     streaming_gnn_node_count: int = 0
     streaming_gnn_edge_count: int = 0
     streaming_gnn_loss_history: list[float] = []
+
+    # Web3 & CBDC Settlement Telemetry
+    settlement_tx_hash: str | None = None
+    settlement_block_number: int | None = None
+    settlement_status: str | None = None
+    on_chain_payouts: list[dict[str, Any]] = []
 
 
 class SimulationCreateResponse(BaseModel):

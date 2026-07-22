@@ -359,6 +359,28 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Federated Fairness Auditing** | Safe sum aggregation of local counts to compute<br/>global Disparate Impact & EO recall deltas. | Enterprise-grade bias audit reporting<br/>gated for EU AI Act compliance. | Decentralized count-based<br/>privacy audit |
 | **Federated Shapley Value (SV)** | Leave-One-Out (LOO) model aggregation and<br/>validation F1 evaluation on global data. | Quantifies marginal utility contribution<br/>of each node to global model. | Fair data contribution auditing |
 | **Free-Rider & Poisoning Quarantine** | Variance update checks (variance < $10^{-6}$)<br/>and Shapley score gating (SV $\le -0.05$). | Isolates/quarantines malicious or<br/>free-rider nodes from rounds. | Automated outlier isolation<br/>and network defense |
+| **Web3 & CBDC Smart Contract Settlement** | EVM Solidity contract (`ConsortiumIncentiveSettlement.sol`) executing automated token payouts (`wCBDC`, `USDC`, `e-TRY`) based on LOO Shapley basis points. | Replaces virtual clearing house estimates with programmatic on-chain token transfers while enforcing quarantine locks on free-riders/poisoners. | ReentrancyGuard protected, 18-decimal wei precision, SHA-256 audit ledger binding |
+
+---
+
+### 🌐 Web3 & CBDC Smart Contract Incentive Settlement Pipeline
+
+To solve the financial settlement bottleneck in inter-bank federated learning consortia, the simulator integrates a production-grade Web3 / Central Bank Digital Currency (CBDC) smart contract execution engine:
+
+1. **Automated On-Chain Payouts (`ConsortiumIncentiveSettlement.sol`)**:
+   - Deployed on EVM-compatible networks (e.g. Sepolia testnet or private Hyperledger Fabric / Besu instances).
+   - Translates marginal contribution scores ($SV_i$) calculated via Leave-One-Out (LOO) evaluation into basis points (`bps`), programmatically disbursing tokenized assets (Wholesale CBDC `wCBDC`, Fiat-Backed `USDC`, or Digital Lira `e-TRY`) to verified bank wallets.
+
+2. **Adversarial Node Quarantine Enforcement**:
+   - If a participant bank is flagged for model poisoning ($SV_i \le -0.05$) or free-riding (update variance $< 10^{-6}$), the coordinator invokes `setNodeQuarantine()`.
+   - The contract locks the node's wallet on-chain, preventing token release and marking its payout status as `BLOCKED_QUARANTINE`.
+
+3. **Tamper-Proof Audit Chain Linkage (`smart_contract_driver.py`)**:
+   - The Python Web3 singleton driver extracts deterministic transaction hashes (`settlement_tx_hash`) and block numbers (`settlement_block_number`), binding them directly into the signed SHA-256 immutable audit ledger (`immutable_audit_chain.py`).
+
+4. **Real-Time Glassmorphic Telemetry Panel (`Web3SettlementPanel.tsx`)**:
+   - Displays real-time on-chain transaction hashes, block height confirmation badges, asset type selectors, and per-bank payout tables within the interactive simulation dashboard.
+
 | **FHE CKKS Aggregator** | Homomorphic parameter summation over ciphertexts:<br/>$\sum (c_i \cdot w_i)$ without decryption. | Prevents the central aggregator from ever<br/>viewing plaintext client parameters. | Zero-plaintext exposure during aggregation |
 | **TEE Hardware Enclave** | Inside-enclave summation, remote attestation<br/>measurements, and AES-GCM data sealing. | Guarantees code integrity and execution context<br/>matching SGX/Nitro specifications. | MRENCLAVE/MRSIGNER code signature validation |
 

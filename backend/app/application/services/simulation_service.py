@@ -1230,6 +1230,47 @@ class SimulationService:
                     },
                 )
                 logger.info("Immutable ledger log created for consortium incentive payout.")
+
+                # Trigger Smart Contract Web3 / CBDC Settlement if enabled
+                if getattr(config, "enable_web3_settlement", False):
+                    try:
+                        from app.infrastructure.security.smart_contract_driver import (
+                            SmartContractSettlementDriver,
+                        )
+
+                        audit_proof_hash = audit_chain.get_chain_proof_hash()
+                        sc_driver = SmartContractSettlementDriver.get_instance()
+                        settlement_receipt = sc_driver.settle_incentives(
+                            epoch_id=simulation.id,
+                            contributions={b.name: b.contribution_score for b in banks},
+                            quarantine_statuses={b.name: b.quarantined for b in banks},
+                            audit_proof_hash=audit_proof_hash,
+                            currency=getattr(config, "settlement_currency", "wCBDC"),
+                        )
+
+                        simulation.settlement_tx_hash = settlement_receipt["transaction_hash"]
+                        simulation.settlement_block_number = settlement_receipt["block_number"]
+                        simulation.settlement_status = settlement_receipt["status"]
+                        simulation.on_chain_payouts = settlement_receipt["payouts"]
+
+                        # Log Web3 settlement event back to the audit chain
+                        audit_chain.append_event(
+                            event_type="web3_smart_contract_settlement",
+                            actor="smart_contract",
+                            target_id=simulation.id,
+                            details={
+                                "tx_hash": settlement_receipt["transaction_hash"],
+                                "block_number": settlement_receipt["block_number"],
+                                "currency": settlement_receipt["currency"],
+                                "total_distributed_usd": settlement_receipt["total_distributed_usd"],
+                            },
+                        )
+                        logger.info(
+                            "Web3 Smart Contract settlement complete. Tx: %s",
+                            settlement_receipt["transaction_hash"],
+                        )
+                    except Exception as sc_err:
+                        logger.error("Smart Contract settlement failed: %s", sc_err)
             except Exception as e:
                 logger.warning("Failed to log consortium incentive to audit chain: %s", e)
 

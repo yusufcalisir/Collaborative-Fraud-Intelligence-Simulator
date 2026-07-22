@@ -82,6 +82,12 @@ class SimulationRun:
     streaming_gnn_edge_count: int = 0
     streaming_gnn_loss_history: list[float] = field(default_factory=list)
 
+    # Web3 & CBDC Smart Contract Settlement
+    settlement_tx_hash: str | None = None
+    settlement_block_number: int | None = None
+    settlement_status: str | None = None
+    on_chain_payouts: list[dict[str, Any]] = field(default_factory=list)
+
     @property
     def duration_seconds(self) -> float | None:
         """Wall-clock duration of the simulation."""
