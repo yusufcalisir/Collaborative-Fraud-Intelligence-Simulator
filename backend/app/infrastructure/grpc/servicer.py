@@ -36,7 +36,9 @@ class FederatedLearningServicer:
         }
         self.current_round: int = 1
 
-    async def RegisterClient(self, request: ClientRegisterRequest) -> ClientRegisterResponse:
+    async def RegisterClient(  # noqa: N802
+        self, request: ClientRegisterRequest
+    ) -> ClientRegisterResponse:
         """RPC 1: Register client node, validate certificate fingerprint, and issue session token."""
         logger.info(
             "gRPC RegisterClient request from bank_id=%s, bank_name=%s",
@@ -61,7 +63,7 @@ class FederatedLearningServicer:
             is_accepted=True,
         )
 
-    async def Heartbeat(
+    async def Heartbeat(  # noqa: N802
         self, request_iterator: AsyncIterable[ClientHeartbeat]
     ) -> AsyncIterable[CoordinatorStatus]:
         """RPC 2: Bidirectional streaming heartbeat monitoring node utilization and returning commands."""
@@ -86,7 +88,7 @@ class FederatedLearningServicer:
                 global_model_version=f"v{self.current_round}.0",
             )
 
-    async def StreamModelParameters(
+    async def StreamModelParameters(  # noqa: N802
         self, request_iterator: AsyncIterable[ParameterChunk]
     ) -> AggregationAck:
         """RPC 3: Client-streaming chunked model parameters upload."""
@@ -116,7 +118,7 @@ class FederatedLearningServicer:
             status_message=f"Successfully aggregated {len(chunks)} chunks ({len(full_payload)} bytes) for round {round_id}",
         )
 
-    async def DownloadGlobalModel(
+    async def DownloadGlobalModel(  # noqa: N802
         self, request: ModelDownloadRequest
     ) -> AsyncIterable[ModelChunk]:
         """RPC 4: Server-streaming chunked global model download."""
