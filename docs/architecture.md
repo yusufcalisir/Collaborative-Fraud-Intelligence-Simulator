@@ -147,7 +147,21 @@ Model retraining is decoupled from manual tick loops into an automated, asynchro
 
 ---
 
-## 5. Technology Stack & Directory Structure
+## 5. Cryptographic Parameter Exchange Pipeline
+
+The parameter exchange pipeline (`backend/app/infrastructure/security/secure_parameter_pipeline.py`) enforces a 7-step cryptographic transmission sequence to protect local model updates against gradient inversion attacks, model poisoning, and network interception:
+
+1. **Gradient Calculation ($\Delta w$)**: Computes parameter deltas relative to current global model weights.
+2. **Gradient Sparsification & Compression (`compression_engine.py`)**: Applies Top-K sparsification (retaining top K% highest magnitude gradient elements) and Zstandard/zlib lossless payload compression to reduce bandwidth footprint.
+3. **Differential Privacy Injection (`privacy_service.py`)**: Inject calibrated Gaussian noise via Opacus DP-SGD ($\epsilon, \delta$) with clipping bounds.
+4. **Cryptographic Masking (`fhe_driver.py` / SecAgg)**: Applies pairwise zero-sum SecAgg masks or FHE CKKS ciphertext vectors.
+5. **Digital Envelope Signing (`signature_verifier.py`)**: Signs compressed payload using 4096-bit RSA-PSS or Ed25519 private keys (`DigitalEnvelopeSigner`).
+6. **gRPC Delivery over mTLS 1.3 (`fl_service.proto`)**: Streams signed parameter chunks over outbound mutual TLS 1.3 channels to central coordinator.
+7. **Signature Verification & Byzantine Aggregation (`signature_verifier.py`)**: Central coordinator verifies digital signature against Vault PKI public keys (`SignatureVerifier`), rejects tampered payloads, applies Byzantine defense (Krum / Coordinate-wise Median), and aggregates global model weights.
+
+---
+
+## 6. Technology Stack & Directory Structure
 
 ```
 ├── backend/
