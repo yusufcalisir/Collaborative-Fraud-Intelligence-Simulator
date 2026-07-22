@@ -12,6 +12,7 @@ from app.application.interfaces.bank_connector import BankConnectorInterface
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
     from app.domain.value_objects import ModelWeights
 
 

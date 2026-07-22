@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
-from app.application.interfaces.bank_connector import BankConnectorInterface
 from app.infrastructure.connectors.base_connector import BaseBankConnector, NormalizedTransaction
 
 if TYPE_CHECKING:
