@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+
 from app.infrastructure.security.mtls_manager import MTLSManager, X509CertificateInfo
 from app.infrastructure.security.vault_client import VaultClient
 

@@ -6,8 +6,10 @@ from HashiCorp Vault KV v2 secret engine with environment variable fallback.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
@@ -96,7 +98,7 @@ class VaultClient:
         ttl: str = "720h",
     ) -> dict[str, Any]:
         """Issue dynamic X.509 certificate & private key via Vault PKI Secrets Engine.
-        
+
         Endpoint: POST /v1/pki/issue/{role}
         """
         san_str = ",".join(alt_names) if alt_names else f"{common_name},localhost"
@@ -115,9 +117,6 @@ class VaultClient:
             }
 
         try:
-            import urllib.request
-            import json
-
             url = f"{self.vault_url.rstrip('/')}/v1/pki/issue/{role}"
             payload = json.dumps({
                 "common_name": common_name,
@@ -183,9 +182,6 @@ class VaultClient:
             return True
 
         try:
-            import urllib.request
-            import json
-
             url = f"{self.vault_url.rstrip('/')}/v1/pki/revoke"
             payload = json.dumps({"serial_number": serial_number}).encode("utf-8")
             req = urllib.request.Request(
