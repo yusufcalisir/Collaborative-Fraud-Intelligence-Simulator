@@ -1,6 +1,5 @@
 """Unit tests for Web3 & CBDC Smart Contract Incentive Settlement."""
 
-import pytest
 from app.infrastructure.security.smart_contract_driver import (
     SmartContractSettlementDriver,
 )

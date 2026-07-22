@@ -1,6 +1,7 @@
 """Web3 & CBDC Smart Contract Incentive Settlement API Endpoints."""
 
 from typing import Any
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 

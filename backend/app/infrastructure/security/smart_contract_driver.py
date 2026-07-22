@@ -5,9 +5,9 @@ on-chain incentive distributions based on Leave-One-Out (LOO) Federated Shapley 
 Links on-chain payouts directly to ImmutableAuditChain SHA-256 proof hashes.
 """
 
-from datetime import datetime, timezone
 import hashlib
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ class SmartContractSettlementDriver:
             Dict containing transaction receipts, block numbers, and on-chain payout records.
         """
         self.current_block_height += 1
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
 
         # Compute positive sum for proportional distribution
         total_positive_score = sum(score for score in contributions.values() if score > 0)
