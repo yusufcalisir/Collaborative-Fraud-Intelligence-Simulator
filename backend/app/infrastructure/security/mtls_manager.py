@@ -76,9 +76,62 @@ class MTLSManager:
 
         return True, "Certificate valid and verified."
 
-    def revoke_certificate(self, serial_number: str) -> None:
-        """Add certificate serial number to CRL revocation list."""
+    def issue_vault_certificate(
+        self,
+        vault_client: Any | None = None,
+        common_name: str = "bank-a.cfi.internal",
+        sans: list[str] | None = None,
+        ttl: str = "720h",
+    ) -> tuple[X509CertificateInfo, dict[str, Any]]:
+        """Issue X.509 certificate via Vault PKI engine or fallback local PKI manager."""
+        alt_names = sans or [common_name, f"{common_name}.{self.default_domain}", "localhost"]
+
+        if vault_client and getattr(vault_client, "enabled", False):
+            vault_res = vault_client.issue_pki_certificate(
+                role="cfi-bank-role",
+                common_name=common_name,
+                alt_names=alt_names,
+                ttl=ttl,
+            )
+            cert_info = X509CertificateInfo(
+                subject_cn=common_name,
+                issuer_cn=self.ca_cn,
+                serial_number=vault_res.get("serial_number", f"{abs(hash(common_name)):016x}"),
+                valid_from=time.strftime("%Y-%m-%d %H:%M:%SZ", time.gmtime()),
+                valid_until=vault_res.get("expiration", "2027-07-22T00:00:00Z"),
+                sans=alt_names,
+                is_ca=False,
+                revoked=vault_res.get("serial_number") in self.crl_revoked_serials,
+            )
+            return cert_info, vault_res
+
+        cert_info = self.generate_cert_info(cn=common_name, sans=alt_names)
+        raw_bundle = {
+            "certificate": f"-----BEGIN CERTIFICATE-----\nMIIB_LOCAL_CERT_{common_name}\n-----END CERTIFICATE-----",
+            "private_key": f"-----BEGIN RSA PRIVATE KEY-----\nMIIB_LOCAL_KEY_{common_name}\n-----END RSA PRIVATE KEY-----",
+            "issuing_ca": f"-----BEGIN CERTIFICATE-----\nMIIB_{self.ca_cn}_PEM\n-----END CERTIFICATE-----",
+            "serial_number": cert_info.serial_number,
+            "source": "Local Fallback PKI",
+        }
+        return cert_info, raw_bundle
+
+    def rotate_certificates(
+        self,
+        cn: str,
+        sans: list[str] | None = None,
+        vault_client: Any | None = None,
+    ) -> tuple[X509CertificateInfo, dict[str, Any]]:
+        """Perform dynamic zero-downtime certificate rotation for a given common name."""
+        logger.info("Executing automated mTLS certificate rotation for CN=%s", cn)
+        return self.issue_vault_certificate(
+            vault_client=vault_client, common_name=cn, sans=sans, ttl="720h"
+        )
+
+    def revoke_certificate(self, serial_number: str, vault_client: Any | None = None) -> None:
+        """Add certificate serial number to local CRL and notify Vault PKI engine if active."""
         self.crl_revoked_serials.add(serial_number)
+        if vault_client and getattr(vault_client, "enabled", False):
+            vault_client.revoke_pki_certificate(serial_number)
         logger.warning("Certificate serial %s added to mTLS CRL revocation list.", serial_number)
 
     def build_ssl_context(self, is_server: bool = True) -> ssl.SSLContext:
@@ -89,3 +142,4 @@ class MTLSManager:
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.verify_mode = ssl.CERT_REQUIRED if is_server else ssl.CERT_REQUIRED
         return context
+

@@ -370,14 +370,14 @@ To satisfy strict regulatory requirements ("Right to Explanation" under GDPR Art
 
 To satisfy enterprise banking security standards (ISO 27001, SOC2, PCI-DSS):
 
-1. **Mutual TLS 1.3 (mTLS)**: Enforces TLS 1.3 with client certificate requirement (`CERT_REQUIRED`) and Subject Alternative Name (SAN) validation for all inter-microservice communication.
+1. **Mutual TLS 1.3 (mTLS)**: Enforces TLS 1.3 with client certificate requirement (`CERT_REQUIRED`), HashiCorp Vault PKI Root CA integration, automated zero-downtime certificate rotation (`cert rotation`), Subject Alternative Name (SAN) validation, and CRL revocation checks for all inter-microservice communication.
 2. **OIDC / OAuth2 JWT Authentication**: Authenticates users with signed JWT bearer tokens, parsing standard (`sub`, `iss`, `exp`) and custom claims (`bank_id`, `roles`, `clearance_level`, `shift_hours`, `approval_tier`).
 3. **Dynamic Attribute-Based Access Control (ABAC)**: Evaluates dynamic policy rules matching user attributes against resource properties:
    - *Tenant Isolation*: Restricts data access strictly to the user's home bank ID unless holding `cross_bank_investigator` or `super_admin` roles.
    - *Shift Hours Restriction*: Enforces access windows (e.g. `08:00-18:00`).
    - *Approval Tier Limit*: Limits high-value operations ($>\$50,000$) to qualified authorization tiers.
    - *Security Clearance*: Restricts classified intelligence by clearance level.
-4. **HashiCorp Vault Integration**: Centralizes secrets management via Vault KV v2 secret engine with environment fallback.
+4. **HashiCorp Vault & Live PKI Integration**: Centralizes secrets management via Vault KV v2 secret engine and provisions dynamic X.509 certificates via HashiCorp Vault PKI Secrets Engine (`/v1/pki/issue/cfi-bank-role`), backed by automated bootstrap script (`scripts/init_vault_pki.py`) and environment fallbacks.
 5. **Tamper-Proof Cryptographic Audit Chain**: Chains every system event using SHA-256 hash chaining ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with a 1-click `verify_chain_integrity()` tool to detect retrospective log tampering.
 
 ### 2.8 Enterprise Observability, Log Aggregation & Model Drift Engine

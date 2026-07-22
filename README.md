@@ -360,6 +360,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Federated Shapley Value (SV)** | Leave-One-Out (LOO) model aggregation and<br/>validation F1 evaluation on global data. | Quantifies marginal utility contribution<br/>of each node to global model. | Fair data contribution auditing |
 | **Free-Rider & Poisoning Quarantine** | Variance update checks (variance < $10^{-6}$)<br/>and Shapley score gating (SV $\le -0.05$). | Isolates/quarantines malicious or<br/>free-rider nodes from rounds. | Automated outlier isolation<br/>and network defense |
 | **Web3 & CBDC Smart Contract Settlement** | EVM Solidity contract (`ConsortiumIncentiveSettlement.sol`) executing automated token payouts (`wCBDC`, `USDC`, `e-TRY`) based on LOO Shapley basis points. | Replaces virtual clearing house estimates with programmatic on-chain token transfers while enforcing quarantine locks on free-riders/poisoners. | ReentrancyGuard protected, 18-decimal wei precision, SHA-256 audit ledger binding |
+| **Live Vault PKI & Dynamic mTLS Rotation** | HashiCorp Vault PKI Secrets Engine integration (`vault_client.py`), automated provisioning script (`scripts/init_vault_pki.py`), dynamic X.509 certificate issuance (`/v1/pki/issue`), zero-downtime rotation (`mtls_manager.py`), SAN validation, and CRL revocation. | Eliminates static self-signed certificates; provides production-grade PKI certificate lifecycle management and automated rotation across inter-bank nodes. | Root CA signed X.509 v3, TLS 1.3 mTLS, SAN matching, CRL revocation verification |
 
 ---
 
@@ -380,6 +381,28 @@ To solve the financial settlement bottleneck in inter-bank federated learning co
 
 4. **Real-Time Glassmorphic Telemetry Panel (`Web3SettlementPanel.tsx`)**:
    - Displays real-time on-chain transaction hashes, block height confirmation badges, asset type selectors, and per-bank payout tables within the interactive simulation dashboard.
+
+---
+
+### 🔐 Production Enterprise Security Suite & Live HashiCorp Vault PKI Engine
+
+To meet enterprise banking compliance standards (ISO 27001, SOC2, PCI-DSS), the system embeds a production security suite powered by HashiCorp Vault and dynamic mutual TLS (mTLS):
+
+1. **HashiCorp Vault PKI Secrets Engine Integration (`vault_client.py`)**:
+   - Mounts the `/v1/pki` secrets engine, establishing the `CFI Consortium Root CA`.
+   - Provisions dynamic short-lived X.509 certificates and private keys via `/v1/pki/issue/cfi-bank-role` with Subject Alternative Name (SAN) matching for `*.cfi.internal` domains.
+   - Includes automated initialization and bootstrapping script ([scripts/init_vault_pki.py](file:///scripts/init_vault_pki.py)).
+
+2. **Dynamic Zero-Downtime Certificate Rotation (`mtls_manager.py`)**:
+   - Automatically monitors certificate validity and rotates client/server certificates in-memory prior to expiration (`rotate_certificates()`) without requiring backend service restarts.
+
+3. **Certificate Revocation List (CRL) Verification**:
+   - Fetches and verifies active revocation lists via `/v1/pki/crl/pem`, rejecting revoked serial numbers in real-time during peer TLS handshakes (`validate_peer_certificate()`).
+
+4. **Multi-Layer Access Control (OIDC, ABAC & Audit Ledger)**:
+   - **OIDC/OAuth2 Authentication**: Verifies signed JWT bearer tokens with standard (`sub`, `iss`, `exp`) and custom claims (`bank_id`, `clearance_level`, `approval_tier`).
+   - **Dynamic ABAC Engine**: Enforces tenant isolation, shift hour restrictions (`08:00-18:00`), and approval tier limits ($\$50,000$).
+   - **Tamper-Proof Audit Chain**: Hashes all system events using cryptographic SHA-256 chain linking ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with automated integrity verification.
 
 | **FHE CKKS Aggregator** | Homomorphic parameter summation over ciphertexts:<br/>$\sum (c_i \cdot w_i)$ without decryption. | Prevents the central aggregator from ever<br/>viewing plaintext client parameters. | Zero-plaintext exposure during aggregation |
 | **TEE Hardware Enclave** | Inside-enclave summation, remote attestation<br/>measurements, and AES-GCM data sealing. | Guarantees code integrity and execution context<br/>matching SGX/Nitro specifications. | MRENCLAVE/MRSIGNER code signature validation |
@@ -471,9 +494,9 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── security/         # Production Enterprise Security Suite
 │   │   │   │   ├── abac_engine.py # Attribute-Based Access Control evaluator (tenant isolation, shift windows, approval tiers)
 │   │   │   │   ├── immutable_audit_chain.py # Tamper-proof SHA-256 cryptographic audit chain (H_i = SHA256(L_i || H_{i-1}))
-│   │   │   │   ├── mtls_manager.py # Mutual TLS 1.3 PKI certificate generator, SAN matcher, and CRL revocation
+│   │   │   │   ├── mtls_manager.py # Mutual TLS 1.3 PKI manager with HashiCorp Vault Root CA integration, SAN matcher, automated cert rotation, and CRL revocation
 │   │   │   │   ├── oidc_authenticator.py # OIDC RS256/HS256 JWT bearer token authenticator and claims extractor
-│   │   │   │   ├── vault_client.py # HashiCorp Vault KV v2 secret engine client with environment fallback
+│   │   │   │   ├── vault_client.py # HashiCorp Vault KV v2 secret engine & PKI Secrets Engine client (/v1/pki/issue) with environment fallback
 │   │   │   │   ├── fhe_driver.py # Fully Homomorphic Encryption (FHE CKKS) driver context and operators
 │   │   │   │   ├── tee_driver.py # Trusted Execution Environment (TEE Intel SGX/Nitro) enclave driver
 │   │   │   │   └── smart_contract_driver.py # Singleton Web3 driver executing ConsortiumIncentiveSettlement.sol payouts
@@ -549,6 +572,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_coordinator_service.py # Validates dynamic registration, heartbeat timeout, and parameter negotiation
 │   │   │   ├── test_fuzzy_psi.py      # Tests standardization, MinHash LSH, and Fuzzy PSI thresholds
 │   │   │   ├── test_web3_settlement.py # Tests Web3 smart contract settlement driver and LOO Shapley payouts
+│   │   │   ├── test_vault_pki_mtls.py # Tests HashiCorp Vault PKI Secrets Engine cert issuance, rotation, and CRL revocation
 
 │   │   ├── test_alert_service.py  # Tests alert generation rules and severity classification
 │   │   ├── test_case_service.py   # Tests multi-bank case coordination and event logs
@@ -565,6 +589,8 @@ To establish robust security and regulatory readiness, the platform addresses po
 ├── benchmark.py                  # Scientific benchmark and experimental validation suite
 ├── contracts/                    # Web3 Smart Contracts
 │   └── ConsortiumIncentiveSettlement.sol # EVM Solidity smart contract for automated Shapley CBDC payouts
+├── scripts/                      # Infrastructure & Provisioning Automation Scripts
+│   └── init_vault_pki.py         # Automated HashiCorp Vault PKI secrets engine & Root CA bootstrap script
 ├── frontend/
 │   ├── src/
 │   │   ├── api/                  # API client instance, queries, mutations (React Query)

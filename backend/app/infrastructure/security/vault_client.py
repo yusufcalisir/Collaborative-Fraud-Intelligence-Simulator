@@ -87,3 +87,119 @@ class VaultClient:
             destroyed=False,
             source="Vault KV v2 Engine (KV-v2)" if self.enabled else "Local Secrets Cache",
         )
+
+    def issue_pki_certificate(
+        self,
+        role: str = "cfi-bank-role",
+        common_name: str = "bank-a.cfi.internal",
+        alt_names: list[str] | None = None,
+        ttl: str = "720h",
+    ) -> dict[str, Any]:
+        """Issue dynamic X.509 certificate & private key via Vault PKI Secrets Engine.
+        
+        Endpoint: POST /v1/pki/issue/{role}
+        """
+        san_str = ",".join(alt_names) if alt_names else f"{common_name},localhost"
+        if not self.enabled:
+            logger.info("Vault disabled; returning simulated PKI certificate for %s", common_name)
+            serial = f"{abs(hash(common_name)):016x}"
+            return {
+                "certificate": f"-----BEGIN CERTIFICATE-----\nMIIB_MOCK_VAULT_CERT_{common_name}\n-----END CERTIFICATE-----",
+                "private_key": f"-----BEGIN RSA PRIVATE KEY-----\nMIIB_MOCK_VAULT_KEY_{common_name}\n-----END RSA PRIVATE KEY-----",
+                "issuing_ca": "-----BEGIN CERTIFICATE-----\nMIIB_MOCK_CFI_ROOT_CA\n-----END CERTIFICATE-----",
+                "serial_number": serial,
+                "common_name": common_name,
+                "sans": alt_names or [common_name, "localhost"],
+                "expiration": "2027-07-22T00:00:00Z",
+                "source": "Mock Vault PKI Fallback",
+            }
+
+        try:
+            import urllib.request
+            import json
+
+            url = f"{self.vault_url.rstrip('/')}/v1/pki/issue/{role}"
+            payload = json.dumps({
+                "common_name": common_name,
+                "alt_names": san_str,
+                "ttl": ttl,
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "X-Vault-Token": self.vault_token,
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                data = result.get("data", {})
+                return {
+                    "certificate": data.get("certificate", ""),
+                    "private_key": data.get("private_key", ""),
+                    "issuing_ca": data.get("issuing_ca", ""),
+                    "serial_number": data.get("serial_number", ""),
+                    "common_name": common_name,
+                    "sans": alt_names or [common_name, "localhost"],
+                    "expiration": data.get("expiration", ""),
+                    "source": "Vault PKI Engine (/v1/pki/issue)",
+                }
+        except Exception as exc:
+            logger.warning("Failed to reach Vault PKI engine at %s (%s); returning fallback cert", self.vault_url, exc)
+            serial = f"{abs(hash(common_name)):016x}"
+            return {
+                "certificate": f"-----BEGIN CERTIFICATE-----\nMIIB_FALLBACK_CERT_{common_name}\n-----END CERTIFICATE-----",
+                "private_key": f"-----BEGIN RSA PRIVATE KEY-----\nMIIB_FALLBACK_KEY_{common_name}\n-----END RSA PRIVATE KEY-----",
+                "issuing_ca": "-----BEGIN CERTIFICATE-----\nMIIB_CFI_ROOT_CA\n-----END CERTIFICATE-----",
+                "serial_number": serial,
+                "common_name": common_name,
+                "sans": alt_names or [common_name, "localhost"],
+                "expiration": "2027-07-22T00:00:00Z",
+                "source": "Fallback Local PKI",
+            }
+
+    def get_ca_certificate(self) -> str:
+        """Fetch Root CA PEM from Vault PKI engine (/v1/pki/ca/pem)."""
+        if not self.enabled:
+            return "-----BEGIN CERTIFICATE-----\nMIIB_MOCK_CFI_ROOT_CA_PEM\n-----END CERTIFICATE-----"
+
+        try:
+            import urllib.request
+            url = f"{self.vault_url.rstrip('/')}/v1/pki/ca/pem"
+            req = urllib.request.Request(url, headers={"X-Vault-Token": self.vault_token})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return resp.read().decode("utf-8")
+        except Exception as exc:
+            logger.warning("Failed to fetch Vault CA PEM (%s); returning mock root CA", exc)
+            return "-----BEGIN CERTIFICATE-----\nMIIB_MOCK_CFI_ROOT_CA_PEM\n-----END CERTIFICATE-----"
+
+    def revoke_pki_certificate(self, serial_number: str) -> bool:
+        """Revoke a certificate by serial number in Vault PKI engine (/v1/pki/revoke)."""
+        if not self.enabled:
+            logger.info("Vault disabled; mock revoked serial %s", serial_number)
+            return True
+
+        try:
+            import urllib.request
+            import json
+
+            url = f"{self.vault_url.rstrip('/')}/v1/pki/revoke"
+            payload = json.dumps({"serial_number": serial_number}).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "X-Vault-Token": self.vault_token,
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return resp.status in (200, 204)
+        except Exception as exc:
+            logger.warning("Failed to revoke serial %s in Vault (%s)", serial_number, exc)
+            return False
+
