@@ -102,7 +102,7 @@ async def test_grpc_server_lifecycle() -> None:
     """Verifies GRPCServerManager start and stop lifecycle calls."""
     server_mgr = GRPCServerManager(port=50055)
     await server_mgr.start()
-    assert server_mgr.is_running is True
+    assert server_mgr.is_running
 
     await server_mgr.stop()
-    assert server_mgr.is_running is False
+    assert not server_mgr.is_running
