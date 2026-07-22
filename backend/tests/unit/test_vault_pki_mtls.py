@@ -80,7 +80,9 @@ class TestVaultPKIMTLSIntegration(unittest.TestCase):
             common_name="malicious-bank.cfi.internal",
         )
         # Verify initially valid
-        valid, msg = self.mtls.validate_peer_certificate(cert_info, expected_san="malicious-bank.cfi.internal")
+        valid, msg = self.mtls.validate_peer_certificate(
+            cert_info, expected_san="malicious-bank.cfi.internal"
+        )
         self.assertTrue(valid)
 
         # Revoke serial
@@ -88,7 +90,9 @@ class TestVaultPKIMTLSIntegration(unittest.TestCase):
         cert_info.revoked = cert_info.serial_number in self.mtls.crl_revoked_serials
 
         # Verify validation fails
-        valid_after, msg_after = self.mtls.validate_peer_certificate(cert_info, expected_san="malicious-bank.cfi.internal")
+        valid_after, msg_after = self.mtls.validate_peer_certificate(
+            cert_info, expected_san="malicious-bank.cfi.internal"
+        )
         self.assertFalse(valid_after)
         self.assertIn("revoked in CRL", msg_after)
 

@@ -22,7 +22,9 @@ def test_tabular_constraint_projection():
     x_orig = torch.tensor([[0.5, 0.2], [0.9, 0.0]])
     x_adv = torch.tensor([[0.8, -0.1], [1.2, -0.5]])
 
-    x_proj = service.project_tabular_constraints(x_adv, x_orig, epsilon=0.1, min_val=0.0, max_val=1.0)
+    x_proj = service.project_tabular_constraints(
+        x_adv, x_orig, epsilon=0.1, min_val=0.0, max_val=1.0
+    )
     # Check max perturbation bound epsilon = 0.1
     assert torch.all(x_proj <= x_orig + 0.1)
     assert torch.all(x_proj >= x_orig - 0.1)
@@ -50,7 +52,9 @@ def test_pgd_multi_step_perturbation():
     y = torch.tensor([[1.0], [0.0], [1.0], [0.0]])
     loss_fn = nn.BCELoss()
 
-    x_pgd = service.generate_pgd_perturbation(model, x, y, loss_fn, epsilon=0.05, alpha=0.01, steps=5)
+    x_pgd = service.generate_pgd_perturbation(
+        model, x, y, loss_fn, epsilon=0.05, alpha=0.01, steps=5
+    )
     assert x_pgd.shape == x.shape
     assert not torch.allclose(x, x_pgd)
 

@@ -143,4 +143,3 @@ class MTLSManager:
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.verify_mode = ssl.CERT_REQUIRED if is_server else ssl.CERT_REQUIRED
         return context
-

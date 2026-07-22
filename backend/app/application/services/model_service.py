@@ -205,7 +205,9 @@ class ModelService:
                         )
                     pred_adv = model(x_adv)
                     adv_loss = criterion(pred_adv, y_batch)
-                    loss = adversarial_loss_weight * loss + (1.0 - adversarial_loss_weight) * adv_loss
+                    loss = (
+                        adversarial_loss_weight * loss + (1.0 - adversarial_loss_weight) * adv_loss
+                    )
 
                 # Bias mitigation: penalize covariance between predictions and protected group
                 if enable_bias_mitigation:

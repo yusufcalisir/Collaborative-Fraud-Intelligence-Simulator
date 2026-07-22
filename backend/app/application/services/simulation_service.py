@@ -618,9 +618,7 @@ class SimulationService:
                             adversarial_epsilon=getattr(config, "adversarial_epsilon", 0.05),
                             adversarial_alpha=getattr(config, "adversarial_alpha", 0.01),
                             adversarial_steps=getattr(config, "adversarial_steps", 5),
-                            adversarial_loss_weight=getattr(
-                                config, "adversarial_loss_weight", 0.5
-                            ),
+                            adversarial_loss_weight=getattr(config, "adversarial_loss_weight", 0.5),
                         )
 
                         if "error" in train_res:

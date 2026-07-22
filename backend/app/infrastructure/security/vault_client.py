@@ -118,11 +118,13 @@ class VaultClient:
 
         try:
             url = f"{self.vault_url.rstrip('/')}/v1/pki/issue/{role}"
-            payload = json.dumps({
-                "common_name": common_name,
-                "alt_names": san_str,
-                "ttl": ttl,
-            }).encode("utf-8")
+            payload = json.dumps(
+                {
+                    "common_name": common_name,
+                    "alt_names": san_str,
+                    "ttl": ttl,
+                }
+            ).encode("utf-8")
 
             req = urllib.request.Request(
                 url,
@@ -147,7 +149,11 @@ class VaultClient:
                     "source": "Vault PKI Engine (/v1/pki/issue)",
                 }
         except Exception as exc:
-            logger.warning("Failed to reach Vault PKI engine at %s (%s); returning fallback cert", self.vault_url, exc)
+            logger.warning(
+                "Failed to reach Vault PKI engine at %s (%s); returning fallback cert",
+                self.vault_url,
+                exc,
+            )
             serial = f"{abs(hash(common_name)):016x}"
             return {
                 "certificate": f"-----BEGIN CERTIFICATE-----\nMIIB_FALLBACK_CERT_{common_name}\n-----END CERTIFICATE-----",
@@ -163,17 +169,22 @@ class VaultClient:
     def get_ca_certificate(self) -> str:
         """Fetch Root CA PEM from Vault PKI engine (/v1/pki/ca/pem)."""
         if not self.enabled:
-            return "-----BEGIN CERTIFICATE-----\nMIIB_MOCK_CFI_ROOT_CA_PEM\n-----END CERTIFICATE-----"
+            return (
+                "-----BEGIN CERTIFICATE-----\nMIIB_MOCK_CFI_ROOT_CA_PEM\n-----END CERTIFICATE-----"
+            )
 
         try:
             import urllib.request
+
             url = f"{self.vault_url.rstrip('/')}/v1/pki/ca/pem"
             req = urllib.request.Request(url, headers={"X-Vault-Token": self.vault_token})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 return resp.read().decode("utf-8")
         except Exception as exc:
             logger.warning("Failed to fetch Vault CA PEM (%s); returning mock root CA", exc)
-            return "-----BEGIN CERTIFICATE-----\nMIIB_MOCK_CFI_ROOT_CA_PEM\n-----END CERTIFICATE-----"
+            return (
+                "-----BEGIN CERTIFICATE-----\nMIIB_MOCK_CFI_ROOT_CA_PEM\n-----END CERTIFICATE-----"
+            )
 
     def revoke_pki_certificate(self, serial_number: str) -> bool:
         """Revoke a certificate by serial number in Vault PKI engine (/v1/pki/revoke)."""
@@ -198,4 +209,3 @@ class VaultClient:
         except Exception as exc:
             logger.warning("Failed to revoke serial %s in Vault (%s)", serial_number, exc)
             return False
-
