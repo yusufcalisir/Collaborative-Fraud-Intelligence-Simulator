@@ -66,6 +66,12 @@ class ImmutableAuditChain:
             cls._instance = ImmutableAuditChain()
         return cls._instance
 
+    def get_chain_proof_hash(self) -> str:
+        """Get the current cryptographic proof hash of the audit chain tail."""
+        if self.chain:
+            return self.chain[-1].curr_hash
+        return GENESIS_HASH
+
     def _seed_default_chain(self) -> None:
         """Seed genesis and initial system audit events."""
         if not self.chain:
