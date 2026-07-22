@@ -103,6 +103,13 @@ class ModelService:
         sens_attr: np.ndarray | None = None,
         enable_bias_mitigation: bool = False,
         fairness_lambda: float = 0.5,
+        # Active Defense & Adversarial Training config
+        enable_adversarial_training: bool = False,
+        adversarial_attack_type: str = "fgsm",
+        adversarial_epsilon: float = 0.05,
+        adversarial_alpha: float = 0.01,
+        adversarial_steps: int = 5,
+        adversarial_loss_weight: float = 0.5,
     ) -> tuple[FraudDetectionModel, list[float], list[torch.Tensor] | None]:
         """Train the model on a bank's local data.
 
@@ -170,6 +177,35 @@ class ModelService:
                     feats = None
 
                 loss = criterion(predictions, y_batch)
+
+                # Active Defense: Adversarial Training (FGSM / PGD evasion robustness)
+                if enable_adversarial_training and adversarial_epsilon > 0.0:
+                    from app.application.services.adversarial_service import (
+                        AdversarialDefenseService,
+                    )
+
+                    adv_service = AdversarialDefenseService.get_instance()
+                    if adversarial_attack_type.lower() == "pgd":
+                        x_adv = adv_service.generate_pgd_perturbation(
+                            model,
+                            X_batch,
+                            y_batch,
+                            criterion,
+                            epsilon=adversarial_epsilon,
+                            alpha=adversarial_alpha,
+                            steps=adversarial_steps,
+                        )
+                    else:
+                        x_adv = adv_service.generate_fgsm_perturbation(
+                            model,
+                            X_batch,
+                            y_batch,
+                            criterion,
+                            epsilon=adversarial_epsilon,
+                        )
+                    pred_adv = model(x_adv)
+                    adv_loss = criterion(pred_adv, y_batch)
+                    loss = adversarial_loss_weight * loss + (1.0 - adversarial_loss_weight) * adv_loss
 
                 # Bias mitigation: penalize covariance between predictions and protected group
                 if enable_bias_mitigation:
@@ -509,6 +545,21 @@ class ModelService:
                 "reference_fn": ref_fn,
             }
 
+        # Active Defense & Adversarial Evaluation
+        from app.application.services.adversarial_service import (
+            AdversarialDefenseService,
+        )
+
+        adv_service = AdversarialDefenseService.get_instance()
+        test_dataset = TensorDataset(
+            torch.FloatTensor(X_test).to(self.device),
+            torch.FloatTensor(y_test).to(self.device),
+        )
+        test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+        adv_report = adv_service.evaluate_adversarial_robustness(
+            model, test_loader, nn.BCELoss(), epsilon=0.05
+        )
+
         return {
             "accuracy": float(accuracy_score(y_test, preds)),
             "precision": float(precision_score(y_test, preds, zero_division=0)),
@@ -525,6 +576,11 @@ class ModelService:
             "equal_opportunity_diff": float(equal_opportunity_diff),
             "protected_selection_rate": float(protected_selection_rate),
             "reference_selection_rate": float(reference_selection_rate),
+            "adversarial_robustness_score": float(adv_report["adversarial_robustness_score"]),
+            "clean_accuracy": float(adv_report["clean_accuracy"]),
+            "robust_accuracy": float(adv_report["robust_accuracy"]),
+            "fgsm_evasion_rate": float(adv_report["fgsm_evasion_rate"]),
+            "pgd_evasion_rate": float(adv_report["pgd_evasion_rate"]),
         }
 
     def get_parameters(self, model: FraudDetectionModel) -> ModelWeights:

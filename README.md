@@ -475,7 +475,8 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── oidc_authenticator.py # OIDC RS256/HS256 JWT bearer token authenticator and claims extractor
 │   │   │   │   ├── vault_client.py # HashiCorp Vault KV v2 secret engine client with environment fallback
 │   │   │   │   ├── fhe_driver.py # Fully Homomorphic Encryption (FHE CKKS) driver context and operators
-│   │   │   │   └── tee_driver.py # Trusted Execution Environment (TEE Intel SGX/Nitro) enclave driver
+│   │   │   │   ├── tee_driver.py # Trusted Execution Environment (TEE Intel SGX/Nitro) enclave driver
+│   │   │   │   └── smart_contract_driver.py # Singleton Web3 driver executing ConsortiumIncentiveSettlement.sol payouts
 │   │   │   ├── connectors/       # Bank Connector adapter implementations (BankConnector port)
 
 │   │   │   │   ├── factory.py    # Configuration-driven connector resolver (mock/rest/redis/mq)
@@ -504,6 +505,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── rules.py      # Declarative CRUD and testing endpoints for dynamic policy rules
 │   │   │   │   ├── psd2.py       # Open Banking PSD2 XS2A interface endpoints
 │   │   │   │   ├── scenarios.py  # Controls AML scenario simulation streams
+│   │   │   │   ├── settlement.py # Web3 & CBDC smart contract automated incentive settlement endpoints
 │   │   │   │   ├── simulation.py # Handles creation, retrieval, and comparison of FL runs
 │   │   │   │   └── training.py   # Yields progress data on communication rounds (incl. canary_info)
 │   │   │   ├── messaging/
@@ -546,6 +548,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_psi_service.py    # Tests zero-knowledge DH-PSI commutative matching
 │   │   │   ├── test_coordinator_service.py # Validates dynamic registration, heartbeat timeout, and parameter negotiation
 │   │   │   ├── test_fuzzy_psi.py      # Tests standardization, MinHash LSH, and Fuzzy PSI thresholds
+│   │   │   ├── test_web3_settlement.py # Tests Web3 smart contract settlement driver and LOO Shapley payouts
 
 │   │   ├── test_alert_service.py  # Tests alert generation rules and severity classification
 │   │   ├── test_case_service.py   # Tests multi-bank case coordination and event logs
@@ -560,12 +563,14 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── benchmark.py                  # Scientific benchmark and experimental validation suite
+├── contracts/                    # Web3 Smart Contracts
+│   └── ConsortiumIncentiveSettlement.sol # EVM Solidity smart contract for automated Shapley CBDC payouts
 ├── frontend/
 │   ├── src/
 │   │   ├── api/                  # API client instance, queries, mutations (React Query)
 │   │   ├── components/           # Reusable UI elements
 │   │   │   ├── layout/           # Sidebar, Header, Page layout wrappers
-│   │   │   ├── dashboard/        # BankCard, DataDriftPanel (Feature/Concept Drift tabs), ComplianceReportPanel (EU AI Act & Bias Auditing), IncentiveRegistryPanel, FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline, PrivacyMonitor, FeatureImportanceTimeline, ModelRegistryPanel
+│   │   │   ├── dashboard/        # BankCard, DataDriftPanel (Feature/Concept Drift tabs), ComplianceReportPanel (EU AI Act & Bias Auditing), IncentiveRegistryPanel, AdversarialDefensePanel, Web3SettlementPanel, FederatedTrainingAnimation, SimulationControls, MetricsComparison, TrainingTimeline, PrivacyMonitor, FeatureImportanceTimeline, ModelRegistryPanel
 │   │   │   └── charts/           # LossChart, ROCCurve, ConfusionMatrix, FeatureImportance, MetricsRadar
 │   │   ├── pages/                # Application views: Dashboard, SimulationView, AlertsPage, CasesPage, CaseDetailPage, InvestigationDashboard, ScenariosPage, GraphPage, PsiPage
 │   │   └── utils/                # Numerical formatters and constants

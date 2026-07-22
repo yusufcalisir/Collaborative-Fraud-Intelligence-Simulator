@@ -39,6 +39,14 @@ export interface SimulationConfig {
   enable_web3_settlement?: boolean;
   settlement_currency?: string;
   smart_contract_address?: string;
+
+  // Active Defense & Adversarial ML Training
+  enable_adversarial_training?: boolean;
+  adversarial_attack_type?: string;
+  adversarial_epsilon?: number;
+  adversarial_alpha?: number;
+  adversarial_steps?: number;
+  adversarial_loss_weight?: number;
 }
 
 export interface EvaluationMetrics {
@@ -59,6 +67,13 @@ export interface EvaluationMetrics {
   equal_opportunity_diff?: number;
   protected_selection_rate?: number;
   reference_selection_rate?: number;
+
+  // Active Defense & Adversarial Metrics
+  adversarial_robustness_score?: number;
+  clean_accuracy?: number;
+  robust_accuracy?: number;
+  fgsm_evasion_rate?: number;
+  pgd_evasion_rate?: number;
 }
 
 

@@ -309,6 +309,51 @@ export default function SimulationControls({ onSimulationCreated }: SimulationCo
               )}
             </div>
 
+            {/* Active Defense & Adversarial ML Training */}
+            <div>
+              <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">
+                Active Defense & Adversarial Training
+              </h4>
+              <label className="flex items-center gap-2 cursor-pointer mb-2">
+                <input
+                  type="checkbox"
+                  checked={config.enable_adversarial_training || false}
+                  onChange={(e) => updateConfig('enable_adversarial_training', e.target.checked)}
+                  className="rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-accent-indigo)] focus:ring-[var(--color-accent-indigo)]"
+                />
+                <span className="text-xs text-[var(--color-text-secondary)]">Enable Adversarial Evasion Hardening</span>
+              </label>
+              {config.enable_adversarial_training && (
+                <div className="space-y-3 mt-2 pl-2 border-l-2 border-cyan-500/40">
+                  <div>
+                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">Attack Algorithm</label>
+                    <select
+                      value={config.adversarial_attack_type || 'fgsm'}
+                      onChange={(e) => updateConfig('adversarial_attack_type', e.target.value)}
+                      className="w-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-md px-3 py-1.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-cyan-500 transition-colors"
+                    >
+                      <option value="fgsm">FGSM (Fast Gradient Sign Method — 1 step)</option>
+                      <option value="pgd">PGD (Projected Gradient Descent — 5 steps)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-[var(--color-text-muted)] mb-1">
+                      Perturbation Noise (ε): {config.adversarial_epsilon ?? 0.05}
+                    </label>
+                    <input
+                      type="range"
+                      min={0.01}
+                      max={0.25}
+                      step={0.01}
+                      value={config.adversarial_epsilon ?? 0.05}
+                      onChange={(e) => updateConfig('adversarial_epsilon', parseFloat(e.target.value))}
+                      className="w-full accent-cyan-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Regulatory Fairness & Bias Mitigation */}
             <div>
               <h4 className="text-xs font-medium text-[var(--color-text-secondary)] mb-3 uppercase tracking-wider">

@@ -197,4 +197,21 @@ To capture the temporal and structural evolution of financial networks, the plat
 - **Incremental Training:** Runs continuous online backpropagation training steps directly on active transaction streams, computing self-supervised contrastive or classification loss metrics to dynamically refine model state.
 - **Telemetry & Visualization:** Live stats (node/edge counts), attention distributions, and online loss convergence charts are rendered dynamically on the frontend.
 
+---
+
+## 🛡️ Active Defense & Adversarial Training (Adversarial ML Defense)
+
+To harden local bank models against evasion attacks where fraudsters perturb transaction features to bypass detection bounds:
+
+### 1. Adversarial Evasion Generators (FGSM & PGD)
+- **Fast Gradient Sign Method (FGSM)**: 1-step gradient perturbation $x_{\text{adv}} = x + \epsilon \cdot \text{sign}(\nabla_x \mathcal{L})$.
+- **Projected Gradient Descent (PGD)**: 5-step iterative perturbation $x^{t+1} = \Pi_{x+S} (x^t + \alpha \cdot \text{sign}(\nabla_{x^t} \mathcal{L}))$.
+- **Tabular Constraint Projection ($\Pi_{\mathcal{X}}$)**: Enforces $L_\infty$ perturbation noise bounds ($\epsilon \in [0.01, 0.25]$) while projecting non-negative transaction constraints and normalized feature bounds to maintain realistic domain inputs.
+
+### 2. Robust Training Loss Formulation
+- Blends clean loss and adversarial loss during local SGD iterations:
+  $$\mathcal{L}_{\text{total}} = \lambda \mathcal{L}(f_\theta(x_{\text{clean}}), y) + (1-\lambda) \mathcal{L}(f_\theta(x_{\text{adv}}), y)$$
+- Calculates Clean Accuracy vs Robust Accuracy under FGSM & PGD evasion stress tests, outputting evasion rejection rates on the glassmorphic `AdversarialDefensePanel`.
+
+
 

@@ -115,6 +115,12 @@ class MockBankConnector(BankConnectorInterface):
             prev_local_weights = kwargs.get("prev_local_weights")
             enable_bias_mitigation = kwargs.get("enable_bias_mitigation", False)
             fairness_lambda = kwargs.get("fairness_lambda", 0.5)
+            enable_adversarial_training = kwargs.get("enable_adversarial_training", False)
+            adversarial_attack_type = kwargs.get("adversarial_attack_type", "fgsm")
+            adversarial_epsilon = kwargs.get("adversarial_epsilon", 0.05)
+            adversarial_alpha = kwargs.get("adversarial_alpha", 0.01)
+            adversarial_steps = kwargs.get("adversarial_steps", 5)
+            adversarial_loss_weight = kwargs.get("adversarial_loss_weight", 0.5)
 
             actual_eps = None
             if enable_dp:
@@ -153,6 +159,12 @@ class MockBankConnector(BankConnectorInterface):
                     sens_attr=self.sens_train,
                     enable_bias_mitigation=enable_bias_mitigation,
                     fairness_lambda=fairness_lambda,
+                    enable_adversarial_training=enable_adversarial_training,
+                    adversarial_attack_type=adversarial_attack_type,
+                    adversarial_epsilon=adversarial_epsilon,
+                    adversarial_alpha=adversarial_alpha,
+                    adversarial_steps=adversarial_steps,
+                    adversarial_loss_weight=adversarial_loss_weight,
                 )
 
             output_weights = self.model_service.get_parameters(trained_model)

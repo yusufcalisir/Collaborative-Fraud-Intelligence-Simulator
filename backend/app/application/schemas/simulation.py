@@ -118,6 +118,27 @@ class SimulationConfigRequest(BaseModel):
         default="0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
         description="Deployed Consortium Settlement Smart Contract Address",
     )
+    # Active Defense & Adversarial Training (FGSM/PGD)
+    enable_adversarial_training: bool = Field(
+        default=False,
+        description="Enable active defense adversarial training against evasion attacks",
+    )
+    adversarial_attack_type: str = Field(
+        default="fgsm",
+        description="Adversarial attack algorithm for training: fgsm, pgd",
+    )
+    adversarial_epsilon: float = Field(
+        default=0.05, ge=0.0, le=0.3, description="Adversarial perturbation magnitude (L_inf ball)"
+    )
+    adversarial_alpha: float = Field(
+        default=0.01, ge=0.001, le=0.1, description="PGD step size for multi-step attack"
+    )
+    adversarial_steps: int = Field(
+        default=5, ge=1, le=20, description="PGD iteration steps"
+    )
+    adversarial_loss_weight: float = Field(
+        default=0.5, ge=0.0, le=1.0, description="Weight on clean loss vs adversarial loss"
+    )
 
 
 class SimulationSummaryResponse(BaseModel):
@@ -216,6 +237,13 @@ class MetricsResponse(BaseModel):
     equal_opportunity_diff: float = 0.0
     protected_selection_rate: float = 1.0
     reference_selection_rate: float = 1.0
+
+    # Active Defense & Adversarial metrics
+    adversarial_robustness_score: float = 1.0
+    clean_accuracy: float = 0.0
+    robust_accuracy: float = 0.0
+    fgsm_evasion_rate: float = 0.0
+    pgd_evasion_rate: float = 0.0
 
 
 class DataProfileResponse(BaseModel):

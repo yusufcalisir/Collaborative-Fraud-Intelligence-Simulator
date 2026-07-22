@@ -57,6 +57,13 @@ class EvaluationMetrics:
     protected_selection_rate: float = 1.0
     reference_selection_rate: float = 1.0
 
+    # Active Defense & Adversarial Training metrics
+    adversarial_robustness_score: float = 1.0
+    clean_accuracy: float = 0.0
+    robust_accuracy: float = 0.0
+    fgsm_evasion_rate: float = 0.0
+    pgd_evasion_rate: float = 0.0
+
 
 @dataclass(frozen=True)
 class RoundMetrics:
@@ -116,6 +123,14 @@ class SimulationConfig:
     dp_max_grad_norm: float = 1.0
     dp_mode: str = "post_hoc"
     enable_secure_aggregation: bool = False
+
+    # Active Defense & Adversarial Training
+    enable_adversarial_training: bool = False
+    adversarial_attack_type: str = "fgsm"
+    adversarial_epsilon: float = 0.05
+    adversarial_alpha: float = 0.01
+    adversarial_steps: int = 5
+    adversarial_loss_weight: float = 0.5
 
     # Data
     bank_a_transactions: int = 50000

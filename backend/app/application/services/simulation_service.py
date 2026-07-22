@@ -609,6 +609,18 @@ class SimulationService:
                             prev_local_weights=prev_w,
                             enable_bias_mitigation=config.enable_bias_mitigation,
                             fairness_lambda=config.fairness_lambda,
+                            enable_adversarial_training=getattr(
+                                config, "enable_adversarial_training", False
+                            ),
+                            adversarial_attack_type=getattr(
+                                config, "adversarial_attack_type", "fgsm"
+                            ),
+                            adversarial_epsilon=getattr(config, "adversarial_epsilon", 0.05),
+                            adversarial_alpha=getattr(config, "adversarial_alpha", 0.01),
+                            adversarial_steps=getattr(config, "adversarial_steps", 5),
+                            adversarial_loss_weight=getattr(
+                                config, "adversarial_loss_weight", 0.5
+                            ),
                         )
 
                         if "error" in train_res:

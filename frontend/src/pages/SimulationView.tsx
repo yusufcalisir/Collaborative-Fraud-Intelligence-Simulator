@@ -20,6 +20,7 @@ import { IncentiveRegistryPanel } from '../components/dashboard/IncentiveRegistr
 import { SecureHardwarePanel } from '../components/dashboard/SecureHardwarePanel';
 import StreamingGNNPanel from '../components/dashboard/StreamingGNNPanel';
 import { Web3SettlementPanel } from '../components/dashboard/Web3SettlementPanel';
+import { AdversarialDefensePanel } from '../components/dashboard/AdversarialDefensePanel';
 
 
 export default function SimulationView() {
@@ -218,6 +219,12 @@ export default function SimulationView() {
             <MetricsRadar banks={banks} />
             <ComplianceReportPanel simulationId={simulation.id} banks={banks} />
             <IncentiveRegistryPanel banks={banks} />
+            <AdversarialDefensePanel
+              metrics={banks.find(b => b.id === 'bank_a')?.federated_metrics || banks[0]?.federated_metrics}
+              isEnabled={simulation.config.enable_adversarial_training}
+              attackType={simulation.config.adversarial_attack_type}
+              epsilon={simulation.config.adversarial_epsilon}
+            />
             <Web3SettlementPanel
               enableWeb3Settlement={simulation.config.enable_web3_settlement}
               settlementCurrency={simulation.config.settlement_currency}

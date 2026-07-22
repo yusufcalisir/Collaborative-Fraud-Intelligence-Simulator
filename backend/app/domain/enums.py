@@ -68,6 +68,14 @@ class PrivacyMechanism(StrEnum):
     BOTH = "both"
 
 
+class AdversarialAttackType(StrEnum):
+    """Supported adversarial evasion attack algorithms for robust training."""
+
+    NONE = "none"
+    FGSM = "fgsm"
+    PGD = "pgd"
+
+
 class DPMode(StrEnum):
     """Differential privacy implementation mode.
 
