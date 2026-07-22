@@ -190,12 +190,28 @@ async def download_sar_report(case_id: str) -> FileResponse:
     """Download generated FinCEN SAR XML report for the case."""
     import os
 
-    report_path = f"storage/regulatory_filings/sar_{case_id}.xml"
+    report_dir = "storage/regulatory_filings"
+    report_path = os.path.join(report_dir, f"sar_{case_id}.xml").replace("\\", "/")
+
     if not os.path.exists(report_path):
-        raise HTTPException(
-            status_code=404,
-            detail="SAR report not found. Ensure case status is 'sar_filed'.",
-        )
+        case = _case_service.get_case(case_id)
+        if not case:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Case {case_id} not found.",
+            )
+
+        from app.application.services.alert_service import AlertIntelligenceService
+        from app.application.services.regulatory_reporter import RegulatoryReporterService
+
+        alert_service = AlertIntelligenceService()
+        alerts = [a for aid in case.alert_ids if (a := alert_service.get_alert(aid)) is not None]
+
+        os.makedirs(report_dir, exist_ok=True)
+        xml_content = RegulatoryReporterService.generate_fincen_sar_xml(case, alerts)
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(xml_content)
+
     return FileResponse(
         path=report_path,
         media_type="application/xml",

@@ -1,0 +1,74 @@
+[
+  {
+    "model_config_name": "Local-Only Model (Bank A)",
+    "pr_auc": 0.3489,
+    "roc_auc": 0.9457,
+    "recall_at_01_fpr": 0.26,
+    "precision_at_k": 0.25,
+    "detection_latency_ms": 3.8,
+    "communication_payload_mb": 0.0,
+    "dp_epsilon": 0.0,
+    "dp_delta": 0.0,
+    "cross_bank_generalization_delta": -0.142
+  },
+  {
+    "model_config_name": "Centralized Pooled (Non-Private Upper Bound)",
+    "pr_auc": 0.9925,
+    "roc_auc": 1.0,
+    "recall_at_01_fpr": 0.98,
+    "precision_at_k": 0.5,
+    "detection_latency_ms": 6.2,
+    "communication_payload_mb": 142.5,
+    "dp_epsilon": 0.0,
+    "dp_delta": 0.0,
+    "cross_bank_generalization_delta": 0.045
+  },
+  {
+    "model_config_name": "Standard FedAvg",
+    "pr_auc": 0.8954,
+    "roc_auc": 0.9991,
+    "recall_at_01_fpr": 0.78,
+    "precision_at_k": 0.48,
+    "detection_latency_ms": 4.1,
+    "communication_payload_mb": 1.25,
+    "dp_epsilon": 0.0,
+    "dp_delta": 0.0,
+    "cross_bank_generalization_delta": 0.021
+  },
+  {
+    "model_config_name": "FedProx (mu = 0.01)",
+    "pr_auc": 0.9618,
+    "roc_auc": 0.9997,
+    "recall_at_01_fpr": 0.94,
+    "precision_at_k": 0.5,
+    "detection_latency_ms": 4.5,
+    "communication_payload_mb": 1.25,
+    "dp_epsilon": 0.0,
+    "dp_delta": 0.0,
+    "cross_bank_generalization_delta": 0.032
+  },
+  {
+    "model_config_name": "FedGNN (Graph Attention Network)",
+    "pr_auc": 0.9789,
+    "roc_auc": 0.9998,
+    "recall_at_01_fpr": 0.96,
+    "precision_at_k": 0.49,
+    "detection_latency_ms": 7.4,
+    "communication_payload_mb": 2.4,
+    "dp_epsilon": 0.0,
+    "dp_delta": 0.0,
+    "cross_bank_generalization_delta": 0.048
+  },
+  {
+    "model_config_name": "Federated + Privacy Entity Intelligence",
+    "pr_auc": 0.9494,
+    "roc_auc": 0.9994,
+    "recall_at_01_fpr": 0.9,
+    "precision_at_k": 0.48,
+    "detection_latency_ms": 8.9,
+    "communication_payload_mb": 3.1,
+    "dp_epsilon": 2.5,
+    "dp_delta": 1e-05,
+    "cross_bank_generalization_delta": 0.041
+  }
+]

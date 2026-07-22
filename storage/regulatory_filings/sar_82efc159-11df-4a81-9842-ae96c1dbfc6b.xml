@@ -1,0 +1,36 @@
+<?xml version="1.0" ?>
+<EFilingSubmission xmlns="http://www.fincen.gov/spec/bsa" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.fincen.gov/spec/bsa bsa_efiling_sar.xsd">
+  <SubmissionHeader>
+    <ActivityType>SAR</ActivityType>
+    <SubmissionType>New</SubmissionType>
+    <CreatedTimestamp>2026-07-22T19:23:11.497995+00:00</CreatedTimestamp>
+  </SubmissionHeader>
+  <Activity>
+    <ActivityID>82efc159-11df-4a81-9842-ae96c1dbfc6b</ActivityID>
+    <ActivityStatus>open</ActivityStatus>
+    <ReportingInstitution>
+      <InstitutionName>Consortium AML Joint Investigation Unit</InstitutionName>
+      <TINType>EIN</TINType>
+    </ReportingInstitution>
+    <Subjects/>
+    <SuspiciousActivityDetails>
+      <TotalRiskScore>0.00</TotalRiskScore>
+      <Priority>p2_high</Priority>
+      <AlertIds>
+        <AlertId>alt_4001</AlertId>
+      </AlertIds>
+    </SuspiciousActivityDetails>
+    <Narrative>
+      <Summary>FinCEN Filing Verification Case</Summary>
+      <Notes/>
+      <Timeline>
+        <Event>
+          <Type>created</Type>
+          <Description>Case created: FinCEN Filing Verification Case</Description>
+          <Actor>system</Actor>
+          <Timestamp>2026-07-22T19:23:11.469774+00:00</Timestamp>
+        </Event>
+      </Timeline>
+    </Narrative>
+  </Activity>
+</EFilingSubmission>

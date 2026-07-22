@@ -179,3 +179,37 @@ async def run_fuzzy_resolve(
 
     AuditService().log_action(actor, "cross_bank_fuzzy_resolve", req.query_name)
     return EntityFuzzyResolveResponse(matches=response_matches)
+
+
+@router.post("/hmac-tokenize")
+async def tokenize_raw_identifier(
+    identifier: str, tenant_salt: str = "default_consortium_salt"
+) -> dict[str, str]:
+    """Tokenize raw identifier into tenant-salted HMAC token enforcing Zero Raw PII policy."""
+    import hashlib
+    import hmac
+
+    token = hmac.new(
+        tenant_salt.encode("utf-8"), identifier.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    return {
+        "hmac_token": token,
+        "policy": "Zero Raw PII Policy Enforced",
+        "algorithm": "HMAC-SHA256",
+    }
+
+
+@router.post("/psi-match")
+async def run_dh_psi_match(bank_a_id: str, bank_b_id: str, enable_fuzzy: bool = True) -> dict:
+    """Execute Privacy-Preserving DH-PSI match between two bank entities without PII exposure."""
+    result = _psi_service.run_psi(
+        bank_a_id=bank_a_id,
+        bank_b_id=bank_b_id,
+        enable_fuzzy=enable_fuzzy,
+    )
+    return {
+        "protocol": "Commutative Diffie-Hellman (DH-PSI)",
+        "matches": result.get("matches", []),
+        "stats": result.get("stats", {}),
+        "zero_raw_pii_enforced": True,
+    }

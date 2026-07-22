@@ -252,6 +252,10 @@ class CaseManagementService:
                 f"Valid targets: {', '.join(s.value for s in valid)}"
             )
 
+        metadata: dict[str, Any] = {"from": old_status.value, "to": new_status.value}
+        if supervisor_signature:
+            metadata["supervisor_signature"] = supervisor_signature
+
         if new_status in (CaseStatus.CLOSED_CONFIRMED, CaseStatus.CLOSED_FALSE_POSITIVE):
             if not supervisor_signature or not supervisor_signature.strip():
                 raise ValueError(
@@ -263,12 +267,32 @@ class CaseManagementService:
                 )
             case.closed_at = datetime.now(UTC)
 
+            # Retraining feedback loop: record confirmed analyst verdict label into retraining dataset
+            actual_label = 1 if new_status == CaseStatus.CLOSED_CONFIRMED else 0
+            try:
+                from app.application.services.model_registry import (
+                    ModelEvaluationEngine,
+                    ModelRegistry,
+                )
+
+                eval_engine = ModelEvaluationEngine(ModelRegistry())
+
+                # Record ground truth label for all linked alerts/transactions
+                for alert_id in case.alert_ids:
+                    eval_engine.log_feedback(
+                        simulation_id="default_sim",
+                        transaction_id=f"tx_{alert_id[:8]}",
+                        actual_label=actual_label,
+                    )
+                metadata["retraining_feedback_label"] = actual_label
+                metadata["retraining_feedback_recorded"] = True
+            except Exception as exc:
+                logger.warning(
+                    "Failed to record retraining label feedback for case %s: %s", case_id[:8], exc
+                )
+
         case.status = new_status
         case.updated_at = datetime.now(UTC)
-
-        metadata = {"from": old_status.value, "to": new_status.value}
-        if supervisor_signature:
-            metadata["supervisor_signature"] = supervisor_signature
 
         if new_status == CaseStatus.SAR_FILED:
             from app.application.services.alert_service import AlertIntelligenceService

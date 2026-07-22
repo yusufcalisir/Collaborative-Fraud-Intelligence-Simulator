@@ -283,7 +283,19 @@ To verify that privacy enforcement doesn't break the model's mathematical correc
 * **Secure Aggregation (SecAgg):** The framework adds pairwise masks to the local parameters that cancel out perfectly under both unweighted (`FED_AVG`) and weighted (`FED_AVG_WEIGHTED`) aggregation schemes (located in [fl_engine.py](file:///backend/app/application/services/fl_engine.py#L222)). This guarantees that the final aggregated global model is mathematically identical to plaintext FedAvg/FedAvg Weighted, proving that privacy is achieved without sacrificing model accuracy.
 * **Differential Privacy (DP) Accounting:** In Post-Hoc mode, privacy loss is tracked using basic sequential composition. In Opacus mode, the Rényi Differential Privacy (RDP) Moments Accountant provides tighter sublinear bounds on cumulative epsilon.
 
-### 5. Empirical Performance Comparison Plots
+### 5. Scientific Validation Protocol & Production Benchmark Suite
+To evaluate performance under extreme class imbalance ($< 0.1\%$ positive class rate), the framework provides a scientific benchmarking suite ([benchmark.py](file:///benchmark.py) and [metrics_service.py](file:///backend/app/domain/metrics_service.py)):
+* **Precision-Recall AUC (PR-AUC)**: Primary metric measuring precision across all recall thresholds on imbalanced fraud distributions.
+* **Recall @ 0.1% FPR**: Percentage of fraud caught at a strict false positive budget of 1 in 1,000 legitimate transactions.
+* **Precision@K**: Precision among top $K=100$ highest risk scored transactions.
+* **6 Model Configurations Evaluated**: Local-Only, Centralized Pooled (Upper Bound), Standard FedAvg, FedProx ($\mu=0.01$), FedGNN (Graph Attention Network), and Federated + Privacy Entity Intelligence (FedGNN + DH-PSI + Opacus DP).
+
+Execute the benchmark suite CLI:
+```bash
+python benchmark.py
+```
+
+### 6. Empirical Performance Comparison Plots
 
 To analyze and verify the core security, privacy, and performance dynamics of the framework, the companion evaluation script [generate_plots.py](file:///backend/scripts/generate_plots.py) is provided. It trains and compares different simulation settings under identical conditions:
 
@@ -341,18 +353,21 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **BankConnector Adapter Pattern** | Abstract `BaseBankConnector` ABC and `NormalizedTransaction` schema; concrete production adapters: `StreamingPaymentConnector` (high-throughput real-time streams), `ISO20022MessagingConnector` (ISO 20022 MX `pacs.008`/`pacs.009` XML & SWIFT MT103/MT202 parsing), `BatchEODFileConnector` (EOD CSV/Parquet dumps), `RESTBankConnector` (HTTP webhooks with OAuth2/mTLS), `RabbitMQBankConnector` (AMQP message streams), and `MockBankConnector` (in-process simulator fallback). `BankConnectorFactory` dynamically resolves adapters from configuration settings. | Decouples the FL platform from bank-specific core banking systems and payment feeds — replacing synthetic data assumptions with standardized real-time ISO 20022 and streaming payment feeds. | Open/Closed principle; strict `NormalizedTransaction` contract; per-bank connector-type override |
 | **Production Enterprise Security Suite** | Enterprise security compliance architecture: **Mutual TLS 1.3 (mTLS)** with X.509 cert validation & SAN matching, **OIDC / OAuth2 JWT** bearer claims extraction, **Dynamic ABAC** policy engine (multi-tenant bank isolation, shift hour windows, approval tiers, clearance levels), **HashiCorp Vault** KV v2 secret engine client, and **Tamper-Proof Cryptographic Audit Chain** ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) with retrospective integrity verification. | Meets ISO 27001, SOC2, and PCI-DSS compliance requirements for multi-tenant banking data isolation, key management, and immutable audit logs. | mTLS 1.3, OIDC JWT, ABAC evaluator, HashiCorp Vault KV v2, SHA-256 Audit Chain |
 | **Enterprise Federated Coordinator Suite** | `CoordinatorService` provides: (1) **Dynamic Handshake & Registration** — REST `/handshake` API validates PyTorch ≥ 2.x & Python ≥ 3.10 runtime compatibility before admitting bank nodes; (2) **Live Heartbeat Monitoring** — 15-second timeout window marks dropped nodes OFFLINE, reports to Prometheus `cfi_active_clients_count` gauge; (3) **Heterogeneous Parameter Negotiation** — CUDA nodes ≥16 GB RAM receive full base parameters while CPU/low-RAM nodes get reduced batch size, epochs, and increased gradient accumulation steps to prevent bottlenecks. Frontend page at `/coordinator` shows live registry, heartbeat health, and API reference. | Transforms static hardcoded topology into a production-grade, self-healing FL network capable of elastic bank onboarding without redeployment. | Dynamic registry, 15s heartbeat SLA, hardware-aware parameter scaling |
+| **OpenTelemetry Distributed Tracing & Cloud Orchestration** | `OpenTelemetryTracer` (`otel_tracer.py`) propagating W3C Trace Context headers (`traceparent`, `tracestate`) across HTTP, gRPC, and AMQP channels. Traces request flow across 6 core pipeline stages (Ingestion Connector ➔ Feature Store ➔ PyTorch Trainer ➔ gRPC Transmit ➔ Central Coordinator Aggregation ➔ Model Registry). Exports Prometheus gauges for CPU, RAM, GPU memory, round loss, communication latency, and DP $\epsilon$. Containerized via Helm charts (`helm/cfi-platform/`) and ArgoCD GitOps manifests (`argocd/application.yaml`). | Provides 100% operational request visibility across distributed bank nodes, automated root-cause analysis, and cloud-native GitOps deployment. | W3C Trace Context spec (`00-{trace_id}-{span_id}-01`); OTLP/gRPC trace exporter; Prometheus scrape gauges; ArgoCD GitOps |
 
 ### 🟡 Enterprise MLOps, Explainability & Drift Monitoring
 
 | Feature | Technical Implementation | Purpose / Advantage | Cryptographic / ML Guarantee |
 | :--- | :--- | :--- | :--- |
 | **Advanced AI Explainability Portal** | Multi-level explainability: **Kernel SHAP** feature attribution, **Counterfactual Engine** (actionable parameter remediation paths to clear alerts under GDPR Art. 22), **Deterministic Decision Replay** (step-by-step regulatory inference audit with 100% score reproduction), and **GNNExplainer** (subgraph edge attribution percentage over GraphSAGE embeddings). | Satisfies regulatory "Right to Explanation" clauses, reproduces historic inference decisions on demand, and visualizes network drivers behind flagged entities. | Kernel SHAP, Counterfactual optimization deltas, Deterministic 9-signal audit replay, GNNExplainer subgraph masking |
+| **Model Registry & Governance** | `ModelRegistry` & `model_governance.py` (SR 11-7 compliance): **Semantic Versioning** (`v1.0.0`, `v2.4.1`), **Dual-Signoff Gate** (`DualSignoffGate` requiring cryptographic sign-offs from both ML Engineer & Compliance Officer before production promotion), **Shadow Deployment** (`ShadowDeploymentEngine` routing 10% canary traffic to candidate shadow model alongside champion), **Automatic Rollback Trigger** (`AutomaticRollbackTrigger` reverting to champion if live ROC-AUC < 0.65 or p99 latency > 200ms), and **Cryptographic Audit Lineage** (`CryptographicAuditLineage` binding version manifest to Git commit SHA, dataset SHA-256, DP $\epsilon$, and sign-off timestamps). | Guarantees auditability, regulatory compliance (Fed SR 11-7), zero-downtime canary shadowing, and automated safety rollback for global model deployments. | SR 11-7 dual sign-off gating; 10% shadow traffic hash routing; ROC-AUC < 0.65 / p99 > 200ms auto-rollback; SHA-256 audit lineage |
 | **Feature Drift Detection** | PSI (Population Stability Index) with dynamic binning, Jensen-Shannon divergence (base-2), and KS-statistic per continuous and categorical feature across bank pairs. | Detects when a bank's transaction population profile has shifted enough to degrade the global model's performance. | PSI > 0.25 = drifted; JS > 0.15 = moderate; KS p-value threshold |
 | **Concept Drift Detection** | Logistic regression on reference bank features/labels; evaluates $P(Y\|X)$ divergence on target bank distributions; segment-based conditional JS drift. | Detects when the relationship between features and fraud outcomes changes — a deeper signal than feature distribution shifts alone. | Conditional JS divergence per fraud/legit segment |
 | **Canary Evaluation Gate** | End-of-round evaluation of candidate global model vs. active model on combined cross-bank validation set; `CANARY_GATE_TOLERANCE=0.005`. | Prevents regressions from being silently promoted to production; mirrors real-world bank MLOps quality gates. | AUC-ROC gate: candidate must match active ± 0.5% |
 | **Model Registry & Governance** | Versioned registry with `registry.json` manifest; audit lineage (git hash, dataset hash, DP profile); dual sign-off workflow (ML engineer/compliance); Champion/Challenger prediction shadowing with 10% routing; auto-performance rollback (AUC < 0.65, latency > 200ms, FPR > 5%). | Enables full model versioning, compliance audit trails, safe staging, silent performance evaluation, and automated disaster recovery. | Dual cryptographic signoffs, shadow concurrency, automated rollback triggers |
 | **Enterprise Observability & Drift Monitoring** | Production PLG log aggregation stack (**Grafana Loki** + **Promtail**), **Prometheus Alertmanager** metric alerting (gateway latency, client dropouts, concept drift $PSI > 0.20$, calibration $Brier > 0.15$), statistical **Model Drift Engine** (Kolmogorov-Smirnov 2-sample test, Wasserstein distance, Population Stability Index), **Model Calibration Monitoring** (Brier score & Expected Calibration Error), and **Automated Re-training Triggers**. | Provides full real-time visibility into model health, feature distribution shifts, prediction probability calibration, and automated MLOps retraining. | Grafana Loki, Promtail, Alertmanager, KS-test, Wasserstein, PSI, Brier Score, ECE |
 | **GitOps & K8s Orchestration Pipeline** | Managed Kubernetes deployment manifests (EKS/GKE), **Helm Charts packaging** (`helm/cfi-platform/`) with parameterizable secrets/ingress/replicas/node selectors, **Horizontal Pod Autoscaling (HPA)** for self-healing & elastic load distribution, and **ArgoCD GitOps application** spec (`argocd/application.yaml`) for declarative Git-based continuous delivery. | Automates infrastructure packaging, rolling updates, secure environment overrides, and auto-scaling logic for production multi-tenant environments. | Helm 3, Kubernetes, ArgoCD GitOps, HPA |
+| **Case Management & Human-in-the-Loop Feedback Pipeline** | `CaseManagementService` (`cases.py`) supporting 7-stage case lifecycle (Alert Escalation ➔ ABAC Investigator Assignment ➔ Evidence Assembly ➔ Four-Eyes Analyst Determination ➔ FinCEN SAR XML Generation ➔ Retraining Feedback Loop). Closed-loop feedback records confirmed analyst verdicts (`Confirmed Fraud` = 1, `False Positive` = 0) into local training datasets for continuous FL model improvement. | Provides end-to-end investigation case management, FinCEN BSA e-filing regulatory compliance, and a closed-loop human-in-the-loop retraining pipeline. | Four-Eyes supervisor signature verification, FinCEN SAR XML schema, closed-loop local dataset retraining feedback |
 | **STRIDE / OWASP / MITRE Threat Model** | `docs/threat_model.md` with STRIDE classification matrix, OWASP ASVS v4.0 Level 2 checklist, and MITRE ATLAS adversarial ML mapping. | Provides a formal security architecture baseline for regulatory readiness and adversarial ML risk communication. | STRIDE (all 6 threat classes); OWASP ASVS Level 2; MITRE ATLAS tactics |
 
 ### 🔴 Advanced Privacy Defense & Adversarial Auditing Suite
@@ -371,6 +386,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Free-Rider & Poisoning Quarantine** | Variance update checks (variance < $10^{-6}$)<br/>and Shapley score gating (SV $\le -0.05$). | Isolates/quarantines malicious or<br/>free-rider nodes from rounds. | Automated outlier isolation<br/>and network defense |
 | **Web3 & CBDC Smart Contract Settlement** | EVM Solidity contract (`ConsortiumIncentiveSettlement.sol`) executing automated token payouts (`wCBDC`, `USDC`, `e-TRY`) based on LOO Shapley basis points. | Replaces virtual clearing house estimates with programmatic on-chain token transfers while enforcing quarantine locks on free-riders/poisoners. | ReentrancyGuard protected, 18-decimal wei precision, SHA-256 audit ledger binding |
 | **Live Vault PKI & Dynamic mTLS Rotation** | HashiCorp Vault PKI Secrets Engine integration (`vault_client.py`), automated provisioning script (`scripts/init_vault_pki.py`), dynamic X.509 certificate issuance (`/v1/pki/issue`), zero-downtime rotation (`mtls_manager.py`), SAN validation, and CRL revocation. | Eliminates static self-signed certificates; provides production-grade PKI certificate lifecycle management and automated rotation across inter-bank nodes. | Root CA signed X.509 v3, TLS 1.3 mTLS, SAN matching, CRL revocation verification |
+| **Privacy-Preserving Entity Resolution (DH-PSI & Fuzzy Matching)** | Commutative Diffie-Hellman exponentiation ($H(x)^{a \cdot b} \pmod P$, `psi_service.py`) + MinHash 3-gram character signatures & LSH band buckets (`fuzzy_psi.py`) + Deterministic HMAC tokenization (`entities.py`). | Enables cross-bank entity resolution and fraud ring detection without sharing raw PII (IBANs, names, device IDs) across bank boundaries. | Commutative DH exponentiation equality $H(x)^{a \cdot b} == H(x)^{b \cdot a}$, 512-bit prime, Zero Raw PII Policy |
 
 ---
 
@@ -462,6 +478,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   ├── app/
 │   │   ├── domain/               # Core domain entities, enums, value objects (Pure Python)
 │   │   │   ├── data_validator.py # DataContractValidator enforcing schema, mandatory fields, ISO 3166-1/4217, and positive amount bounds
+│   │   │   ├── model_governance.py # SR 11-7 model governance (SemanticVersion, DualSignoffGate, ShadowDeploymentEngine, AutomaticRollbackTrigger, CryptographicAuditLineage)
 │   │   │   ├── enums.py          # FL Engine Type, Privacy Mechanism, Simulation Status, Bank Tier
 │   │   │   ├── entities.py       # Bank, SimulationRun, TrainingRound models
 │   │   │   ├── entities_phase2.py # Alerts, Cases, Resolved Entities, Scenario definitions
@@ -503,6 +520,8 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── event_bus.py      # Pub/sub channels for real-time WebSocket communication
 │   │   │   ├── models.py         # Relational tables for simulation logs, alerts, and runs
 │   │   │   ├── redis_store.py    # Redis state syncing client with automatic thread-safe memory fallback
+│   │   │   ├── telemetry/        # OpenTelemetry Distributed Tracing & Metric Recorders
+│   │   │   │   └── otel_tracer.py # OpenTelemetryTracer propagating W3C Trace Context (traceparent, tracestate) across 6-stage request flows
 │   │   │   ├── security/         # Production Enterprise Security Suite
 │   │   │   │   ├── abac_engine.py # Attribute-Based Access Control evaluator (tenant isolation, IP subnet ranges, shift windows, approval tiers, clearance levels)
 │   │   │   │   ├── compression_engine.py # GradientCompressionEngine for Top-K sparsification & Zstandard lossless compression
@@ -542,7 +561,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   │   ├── graph.py      # Graph visualization queries for cross-bank accounts
 │   │   │   │   ├── health.py     # System service health checking
 │   │   │   │   ├── model_registry.py # Model versioning, rollback, and canary history endpoints
-│   │   │   │   ├── predict.py    # Real-time serving transaction inference, risk evaluations, and alert management
+│   │   │   │   ├── predict.py    # Sub-10ms real-time risk decision API (POST /v1/transactions/score), inference, risk evaluations, and SHAP attributions
 │   │   │   │   ├── rules.py      # Declarative CRUD and testing endpoints for dynamic policy rules
 │   │   │   │   ├── psd2.py       # Open Banking PSD2 XS2A interface endpoints
 │   │   │   │   ├── scenarios.py  # Controls AML scenario simulation streams
@@ -567,7 +586,9 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   ├── unit/                 # Domain, algorithm, and service unit tests
 │   │   │   ├── test_async_retraining_scheduler.py # Unit tests for RetrainingTriggerEngine (50k threshold, PSI > 0.20, cron) and execute_automated_retraining_task worker
 │   │   │   ├── test_bank_client_daemon.py # Unit tests for cfi-bank-client daemon, LocalVault, hardware detector & backoff reconnector
+│   │   │   ├── test_domain_model_governance.py # Unit tests for SemanticVersion, DualSignoffGate, ShadowDeploymentEngine, AutomaticRollbackTrigger & CryptographicAuditLineage
 │   │   │   ├── test_feature_store.py # Unit tests for DataContractValidator, BloomFilterDeduplicator, RollingFeatureAggregator & StreamingFeatureStore
+│   │   │   ├── test_otel_tracer.py # Unit tests for OpenTelemetryTracer, W3C Trace Context propagation & Prometheus recorders
 │   │   │   ├── test_secure_parameter_pipeline.py # Unit tests for Top-K sparsification, Zstandard compression, RSA-PSS envelope signing & 7-step pipeline
 │   │   │   ├── test_zero_trust_pki_mtls.py # Unit tests for HashiCorp Vault PKI engine, mTLS 1.3 SAN matching, zero-downtime leaf rotation, CRL revocation & ABAC rules
 │   │   │   ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
@@ -847,12 +868,15 @@ open http://localhost:3001
 
 ```
 Collaborative-Fraud-Intelligence-Simulator/
+├── benchmark.py                  # Production Benchmark Suite CLI & Scientific Evaluator
 ├── backend/
 │   ├── app/
 │   │   ├── domain/               # Domain Entities, Interfaces, Value Objects
 │   │   │   ├── entities/         # Transaction, BankNode, Alert, Case, SAR
 │   │   │   ├── interfaces/       # Repository & Service Port Protocols
-│   │   │   └── value_objects/    # RiskScore, EncryptionKey, EpsilonBudget
+│   │   │   ├── value_objects/    # RiskScore, EncryptionKey, EpsilonBudget
+│   │   │   ├── psi_service.py    # DH-PSI Commutative Exponentiation Domain Interface
+│   │   │   └── fuzzy_psi.py      # MinHash 3-Gram Signatures & LSH Band Buckets
 │   │   ├── application/          # Use Cases, DTOs, Application Services
 │   │   │   ├── schemas/          # Pydantic Schemas & DTO Validation
 │   │   │   └── use_cases/        # Simulation, FL Engine, Alert, Graph Use Cases
@@ -868,7 +892,7 @@ Collaborative-Fraud-Intelligence-Simulator/
 │   │   │   ├── ml/               # PyTorch MLP, FedGNN, Opacus, SHAP Engine
 │   │   │   └── database/         # PostgreSQL, CockroachDB & SQLite Models
 │   │   └── presentation/         # API Gateways, Routers, WebSockets
-│   │       ├── routers/          # FastAPI Routers (simulations, alerts, etc.)
+│   │       ├── routers/          # FastAPI Routers (entities.py, predict.py, cases.py)
 │   │       └── gateway.py        # Gateway Rate-Limiting & Security Middleware
 │   └── tests/
 │       ├── unit/                 # Domain & Application Unit Tests

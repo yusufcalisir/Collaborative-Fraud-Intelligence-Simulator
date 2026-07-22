@@ -124,6 +124,32 @@ For high-frequency sliding-window behavioral aggregations across continuous paym
     - `rolling_amount_zscore_24h`: Z-score of transaction amount relative to account's 24-hour rolling mean and standard deviation ($Z = (x - \mu) / \sigma$).
     - `previous_alerts_30d`: Count of prior AML SARs (Suspicious Activity Reports) triggered in the last 30 days.
 
+### 3.9 OpenTelemetry Distributed Tracing & Span Lifecycle Architecture
+
+OpenTelemetry (OTel) distributed tracing (`backend/app/infrastructure/telemetry/otel_tracer.py`) instruments end-to-end request flows across distributed bank nodes and central coordinator microservices:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant BC as Bank Ingestion Connector
+    participant FS as Feature Store Engine
+    participant PT as Local PyTorch Trainer
+    participant gRPC as Outbound gRPC Transport
+    participant CC as Central Coordinator
+    participant MR as Model Registry
+
+    BC->>FS: 1. Ingest Transaction [ingest_transaction_span] (W3C traceparent injected)
+    FS->>PT: 2. Extract Rolling Features [feature_store_span]
+    PT->>gRPC: 3. Train Local Model with DP-SGD [local_pytorch_training]
+    gRPC->>CC: 4. Transmit Encrypted Payload over mTLS 1.3 [grpc_mtls_transmit]
+    CC->>MR: 5. Verify & Execute Krum/Median Aggregation [central_parameter_aggregation]
+    MR->>MR: 6. Tag & Save Model Version Manifest [model_registry_save]
+```
+
+* **W3C Trace Context Propagation**: Propagates `traceparent` (`00-{trace_id}-{span_id}-01`) and `tracestate` headers across HTTP, gRPC, and AMQP channels.
+* **OpenTelemetry Exporters**: Exports traces via OTLP/gRPC to Jaeger/Tempo (`:4317`) and Prometheus gauges (`/metrics`).
+* **Cloud Orchestration**: Infrastructure is containerized with Helm charts (`helm/cfi-platform/`) and ArgoCD GitOps manifests (`argocd/application.yaml`) for multi-tenant Kubernetes deployment.
+
 ---
 
 ## 4. Telemetry & Observability

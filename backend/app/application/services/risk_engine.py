@@ -18,8 +18,14 @@ from app.domain.value_objects_phase2 import RiskScore, RiskSignal, RiskWeightCon
 
 logger = logging.getLogger(__name__)
 
-# Country risk scores — simplified lookup table
+# Country risk scores — simplified lookup table (FATF-aligned)
 COUNTRY_RISK: dict[str, float] = {
+    # FATF black-listed / fully sanctioned jurisdictions
+    "KP": 1.00,  # North Korea (DPRK)
+    "IR": 0.95,  # Iran
+    "MM": 0.90,  # Myanmar (post-coup)
+    "SY": 0.90,  # Syria
+    # FATF grey-listed / high-risk jurisdictions
     "NG": 0.85,
     "RU": 0.80,
     "PH": 0.75,
@@ -30,6 +36,7 @@ COUNTRY_RISK: dict[str, float] = {
     "IN": 0.40,
     "ZA": 0.45,
     "AE": 0.30,
+    # Lower-risk jurisdictions
     "KR": 0.15,
     "JP": 0.10,
     "SG": 0.10,

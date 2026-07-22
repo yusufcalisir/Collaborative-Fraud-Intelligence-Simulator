@@ -106,7 +106,19 @@ To satisfy strict data protection regulations (e.g., GDPR, CCPA, bank secrecy ac
      $$\text{Privacy Hash} = \text{HMAC-SHA256}(\text{Shared Key}, \text{Entity Type} \mathbin{\Vert} \text{Raw Value})$$
    * Using a type-specific salt prevents cross-type rainbow table attacks.
    * The resulting hash is truncated to a readable size (16 characters) for display within the simulation.
-3. **Federated Learning Alignment**:
+3. **Commutative Diffie-Hellman Private Set Intersection (DH-PSI)**:
+   * Enables Bank A and Bank B to discover intersecting fraud identifiers ($x \in X_A \cap X_B$) without disclosing non-matching elements ($x \in X_A \setminus X_B$ or $x \in X_B \setminus X_A$):
+     $$\text{Bank A computes: } c_{A,i} = H(x_i)^{a} \pmod P$$
+     $$\text{Bank B computes: } c_{B,j} = H(y_j)^{b} \pmod P$$
+     $$\text{Bank A double-encrypts: } c_{BA,j} = (c_{B,j})^{a} = H(y_j)^{a \cdot b} \pmod P$$
+     $$\text{Bank B double-encrypts: } c_{AB,i} = (c_{A,i})^{b} = H(x_i)^{a \cdot b} \pmod P$$
+   * Due to exponentiation commutativity $(H(x)^a)^b \equiv (H(x)^b)^a \pmod P$, element equality $c_{AB,i} == c_{BA,j}$ proves $x_i == y_j$ in zero knowledge.
+
+4. **MinHash LSH Fuzzy Private Set Intersection**:
+   * Extracts character 3-grams over standardized entity attributes (phone, email, device ID, birthdate, surname).
+   * Computes MinHash signature vectors $S = [min_{s \in \text{shingles}}(h_k(s))]_{k=1}^{16}$ and partitions signatures into LSH bands for bucket lookup, enabling near-duplicate detection under strict zero raw PII policies.
+
+5. **Federated Learning Alignment**:
    * Model weights are trained using local SGD and aggregated using secure Federated Averaging (FedAvg). This is combined with Phase 2's collaborative intelligence layer to protect transaction integrity at all execution stages.
 
 ---
