@@ -80,7 +80,11 @@ class FederatedLearningServicer:
             if heartbeat.bank_id in self.active_sessions:
                 self.active_sessions[heartbeat.bank_id]["last_heartbeat"] = heartbeat.timestamp
 
-            cmd = CoordinatorCommand.START_TRAINING if self.current_round > 0 else CoordinatorCommand.IDLE
+            cmd = (
+                CoordinatorCommand.START_TRAINING
+                if self.current_round > 0
+                else CoordinatorCommand.IDLE
+            )
 
             yield CoordinatorStatus(
                 command=cmd,
@@ -122,7 +126,9 @@ class FederatedLearningServicer:
         self, request: ModelDownloadRequest
     ) -> AsyncIterable[ModelChunk]:
         """RPC 4: Server-streaming chunked global model download."""
-        model_version = request.target_version if request.target_version in self.global_models else "latest"
+        model_version = (
+            request.target_version if request.target_version in self.global_models else "latest"
+        )
         model_bytes = self.global_models[model_version]
 
         chunk_size = 512
