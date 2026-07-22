@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class RESTBankConnector(BankConnectorInterface, BaseBankConnector):
+class RESTBankConnector(BaseBankConnector):
     """Sends FL commands to bank nodes over HTTP REST APIs and ingests real-time webhook payloads."""
 
     def __init__(

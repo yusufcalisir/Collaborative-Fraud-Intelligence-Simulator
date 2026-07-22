@@ -8,8 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from app.application.interfaces.bank_connector import BankConnectorInterface
+
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from app.domain.value_objects import ModelWeights
 
 
 class NormalizedTransaction(BaseModel):
@@ -41,8 +44,43 @@ class NormalizedTransaction(BaseModel):
     )
 
 
-class BaseBankConnector(ABC):
+class BaseBankConnector(BankConnectorInterface, ABC):
     """Abstract base class defining standardized ingestion interface for core bank systems."""
+
+    def initialize(
+        self,
+        bank_id: str,
+        num_transactions: int,
+        seed: int = 42,
+    ) -> dict[str, Any]:
+        """Default initialization stub for stream/file ingestion connectors."""
+        return {"bank_id": bank_id, "status": "initialized", "num_transactions": num_transactions}
+
+    def train(
+        self,
+        bank_id: str,
+        weights: ModelWeights,
+        learning_rate: float,
+        batch_size: int,
+        epochs: int,
+        enable_dp: bool,
+        dp_epsilon: float,
+        dp_delta: float,
+        dp_max_grad_norm: float,
+        correlation_id: str,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Default train stub for stream/file ingestion connectors."""
+        return {"bank_id": bank_id, "status": "completed", "weights": weights}
+
+    def evaluate(
+        self,
+        bank_id: str,
+        weights: ModelWeights,
+        correlation_id: str,
+    ) -> dict[str, Any]:
+        """Default evaluate stub for stream/file ingestion connectors."""
+        return {"bank_id": bank_id, "loss": 0.0, "accuracy": 1.0}
 
     @abstractmethod
     def consume_stream(self) -> Generator[NormalizedTransaction, None, None]:

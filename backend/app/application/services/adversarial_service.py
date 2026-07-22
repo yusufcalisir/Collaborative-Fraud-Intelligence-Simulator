@@ -19,15 +19,19 @@ if TYPE_CHECKING:
 
 @contextmanager
 def _disable_opacus_hooks(model: nn.Module):
-    modules_to_disable = [m for m in model.modules() if hasattr(m, "disable_hooks")]
-    for m in modules_to_disable:
-        m.disable_hooks()
+    modules_to_disable = []
+    for m in model.modules():
+        disable_fn = getattr(m, "disable_hooks", None)
+        if callable(disable_fn):
+            disable_fn()
+            modules_to_disable.append(m)
     try:
         yield
     finally:
         for m in modules_to_disable:
-            if hasattr(m, "enable_hooks"):
-                m.enable_hooks()
+            enable_fn = getattr(m, "enable_hooks", None)
+            if callable(enable_fn):
+                enable_fn()
 
 
 class AdversarialDefenseService:
