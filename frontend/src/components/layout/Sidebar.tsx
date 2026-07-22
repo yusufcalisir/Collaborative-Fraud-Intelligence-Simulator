@@ -68,7 +68,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Close sidebar on navigation change (for mobile viewport)
   useEffect(() => {
     onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
 
   const visibleSections = NAV_SECTIONS;
 

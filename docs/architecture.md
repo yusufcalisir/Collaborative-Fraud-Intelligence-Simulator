@@ -161,7 +161,94 @@ The parameter exchange pipeline (`backend/app/infrastructure/security/secure_par
 
 ---
 
-## 6. Technology Stack & Directory Structure
+## 6. High-Availability & Asynchronous Fault Tolerance
+
+Prevents training round deadlocks caused by bank node network outages, maintenance windows, or latency spikes.
+
+### 6.1 Asynchronous Federated Aggregation (`async_fl_engine.py`)
+
+The `AsyncFLEngine` implements the **FedAsync** parameter update protocol. Fast bank nodes submit model updates immediately — without blocking on straggler nodes — using a staleness attenuation factor to preserve convergence quality.
+
+**Staleness Attenuation Function:**
+
+$$S(\tau) = (1 + \tau)^{-\alpha}$$
+
+where $\tau = t_{\text{current}} - t_{\text{submitted}}$ (rounds elapsed since submission) and $\alpha$ is the attenuation exponent (default: $\alpha = 0.5$).
+
+**Global Weight Update Rule:**
+
+$$W^{(t+1)} = (1 - \alpha_\tau)\,W^{(t)} + \alpha_\tau\,W_i^{(t-\tau)}$$
+
+where $\alpha_\tau = \eta \cdot S(\tau)$ is the learning rate weighted by staleness attenuation. Fresh updates ($\tau = 0$) receive full learning rate weight ($S(0) = 1.0$); older stale updates are progressively down-weighted.
+
+### 6.2 Dynamic Quorum Timeout Manager (`quorum_manager.py`)
+
+The `DynamicQuorumManager` monitors real-time round submission progress across all registered bank nodes. It automatically triggers round aggregation as soon as the minimum quorum threshold is satisfied — without waiting for the target window to expire.
+
+**Quorum States:**
+
+| State | Condition |
+| :--- | :--- |
+| `WAITING` | Submitted nodes / Registered nodes < 60% and elapsed < 300s |
+| `QUORUM_REACHED` | Submitted nodes / Registered nodes ≥ 60% |
+| `TIMEOUT_EXPIRED` | Elapsed time ≥ 300s before quorum threshold reached |
+
+**Auto-Aggregation Protocol:**
+1. Bank nodes register for the round via `register_nodes(node_ids)`.
+2. Each gradient/weight submission is recorded via `record_node_submission(node_id)`.
+3. After each submission, `evaluate_quorum_status()` checks: $\frac{|\text{submitted}|}{|\text{registered}|} \ge 0.60$.
+4. If `QUORUM_REACHED` → immediate aggregation trigger (no timeout wait).
+5. If `TIMEOUT_EXPIRED` → graceful fallback with partial aggregation from submitted nodes.
+
+---
+
+## 7. Spectral Anomaly Detection & Backdoor Poisoning Defense (`spectral_defense.py`)
+
+### 7.1 Threat Model
+
+Targeted backdoor attacks attempt to inject a **low-rank gradient perturbation** into the federated aggregation process — malicious bank nodes submit parameter updates that are indistinguishable from legitimate updates in L2 norm, but align along a shared stealthy subspace designed to bypass fraud detection for specific money mule accounts.
+
+### 7.2 SVD Spectral Projection Algorithm
+
+The `SpectralAnomalyDetector` applies Singular Value Decomposition to the stacked gradient matrix $G \in \mathbb{R}^{K \times d}$ (K clients, d parameters) before aggregation:
+
+**Step 1 — Stack gradient matrix:**
+$$G = \begin{bmatrix} \Delta w_1^T \\ \Delta w_2^T \\ \vdots \\ \Delta w_K^T \end{bmatrix}$$
+
+**Step 2 — Compute dominant right singular vector via power iteration:**
+$$G = U \Sigma V^T \quad \Rightarrow \quad v_1 = \arg\max_{‖v‖=1} ‖Gv‖$$
+
+**Step 3 — Compute per-client spectral projection scores:**
+$$s_i = |\langle \Delta w_i, v_1 \rangle|^2$$
+
+Backdoor-poisoned updates inject a dominant low-rank perturbation that results in disproportionately large $s_i$ values, separating malicious clients from the honest majority.
+
+**Step 4 — Threshold detection:**
+$$\theta = \mu_s + \tau \cdot \sigma_s$$
+$$\text{quarantine}(i) \iff s_i > \theta$$
+
+where $\tau$ = `spectral_threshold_multiplier` (default: 1.5), $\mu_s$ = mean score, $\sigma_s$ = standard deviation.
+
+### 7.3 Robust Spectral Aggregation
+
+After quarantining poisoned nodes, the `aggregate_robust_spectral()` method computes a clean parameter average over the honest subset $\mathcal{H} = \{i : s_i \le \theta\}$:
+
+$$w^{(t+1)}_{\text{global}} = \frac{1}{|\mathcal{H}|} \sum_{i \in \mathcal{H}} \Delta w_i$$
+
+### 7.4 Implementation Details
+
+| Component | Module | Purpose |
+| :--- | :--- | :--- |
+| `SpectralDefenseConfig` | `spectral_defense.py` | Config: threshold multiplier τ, min_clients |
+| `SpectralAnomalyReport` | `spectral_defense.py` | Per-client spectral score & quarantine status |
+| `SpectralAnomalyDetector` | `spectral_defense.py` | SVD power iteration + anomaly detection + robust aggregation |
+| `_power_iteration()` | `spectral_defense.py` | Pure-stdlib dominant right singular vector $v_1$ computation |
+
+> **Pure stdlib implementation**: The spectral defense module uses only Python stdlib (`math`, `dataclasses`) — no numpy or scipy dependency required — maintaining clean domain layer isolation.
+
+---
+
+## 8. Technology Stack & Directory Structure
 
 ```
 ├── backend/
@@ -179,3 +266,4 @@ The parameter exchange pipeline (`backend/app/infrastructure/security/secure_par
 │   └── package.json
 └── docs/                         # Security & System Design documentation
 ```
+

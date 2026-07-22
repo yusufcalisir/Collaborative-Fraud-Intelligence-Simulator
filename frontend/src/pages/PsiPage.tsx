@@ -20,7 +20,7 @@ const TRANSLITERATION_MAP: Record<string, string> = {
 
 // Clean name standardization in JS (matches python implementation)
 function localStandardize(val: string): string {
-  let text = val.normalize('NFC').toLowerCase();
+  const text = val.normalize('NFC').toLowerCase();
   let result = '';
   for (let i = 0; i < text.length; i++) {
     const ch = text.charAt(i);

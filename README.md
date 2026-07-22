@@ -387,8 +387,14 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **Web3 & CBDC Smart Contract Settlement** | EVM Solidity contract (`ConsortiumIncentiveSettlement.sol`) executing automated token payouts (`wCBDC`, `USDC`, `e-TRY`) based on LOO Shapley basis points. | Replaces virtual clearing house estimates with programmatic on-chain token transfers while enforcing quarantine locks on free-riders/poisoners. | ReentrancyGuard protected, 18-decimal wei precision, SHA-256 audit ledger binding |
 | **Live Vault PKI & Dynamic mTLS Rotation** | HashiCorp Vault PKI Secrets Engine integration (`vault_client.py`), automated provisioning script (`scripts/init_vault_pki.py`), dynamic X.509 certificate issuance (`/v1/pki/issue`), zero-downtime rotation (`mtls_manager.py`), SAN validation, and CRL revocation. | Eliminates static self-signed certificates; provides production-grade PKI certificate lifecycle management and automated rotation across inter-bank nodes. | Root CA signed X.509 v3, TLS 1.3 mTLS, SAN matching, CRL revocation verification |
 | **Privacy-Preserving Entity Resolution (DH-PSI & Fuzzy Matching)** | Commutative Diffie-Hellman exponentiation ($H(x)^{a \cdot b} \pmod P$, `psi_service.py`) + MinHash 3-gram character signatures & LSH band buckets (`fuzzy_psi.py`) + Deterministic HMAC tokenization (`entities.py`). | Enables cross-bank entity resolution and fraud ring detection without sharing raw PII (IBANs, names, device IDs) across bank boundaries. | Commutative DH exponentiation equality $H(x)^{a \cdot b} == H(x)^{b \cdot a}$, 512-bit prime, Zero Raw PII Policy |
+| **Regional Governance Rings & EU AI Act Compliance** | `RegionalGovernanceRingManager` (`regional_governance.py`) segregating bank nodes into regional rings (`EU_CENTRAL`, `US_EAST`, `APAC_SINGAPORE`) + DP-scrubbed inter-region meta-aggregation + `EUAIActComplianceEngine` (`ai_act_compliance.py`) exporting immutable JSON certificates. | Complies with cross-border data sovereignty laws (Schrems II, GDPR Article 22) and EU AI Act Regulation (EU) 2024/1689 High-Risk AI System mandates (Articles 10-15). | `CrossBorderSovereigntyFilter` blocking raw cross-border weight transfers, SHA-256 signed compliance certificates |
+| **High-Availability Asynchronous FL & Dynamic Quorum Management** | `AsyncFLEngine` (`async_fl_engine.py`) implementing FedAsync protocol — applies staleness attenuation factor $S(\tau) = (1 + \tau)^{-\alpha}$ to down-weight stale updates: $W^{(t+1)} = (1 - \alpha_\tau)W^{(t)} + \alpha_\tau W_i^{(t-\tau)}$. `DynamicQuorumManager` (`quorum_manager.py`) monitors real-time round submission progress — automatically triggers aggregation as soon as $\ge 60\%$ of registered bank nodes submit updates within the 300-second target window, transitioning to `QUORUM_REACHED` or `TIMEOUT_EXPIRED` without blocking. | Eliminates training round deadlocks caused by slow/straggler bank nodes, maintenance windows, or network outages. Fast bank nodes contribute immediately without waiting for the slowest participant, preserving round throughput under adverse network conditions. | Polynomial staleness attenuation $S(\tau)=(1+\tau)^{-\alpha}$; 60% dynamic quorum threshold auto-aggregation; `TIMEOUT_EXPIRED` graceful fallback |
+| **Bank Node Self-Service Onboarding Guide & CLI (`cfi-cli`)** | `cfi_cli.py` (`scripts/cfi_cli.py`) automated onboarding tool providing subcommands: `init` (directory scaffold & YAML config template), `cert generate-csr` (4096-bit RSA key & X.509 CSR generation), `test-connection` (gRPC TCP reachability & latency SLA verification), and `sandbox run` (in-memory synthetic transaction benchmark & PyTorch GPU/CPU compatibility check). Step-by-step IT integration guide in `docs/bank_onboarding_guide.md`. | Enables bank IT teams to onboard, test gRPC connectivity, generate mTLS credentials, and verify data contracts within minutes without deep FL platform expertise. | Automated RSA 4096-bit key & X.509 CSR creation; TCP latency SLA probe (<100ms); local throughput benchmark |
+| **Hardware Security Module (HSM / PKCS#11) Key Vault Engine** | `HSMSignerEngine` (`hsm_signer.py`) connecting to enterprise hardware security modules via PKCS#11 standard interfaces or Cloud KMS (AWS KMS, Azure Dedicated HSM, GCP Cloud KMS). Enforces Zero-Disk Private Keys: private RSA-4096 and Ed25519 keys remain non-exportable (`is_exportable = False`) inside hardware enclaves; signing operations execute via in-hardware cryptographic calls. Generates FIPS 140-2 Level 3 hardware attestation reports (`get_hardware_attestation`). | Anchors node identity and parameter envelope digital signatures into tamper-resistant hardware enclaves, eliminating private key extraction vectors from container memory or host disk storage. | FIPS 140-2 Level 3 compliance; PKCS#11 slot PIN session isolation; Zero-Disk Private Key policy |
+| **Advanced Byzantine & Backdoor Poisoning Defenses (Spectral SVD)** | `SpectralAnomalyDetector` (`spectral_defense.py`) performing Singular Value Decomposition (SVD) via power iteration across the stacked gradient matrix $G \in \mathbb{R}^{K \times d}$ before aggregation. Computes per-client spectral projection scores $s_i = |\langle \Delta w_i, v_1 \rangle|^2$ onto the dominant right singular vector $v_1$, identifying low-rank subspace anomalies characteristic of targeted backdoor attacks. Clients exceeding the adaptive threshold $\theta = \mu_s + \tau \cdot \sigma_s$ are quarantined. `aggregate_robust_spectral()` produces clean parameter averages from honest node subset $\mathcal{H}$ only. Pure-stdlib implementation — zero external ML dependencies in domain layer. | Neutralizes stealthy targeted backdoor injections where malicious bank nodes attempt to embed hidden model triggers to bypass fraud detection for specific money mule accounts — attacks invisible to standard L2-norm filtering or Byzantine-robust aggregation alone. | SVD power iteration (30 iterations); adaptive $\theta = \mu + 1.5\sigma$ threshold; honest-only `aggregate_robust_spectral()`; `SpectralAnomalyReport` per-client quarantine audit log |
 
 ---
+
 
 ### 🌐 Web3 & CBDC Smart Contract Incentive Settlement Pipeline
 
@@ -435,6 +441,38 @@ To meet enterprise banking compliance standards (ISO 27001, SOC2, PCI-DSS), the 
    - **Encrypted Local Storage Vault (`local_vault.py`)**: Persists session tokens, local gradient states, and round checkpoints using AES-256 Fernet encryption (`PBKDF2HMAC`).
    - **Exponential Backoff Reconnector (`reconnector.py`)**: Manages long-lived outbound gRPC connection loops with randomized full jitter.
    - **Hardware Acceleration Auto-Detection (`hardware.py`)**: Automatically detects CUDA GPUs (NVIDIA) and Apple Silicon MPS, falling back gracefully to multi-core CPU threads.
+
+---
+
+### 🛠️ Bank Node Self-Service Onboarding Guide (`cfi-cli`)
+
+To streamline bank IT infrastructure deployment, the automated command-line tool `scripts/cfi_cli.py` and step-by-step guide (`docs/bank_onboarding_guide.md`) enable bank engineering teams to test gRPC connectivity, generate mTLS certificates, and verify local hardware compatibility in minutes:
+
+1. **Initialize Configuration Template (`cfi-cli init`)**:
+   ```bash
+   python scripts/cfi_cli.py init --bank-id bank_alpha --coordinator coordinator.cfi.internal:50051
+   ```
+   Generates `bank_config.yaml` and directory scaffold (`certs/`, `data/vault/`, `logs/`).
+
+2. **Generate Certificate Signing Request (`cfi-cli cert generate-csr`)**:
+   ```bash
+   python scripts/cfi_cli.py cert generate-csr --bank-id bank_alpha --output-dir ./certs
+   ```
+   Creates a 4096-bit RSA private key (`bank.key`) and X.509 CSR (`bank.csr`) for mTLS authentication.
+
+3. **Test Network Connectivity & Latency SLA (`cfi-cli test-connection`)**:
+   ```bash
+   python scripts/cfi_cli.py test-connection --host coordinator.cfi.internal --port 50051
+   ```
+   Probes TCP/gRPC reachability and measures round-trip latency against SLA (<100ms).
+
+4. **Run Integration Sandbox Benchmark (`cfi-cli sandbox run`)**:
+   ```bash
+   python scripts/cfi_cli.py sandbox run --transactions 5000
+   ```
+   Generates synthetic transactions, benchmarks local feature store throughput, and verifies PyTorch CUDA/MPS GPU compatibility.
+
+---
 
 | **FHE CKKS Aggregator** | Homomorphic parameter summation over ciphertexts:<br/>$\sum (c_i \cdot w_i)$ without decryption. | Prevents the central aggregator from ever<br/>viewing plaintext client parameters. | Zero-plaintext exposure during aggregation |
 | **TEE Hardware Enclave** | Inside-enclave summation, remote attestation<br/>measurements, and AES-GCM data sealing. | Guarantees code integrity and execution context<br/>matching SGX/Nitro specifications. | MRENCLAVE/MRSIGNER code signature validation |
@@ -876,7 +914,11 @@ Collaborative-Fraud-Intelligence-Simulator/
 │   │   │   ├── interfaces/       # Repository & Service Port Protocols
 │   │   │   ├── value_objects/    # RiskScore, EncryptionKey, EpsilonBudget
 │   │   │   ├── psi_service.py    # DH-PSI Commutative Exponentiation Domain Interface
-│   │   │   └── fuzzy_psi.py      # MinHash 3-Gram Signatures & LSH Band Buckets
+│   │   │   ├── fuzzy_psi.py      # MinHash 3-Gram Signatures & LSH Band Buckets
+│   │   │   ├── regional_governance.py # Regional Rings & Schrems II Sovereignty
+│   │   │   ├── async_fl_engine.py # FedAsync Staleness Attenuation S(τ)=(1+τ)^(-α)
+│   │   │   ├── quorum_manager.py  # Dynamic Quorum Monitoring & 60% Auto-Aggregation
+│   │   │   └── spectral_defense.py # SVD Spectral Backdoor Poisoning Defense & Quarantine
 │   │   ├── application/          # Use Cases, DTOs, Application Services
 │   │   │   ├── schemas/          # Pydantic Schemas & DTO Validation
 │   │   │   └── use_cases/        # Simulation, FL Engine, Alert, Graph Use Cases
@@ -888,7 +930,7 @@ Collaborative-Fraud-Intelligence-Simulator/
 │   │   │   │   └── reconnector.py# Exponential Backoff Outbound Reconnector
 │   │   │   ├── storage/          # Encrypted Vault & Persistence Adapters
 │   │   │   │   └── local_vault.py# AES-256 Encrypted Local Storage Vault
-│   │   │   ├── security/         # DH-PSI, KMS, Smart Contract Web3 Driver
+│   │   │   ├── security/         # DH-PSI, KMS, hsm_signer.py (HSM PKCS#11), Smart Contract, ai_act_compliance.py
 │   │   │   ├── ml/               # PyTorch MLP, FedGNN, Opacus, SHAP Engine
 │   │   │   └── database/         # PostgreSQL, CockroachDB & SQLite Models
 │   │   └── presentation/         # API Gateways, Routers, WebSockets
@@ -897,6 +939,9 @@ Collaborative-Fraud-Intelligence-Simulator/
 │   └── tests/
 │       ├── unit/                 # Domain & Application Unit Tests
 │       └── integration/          # Microservices & API Integration Tests
+├── scripts/                      # Infrastructure, Provisioning & Onboarding Automation Scripts
+│   ├── init_vault_pki.py         # HashiCorp Vault PKI Secrets Engine Bootstrap Script
+│   └── cfi_cli.py               # Bank Onboarding CLI & Self-Service Integration Sandbox
 ├── contracts/                    # Solidity Smart Contracts (Web3 / CBDC Settlement)
 │   └── ConsortiumIncentiveSettlement.sol
 ├── frontend/                     # React 19 Glassmorphic Dashboard (TypeScript + Vite)
@@ -904,6 +949,7 @@ Collaborative-Fraud-Intelligence-Simulator/
 │   │   ├── components/           # UI Components (FL, AML, Web3, Graph, Analytics)
 │   │   └── services/             # API Client & WebSocket Event Dispatcher
 └── docs/                         # Architecture, System Design & Threat Models
+    └── bank_onboarding_guide.md  # Step-by-Step IT Onboarding & Sandbox Integration Guide
 ```
 
 ***

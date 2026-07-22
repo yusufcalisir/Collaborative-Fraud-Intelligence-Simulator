@@ -306,6 +306,27 @@ To scientifically quantify accuracy, latency, communication payload, and differe
 2. **FedGNN & Non-IID Handling**: Graph structural embeddings (FedGNN) achieve 0.9789 PR-AUC, closing 98.6% of the gap to non-private centralized upper bounds while preserving data sovereignty.
 3. **Privacy-Preserving Trade-off**: Combined FedGNN + DH-PSI + Opacus DP ($\epsilon=2.5$) retains 0.9494 PR-AUC and sub-10ms inference latency ($8.90$ ms), meeting enterprise SLA targets.
 
+---
+
+## 🇪🇺 Cross-Border Data Sovereignty & EU AI Act Compliance (Phase 6 Section 6.1)
+
+To meet Tier-1 bank CISO, Legal Compliance, and EU AI Act Regulation (EU) 2024/1689 requirements:
+
+### 1. Regional Aggregation Rings (`regional_governance.py`)
+- **Geographic Segregation**: Bank nodes are partitioned into regional clusters (`EU-Central`, `US-East`, `APAC-Singapore`).
+- **Intra-Region Aggregation**: Model updates are aggregated locally within regional boundaries.
+- **Inter-Region DP Meta-Aggregation**: Inter-regional meta-aggregation applies Differential Privacy noise scrubbing ($\epsilon_{\text{inter}}$) before cross-border transfer.
+- **Schrems II / GDPR Article 22 Compliance**: `CrossBorderSovereigntyFilter` strictly blocks unencrypted or non-DP-scrubbed raw model parameter transfers across geographic boundaries.
+
+### 2. EU AI Act High-Risk AI Compliance Engine (`ai_act_compliance.py`)
+- **Articles 10-15 Mandate Verification**: Automatically generates immutable JSON compliance certificates (`storage/regulatory_filings/eu_ai_act_certificate_{version}.json`) binding:
+  - **Article 10 (Data Governance)**: Zero Raw PII Policy & Bias Mitigation bounds.
+  - **Article 11 (Technical Documentation)**: Federated learning lineage and git commit SHA binding.
+  - **Article 12 (Record-Keeping)**: Automated OpenTelemetry trace context logs.
+  - **Article 13 (Transparency)**: SHAP feature explainability attributions.
+  - **Article 14 (Human Oversight)**: Four-Eyes Principle dual analyst/supervisor sign-offs.
+  - **Article 15 (Accuracy & Robustness)**: Adversarial PGD evasion rejection scores & mTLS PKI verification.
+
 
 
 

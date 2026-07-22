@@ -34,7 +34,9 @@ export default function SimulationView() {
     if (simulation) {
       queryClient.invalidateQueries({ queryKey: ['training-rounds', id] });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulation?.current_round, simulation?.status, id, queryClient]);
+
 
   // 404 - simulation expired (e.g. after backend redeploy)
   if (isError) {

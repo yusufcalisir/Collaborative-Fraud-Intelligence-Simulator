@@ -11,7 +11,11 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { data: banks, isLoading: banksLoading } = useBanks();
   const { data: simulations, isLoading: simsLoading } = useSimulations();
-  const [_lastSimId, setLastSimId] = useState<string | null>(null);
+  const [, setLastSimId] = useState<string | null>(null);
+
+
+
+
 
   const handleSimulationCreated = (id: string) => {
     setLastSimId(id);

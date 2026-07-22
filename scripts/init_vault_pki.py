@@ -23,7 +23,9 @@ VAULT_TOKEN = os.getenv("VAULT_TOKEN", "root")
 PKI_ROLE_NAME = "cfi-bank-role"
 
 
-def vault_request(endpoint: str, method: str = "GET", payload: dict[str, Any] | None = None) -> dict[str, Any]:
+def vault_request(
+    endpoint: str, method: str = "GET", payload: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Execute REST API call against local or remote HashiCorp Vault instance."""
     url = f"{VAULT_ADDR}{endpoint}"
     data = json.dumps(payload).encode("utf-8") if payload else None
@@ -39,7 +41,9 @@ def vault_request(endpoint: str, method: str = "GET", payload: dict[str, Any] | 
             return json.loads(body) if body else {}
     except urllib.error.HTTPError as err:
         error_body = err.read().decode("utf-8")
-        logger.warning("Vault API %s %s returned status %d: %s", method, endpoint, err.code, error_body)
+        logger.warning(
+            "Vault API %s %s returned status %d: %s", method, endpoint, err.code, error_body
+        )
         return {"error": error_body, "status": err.code}
     except Exception as exc:
         logger.error("Failed connection to Vault at %s: %s", url, exc)
@@ -52,7 +56,11 @@ def bootstrap_pki() -> bool:
 
     # 1. Mount PKI secrets engine at /v1/sys/mounts/pki
     logger.info("Step 1: Enabling PKI secrets engine at path 'pki/'...")
-    vault_request("/v1/sys/mounts/pki", method="POST", payload={"type": "pki", "config": {"max_lease_ttl": "87600h"}})
+    vault_request(
+        "/v1/sys/mounts/pki",
+        method="POST",
+        payload={"type": "pki", "config": {"max_lease_ttl": "87600h"}},
+    )
 
     # 2. Generate Root CA certificate
     logger.info("Step 2: Generating Consortium Root CA certificate...")
@@ -114,7 +122,11 @@ def bootstrap_pki() -> bool:
             serial = cert_res["data"].get("serial_number")
             logger.info("Successfully provisioned X.509 cert for %s (Serial: %s)", node_cn, serial)
         else:
-            logger.warning("Could not issue cert for %s (Vault offline or dev mock fallback): %s", node_cn, cert_res)
+            logger.warning(
+                "Could not issue cert for %s (Vault offline or dev mock fallback): %s",
+                node_cn,
+                cert_res,
+            )
 
     logger.info("Vault PKI Secrets Engine Bootstrap Completed Successfully!")
     return True

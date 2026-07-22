@@ -442,6 +442,34 @@ The Zero-Trust Identity suite introduces PKI certificate management, dynamic mut
 | **Denial of Service** | Unauthorized off-shift or out-of-range API spamming | IP Subnet Range Restriction (`RULE-IP-RANGE-RESTRICTION`) + Shift Hours Window |
 | **Elevation of Privilege** | User attempting transaction approval beyond limit | Approval Tier Limit rule (`RULE-APPROVAL-TIER-EXCEEDED`) |
 
+---
+
+## 17. Hardware Security Module (HSM / PKCS#11) Key Vault Threat Surface
+
+The Hardware Security Module Key Vault Engine (`hsm_signer.py`) anchors node private keys and digital signatures into physical HSMs or Enterprise Cloud KMS vaults:
+
+### 17.1 Private Key Extraction & Memory Dump Attacks (Information Disclosure & Spoofing)
+* **Threat**: Adversary with root privileges on the bank node host attempts to extract private RSA-4096 or Ed25519 signing keys from container RAM or disk storage.
+* **Mitigations**:
+  * **Zero-Disk Private Key Architecture (`HSMSignerEngine`)**: Private signing keys are generated directly inside FIPS 140-2 Level 3 hardware enclaves (`generate_key_pair`) with `is_exportable = False`.
+  * **In-Hardware Execution**: All digital signature operations ($S = \text{Sign}_{\text{HSM}}(H)$) execute within the hardware enclave boundaries via PKCS#11 standard calls (`sign_digest`). Plaintext private key material never touches host disk, swap, or container memory.
+
+### 17.2 Unauthorized Key Usage & Key Handle Forgery (Tampering & Elevation of Privilege)
+* **Threat**: Rogue process attempts to sign arbitrary payloads using unassigned HSM key handles.
+* **Mitigations**:
+  * **PIN Authentication & Session Locking (`HSMSessionConfig`)**: PKCS#11 session initialization requires slot PIN verification (`initialize_session`). Session handles lock immediately on application teardown.
+  * **FIPS 140-2 Level 3 Attestation Verification (`get_hardware_attestation`)**: Generates cryptographically signed attestation reports verifying hardware enclave integrity and slot binding.
+
+| STRIDE Category | Threat Vector | Platform Mitigation |
+|:---|:---|:---|
+| **Spoofing** | Masquerading as legitimate bank node with stolen key | FIPS 140-2 Level 3 hardware key isolation; non-exportable key handle binding |
+| **Tampering** | Modifying signed model parameter envelope | In-enclave RSA-PSS-SHA256 signature verification (`verify_signature`) |
+| **Repudiation** | Denying digital signature on submitted parameters | Hardware attestation report (`get_hardware_attestation`) binding key handle to slot |
+| **Information Disclosure** | Memory dump attack extracting private signing keys | Zero-Disk Private Key policy (`is_exportable = False`); keys never leave enclave |
+| **Denial of Service** | Session flooding or PIN lock lockout | Session initialization validation (`initialize_session`) with PIN rate limiting |
+| **Elevation of Privilege** | Unauthorized process calling HSM signing API | PKCS#11 slot PIN authentication + process-isolated session handles |
+
+
 
 
 
