@@ -76,7 +76,12 @@ class ModelService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._active_simulation_id: str | None = None
         logger.info("ModelService using device: %s", self.device)
+
+    def get_active_simulation_id(self) -> str | None:
+        """Return the active simulation ID if available."""
+        return self._active_simulation_id
 
     def create_model(self, dp_compatible: bool = False) -> FraudDetectionModel:
         """Create a fresh model instance with random initialization."""
