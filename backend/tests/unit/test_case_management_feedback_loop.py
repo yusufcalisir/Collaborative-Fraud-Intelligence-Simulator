@@ -36,9 +36,7 @@ def test_analyst_determination_closed_confirmed_feedback_loop() -> None:
         alert_ids=["alt_2001"],
     )
     case_service.assign_case(case.id, investigator="analyst_alice")
-    case_service.change_status(
-        case.id, new_status=CaseStatus.INVESTIGATING, actor="analyst_alice"
-    )
+    case_service.change_status(case.id, new_status=CaseStatus.INVESTIGATING, actor="analyst_alice")
 
     # Transition to closed_confirmed with Four-Eyes supervisor signature
     updated_case = case_service.change_status(
@@ -66,9 +64,7 @@ def test_analyst_determination_closed_false_positive_feedback_loop() -> None:
         alert_ids=["alt_3001"],
     )
     case_service.assign_case(case.id, investigator="analyst_alice")
-    case_service.change_status(
-        case.id, new_status=CaseStatus.INVESTIGATING, actor="analyst_alice"
-    )
+    case_service.change_status(case.id, new_status=CaseStatus.INVESTIGATING, actor="analyst_alice")
 
     updated_case = case_service.change_status(
         case.id,

@@ -12,25 +12,21 @@ logger = logging.getLogger(__name__)
 
 
 class _NoOpCounter:
-
     def add(self, amount: int | float, attributes: dict | None = None) -> None:
         pass
 
 
 class _NoOpHistogram:
-
     def record(self, value: float, attributes: dict | None = None) -> None:
         pass
 
 
 class _NoOpUpDownCounter:
-
     def add(self, amount: int | float, attributes: dict | None = None) -> None:
         pass
 
 
 class _NoOpGauge:
-
     def set(self, value: float, attributes: dict | None = None) -> None:
         pass
 

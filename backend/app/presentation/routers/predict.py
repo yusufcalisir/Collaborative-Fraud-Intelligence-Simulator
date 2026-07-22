@@ -549,10 +549,18 @@ async def score_transaction(
 
     # Derive canonical merchant category from merchant_id for risk engine lookup
     _merchant_id_lower = payload.merchant_id.lower()
-    if "crypto" in _merchant_id_lower or "bitcoin" in _merchant_id_lower or "exchange" in _merchant_id_lower:
+    if (
+        "crypto" in _merchant_id_lower
+        or "bitcoin" in _merchant_id_lower
+        or "exchange" in _merchant_id_lower
+    ):
         merchant_category = "crypto"
         merchant_risk = 0.85
-    elif "gambling" in _merchant_id_lower or "casino" in _merchant_id_lower or "bet" in _merchant_id_lower:
+    elif (
+        "gambling" in _merchant_id_lower
+        or "casino" in _merchant_id_lower
+        or "bet" in _merchant_id_lower
+    ):
         merchant_category = "gambling"
         merchant_risk = 0.90
     elif "wire" in _merchant_id_lower or "transfer" in _merchant_id_lower:
@@ -561,7 +569,11 @@ async def score_transaction(
     elif "jewelry" in _merchant_id_lower or "jewel" in _merchant_id_lower:
         merchant_category = "jewelry"
         merchant_risk = 0.60
-    elif "grocery" in _merchant_id_lower or "supermarket" in _merchant_id_lower or "rewe" in _merchant_id_lower:
+    elif (
+        "grocery" in _merchant_id_lower
+        or "supermarket" in _merchant_id_lower
+        or "rewe" in _merchant_id_lower
+    ):
         merchant_category = "grocery"
         merchant_risk = 0.03
     else:
@@ -615,9 +627,7 @@ async def score_transaction(
         active_sim_id = _model_service.get_active_simulation_id()
         if active_sim_id:
             versions = _registry.list_versions(active_sim_id)
-            champion = next(
-                (v for v in reversed(versions) if v.get("status") == "champion"), None
-            )
+            champion = next((v for v in reversed(versions) if v.get("status") == "champion"), None)
             if champion:
                 model_ver = f"v{champion['version']}.0.0"
     except Exception:
