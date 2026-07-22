@@ -443,7 +443,9 @@ class ModelService:
 
         actual_epsilon = privacy_engine.get_epsilon(delta=target_delta)
 
-        # De-wrap the module before returning it
+        # De-wrap the module and remove Opacus hooks before returning it
+        if hasattr(model_private, "remove_hooks"):
+            model_private.remove_hooks()
         model_final = cast("FraudDetectionModel", model_private._module)
 
         import gc
@@ -574,15 +576,15 @@ class ModelService:
             "roc_tpr": tpr.tolist(),
             "roc_thresholds": thresholds.tolist(),
             "fairness_counts": fairness_counts,
-            "disparate_impact": float(disparate_impact),
-            "equal_opportunity_diff": float(equal_opportunity_diff),
-            "protected_selection_rate": float(protected_selection_rate),
-            "reference_selection_rate": float(reference_selection_rate),
-            "adversarial_robustness_score": float(adv_report["adversarial_robustness_score"]),
-            "clean_accuracy": float(adv_report["clean_accuracy"]),
-            "robust_accuracy": float(adv_report["robust_accuracy"]),
-            "fgsm_evasion_rate": float(adv_report["fgsm_evasion_rate"]),
-            "pgd_evasion_rate": float(adv_report["pgd_evasion_rate"]),
+            "disparate_impact": disparate_impact,
+            "equal_opportunity_diff": equal_opportunity_diff,
+            "protected_selection_rate": protected_selection_rate,
+            "reference_selection_rate": reference_selection_rate,
+            "adversarial_robustness_score": adv_report["adversarial_robustness_score"],
+            "clean_accuracy": adv_report["clean_accuracy"],
+            "robust_accuracy": adv_report["robust_accuracy"],
+            "fgsm_evasion_rate": adv_report["fgsm_evasion_rate"],
+            "pgd_evasion_rate": adv_report["pgd_evasion_rate"],
         }
 
     def get_parameters(self, model: FraudDetectionModel) -> ModelWeights:

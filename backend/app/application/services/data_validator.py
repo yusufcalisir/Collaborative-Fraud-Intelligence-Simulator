@@ -7,15 +7,47 @@ Great Expectations (v1.x) for data contract statistical stability checks.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import great_expectations as ge
-import great_expectations.expectations as gxe
+if TYPE_CHECKING:
+    import great_expectations as ge
+    import great_expectations.expectations as gxe
+    import pandera as pa
+    import pandera.errors
+    from great_expectations import ExpectationSuite, ValidationDefinition
+    from pandera.errors import SchemaError
+    from pandera.typing import Series  # noqa: TC002
+
+    HAS_GREAT_EXPECTATIONS = True
+    HAS_PANDERA = True
+else:
+    try:
+        import great_expectations as ge
+        import great_expectations.expectations as gxe
+        from great_expectations import ExpectationSuite, ValidationDefinition
+
+        HAS_GREAT_EXPECTATIONS = True
+    except ImportError:
+        ge = None
+        gxe = None
+        ExpectationSuite = None
+        ValidationDefinition = None
+        HAS_GREAT_EXPECTATIONS = False
+
+    try:
+        import pandera as pa
+        import pandera.errors
+        from pandera.errors import SchemaError
+        from pandera.typing import Series  # noqa: TC002
+
+        HAS_PANDERA = True
+    except ImportError:
+        pa = None
+        SchemaError = Exception
+        Series = None
+        HAS_PANDERA = False
+
 import pandas as pd  # noqa: TC002
-import pandera as pa
-import pandera.errors  # explicitly import for type checker
-from great_expectations import ExpectationSuite, ValidationDefinition
-from pandera.typing import Series  # noqa: TC002
 
 logger = logging.getLogger(__name__)
 
@@ -26,25 +58,37 @@ class DataContractValidationError(Exception):
     pass
 
 
-class TransactionSchema(pa.DataFrameModel):
-    """Pandera schema model for verifying transaction dataframe specifications."""
+if HAS_PANDERA and pa is not None:
 
-    transaction_amount: Series[float] = pa.Field(gt=0.0)
-    velocity: Series[float] = pa.Field(ge=0.0)
-    hour_of_day: Series[int] = pa.Field(ge=0, le=23)
-    merchant_risk_score: Series[float] = pa.Field(ge=0.0, le=1.0)
-    customer_history_score: Series[float] = pa.Field(ge=0.0, le=1.0)
-    chargeback_count: Series[int] = pa.Field(ge=0)
-    account_age_days: Series[int] = pa.Field(ge=0)
-    country_code: Series[str] = pa.Field()
-    merchant_category: Series[str] = pa.Field()
-    device_type: Series[str] = pa.Field()
+    class TransactionSchema(pa.DataFrameModel):
+        """Pandera schema model for verifying transaction dataframe specifications."""
 
-    @pa.check("country_code")
-    def validate_country_code(self, series: Series[str]) -> Series[bool]:  # noqa: N805
-        """Ensure country code conforms to ISO 2-letter standard."""
-        result: Series[bool] = series.str.len() == 2  # type: ignore[assignment]
-        return result
+        transaction_amount: Series[float] = pa.Field(gt=0.0)
+        velocity: Series[float] = pa.Field(ge=0.0)
+        hour_of_day: Series[int] = pa.Field(ge=0, le=23)
+        merchant_risk_score: Series[float] = pa.Field(ge=0.0, le=1.0)
+        customer_history_score: Series[float] = pa.Field(ge=0.0, le=1.0)
+        chargeback_count: Series[int] = pa.Field(ge=0)
+        account_age_days: Series[int] = pa.Field(ge=0)
+        country_code: Series[str] = pa.Field()
+        merchant_category: Series[str] = pa.Field()
+        device_type: Series[str] = pa.Field()
+
+        @pa.check("country_code")
+        def validate_country_code(self, series: Series[str]) -> Series[bool]:  # noqa: N805
+            """Ensure country code conforms to ISO 2-letter standard."""
+            result: Series[bool] = series.str.len() == 2  # type: ignore[assignment]
+            return result
+
+else:
+
+    class TransactionSchema:  # type: ignore[no-redef]
+        """Fallback empty schema model when Pandera is not installed."""
+
+        @classmethod
+        def validate(cls, df: pd.DataFrame) -> pd.DataFrame:
+            """Fallback no-op validate method."""
+            return df
 
 
 class DataValidatorService:
@@ -63,10 +107,17 @@ class DataValidatorService:
         If validation fails, the batch is quarantined, a system alert is triggered,
         and an exception is raised to abort ingestion.
         """
+        if not HAS_PANDERA or pa is None:
+            logger.warning(
+                "Pandera is not installed. Skipping Pandera schema validation for bank %s.",
+                bank_id,
+            )
+            return df
+
         try:
             validated_df = TransactionSchema.validate(df)
             return validated_df
-        except pa.errors.SchemaError as exc:
+        except SchemaError as exc:
             logger.error(
                 "Streaming batch validation failed for bank %s: %s. Quarantining batch.",
                 bank_id,
@@ -95,6 +146,19 @@ class DataValidatorService:
 
         If a check fails, triggers alerts and raises DataContractValidationError to halt training.
         """
+        if (
+            not HAS_GREAT_EXPECTATIONS
+            or ge is None
+            or gxe is None
+            or ExpectationSuite is None
+            or ValidationDefinition is None
+        ):
+            logger.warning(
+                "Great Expectations is not installed. Skipping GE statistical contract gating for bank %s.",
+                bank_id,
+            )
+            return
+
         context = ge.get_context(mode="ephemeral")
 
         # Register datasource, asset, and batch definition

@@ -7,6 +7,7 @@ Used during local bank model training to harden fraud detection ML against evasi
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -14,6 +15,19 @@ import torch.nn as nn
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
+
+
+@contextmanager
+def _disable_opacus_hooks(model: nn.Module):
+    modules_to_disable = [m for m in model.modules() if hasattr(m, "disable_hooks")]
+    for m in modules_to_disable:
+        m.disable_hooks()
+    try:
+        yield
+    finally:
+        for m in modules_to_disable:
+            if hasattr(m, "enable_hooks"):
+                m.enable_hooks()
 
 
 class AdversarialDefenseService:
@@ -60,11 +74,12 @@ class AdversarialDefenseService:
         model.eval()
         x_adv = x.clone().detach().requires_grad_(True)
 
-        outputs = model(x_adv)
-        y_target = y.view_as(outputs)
-        loss = loss_fn(outputs, y_target)
-        model.zero_grad()
-        loss.backward()
+        with _disable_opacus_hooks(model):
+            outputs = model(x_adv)
+            y_target = y.view_as(outputs)
+            loss = loss_fn(outputs, y_target)
+            model.zero_grad()
+            loss.backward()
 
         if x_adv.grad is not None:
             gradient_sign = x_adv.grad.data.sign()
@@ -96,20 +111,21 @@ class AdversarialDefenseService:
         x_adv = x.clone().detach() + torch.FloatTensor(x.shape).uniform_(-epsilon, epsilon)
         x_adv = self.project_tabular_constraints(x_adv, x, epsilon)
 
-        for _ in range(steps):
-            x_adv.requires_grad_(True)
-            outputs = model(x_adv)
-            y_target = y.view_as(outputs)
-            loss = loss_fn(outputs, y_target)
-            model.zero_grad()
-            loss.backward()
+        with _disable_opacus_hooks(model):
+            for _ in range(steps):
+                x_adv.requires_grad_(True)
+                outputs = model(x_adv)
+                y_target = y.view_as(outputs)
+                loss = loss_fn(outputs, y_target)
+                model.zero_grad()
+                loss.backward()
 
-            if x_adv.grad is None:
-                break
+                if x_adv.grad is None:
+                    break
 
-            gradient_sign = x_adv.grad.data.sign()
-            x_adv = x_adv.detach() + alpha * gradient_sign
-            x_adv = self.project_tabular_constraints(x_adv, x, epsilon)
+                gradient_sign = x_adv.grad.data.sign()
+                x_adv = x_adv.detach() + alpha * gradient_sign
+                x_adv = self.project_tabular_constraints(x_adv, x, epsilon)
 
         return x_adv.detach()
 
