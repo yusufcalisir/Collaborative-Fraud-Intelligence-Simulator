@@ -27,6 +27,7 @@ class UserClaims:
     clearance_level: int = 1
     shift_hours: str = "00:00-24:00"
     approval_tier: float = 100000.0
+    allowed_ip_subnets: list[str] = field(default_factory=lambda: ["0.0.0.0/0"])
     issuer: str = "https://auth.cfi-platform.internal/realms/cfi"
     exp: float = 0.0
 
@@ -52,6 +53,7 @@ class OIDCAuthenticator:
         clearance_level: int = 2,
         shift_hours: str = "08:00-18:00",
         approval_tier: float = 50000.0,
+        allowed_ip_subnets: list[str] | None = None,
     ) -> str:
         """Create a mock JWT token string for offline development and unit tests."""
         header = {"alg": "HS256", "typ": "JWT"}
@@ -64,6 +66,7 @@ class OIDCAuthenticator:
             "clearance_level": clearance_level,
             "shift_hours": shift_hours,
             "approval_tier": approval_tier,
+            "allowed_ip_subnets": allowed_ip_subnets or ["0.0.0.0/0"],
             "iss": self.issuer,
             "aud": self.audience,
             "iat": int(now),
@@ -100,6 +103,7 @@ class OIDCAuthenticator:
                 clearance_level=int(claims_dict.get("clearance_level", 1)),
                 shift_hours=str(claims_dict.get("shift_hours", "00:00-24:00")),
                 approval_tier=float(claims_dict.get("approval_tier", 100000.0)),
+                allowed_ip_subnets=claims_dict.get("allowed_ip_subnets", ["0.0.0.0/0"]),
                 issuer=claims_dict.get("iss", self.issuer),
                 exp=exp,
             )

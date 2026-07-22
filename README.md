@@ -504,7 +504,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── models.py         # Relational tables for simulation logs, alerts, and runs
 │   │   │   ├── redis_store.py    # Redis state syncing client with automatic thread-safe memory fallback
 │   │   │   ├── security/         # Production Enterprise Security Suite
-│   │   │   │   ├── abac_engine.py # Attribute-Based Access Control evaluator (tenant isolation, shift windows, approval tiers)
+│   │   │   │   ├── abac_engine.py # Attribute-Based Access Control evaluator (tenant isolation, IP subnet ranges, shift windows, approval tiers, clearance levels)
 │   │   │   │   ├── immutable_audit_chain.py # Tamper-proof SHA-256 cryptographic audit chain (H_i = SHA256(L_i || H_{i-1}))
 │   │   │   │   ├── mtls_manager.py # Mutual TLS 1.3 PKI manager with HashiCorp Vault Root CA integration, SAN matcher, automated cert rotation, and CRL revocation
 │   │   │   │   ├── oidc_authenticator.py # OIDC RS256/HS256 JWT bearer token authenticator and claims extractor
@@ -565,6 +565,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_async_retraining_scheduler.py # Unit tests for RetrainingTriggerEngine (50k threshold, PSI > 0.20, cron) and execute_automated_retraining_task worker
 │   │   │   ├── test_bank_client_daemon.py # Unit tests for cfi-bank-client daemon, LocalVault, hardware detector & backoff reconnector
 │   │   │   ├── test_feature_store.py # Unit tests for DataContractValidator, BloomFilterDeduplicator, RollingFeatureAggregator & StreamingFeatureStore
+│   │   │   ├── test_zero_trust_pki_mtls.py # Unit tests for HashiCorp Vault PKI engine, mTLS 1.3 SAN matching, zero-downtime leaf rotation, CRL revocation & ABAC rules
 │   │   │   ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
 │   │   │   ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
 │   │   │   ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks

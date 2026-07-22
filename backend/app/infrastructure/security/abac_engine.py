@@ -7,6 +7,7 @@ Attributes (current_time) to enforce granular compliance policies.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import time
 from dataclasses import dataclass, field
@@ -51,6 +52,7 @@ class ABACEngine:
         resource: ABACResource,
         action: str = "read",
         current_hour_override: int | None = None,
+        client_ip: str | None = None,
     ) -> ABACEvaluationResult:
         """Evaluate all active ABAC rules for a given user action on a resource."""
         # 1. Super-admin override rule
@@ -73,6 +75,28 @@ class ABACEngine:
                 policy_name="RULE-TENANT-ISOLATION",
                 reason=f"Tenant Isolation Violation: User bank '{user.bank_id}' cannot access resource from '{resource.bank_id}'.",
             )
+
+        # 2.5 IP Subnet Range Restriction Rule
+        if client_ip and getattr(user, "allowed_ip_subnets", None):
+            try:
+                ip_obj = ipaddress.ip_address(client_ip)
+                ip_allowed = False
+                for subnet_str in user.allowed_ip_subnets:
+                    if subnet_str in ("0.0.0.0/0", "*"):
+                        ip_allowed = True
+                        break
+                    net = ipaddress.ip_network(subnet_str, strict=False)
+                    if ip_obj in net:
+                        ip_allowed = True
+                        break
+                if not ip_allowed:
+                    return ABACEvaluationResult(
+                        allowed=False,
+                        policy_name="RULE-IP-RANGE-RESTRICTION",
+                        reason=f"IP Range Restriction: Client IP '{client_ip}' is outside allowed subnets ({user.allowed_ip_subnets}).",
+                    )
+            except Exception as err:
+                logger.warning("IP subnet evaluation exception: %s", err)
 
         # 3. Shift Hours Window Constraint Rule
         if user.shift_hours and "-" in user.shift_hours and user.shift_hours != "00:00-24:00":

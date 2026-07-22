@@ -415,6 +415,34 @@ The `cfi-bank-client` daemon introduces a zero-inbound port topology to satisfy 
 | **Denial of Service** | Reconnection storm on central coordinator | Exponential backoff reconnector with full jitter |
 | **Elevation of Privilege** | Container escape to host network | Outbound-only non-root daemon container isolation |
 
+---
+
+## 16. Zero-Trust Identity, Authentication & mTLS Certificate Manager Threat Surface
+
+The Zero-Trust Identity suite introduces PKI certificate management, dynamic mutual TLS (mTLS 1.3), OIDC JWT authentication, and Attribute-Based Access Control (ABAC):
+
+### 16.1 Node Identity Spoofing & Certificate Forgery (Spoofing)
+* **Threat**: Rogue client node attempts to spoof a legitimate bank node identity or present an expired/revoked X.509 certificate.
+* **Mitigations**:
+  * **HashiCorp Vault PKI Engine (`vault_client.py`)**: Root and Intermediate CAs generate short-lived X.509 certificates with SAN validation.
+  * **Dynamic mTLS Manager (`mtls_manager.py`)**: Enforces mutual TLS 1.3 verification, SAN matching, zero-downtime leaf certificate auto-rotation without service restarts, and real-time Certificate Revocation List (CRL) checking against `crl_revoked_serials`.
+
+### 16.2 Unauthorized Access & Privilege Escalation (Elevation of Privilege & Information Disclosure)
+* **Threat**: Compromised user or client IP attempts cross-bank data access, unauthorized transaction approval, or out-of-shift window operation.
+* **Mitigations**:
+  * **OIDC JWT Authenticator (`oidc_authenticator.py`)**: Validates bearer tokens (RS256/HS256) and extracts claims (`sub`, `bank_id`, `roles`, `clearance_level`, `shift_hours`, `approval_tier`, `allowed_ip_subnets`).
+  * **Dynamic ABAC Engine (`abac_engine.py`)**: Enforces Multi-Tenant Bank Isolation (`RULE-TENANT-ISOLATION`), IP Subnet Range Restriction (`RULE-IP-RANGE-RESTRICTION`), Shift Hours Window (`RULE-SHIFT-HOURS-RESTRICTION`), Approval Tier Limit (`RULE-APPROVAL-TIER-EXCEEDED`), and Security Clearance Level (`RULE-CLEARANCE-LEVEL-INSUFFICIENT`).
+
+| STRIDE Category | Threat Vector | Platform Mitigation |
+|:---|:---|:---|
+| **Spoofing** | Rogue node presenting forged or expired certificate | HashiCorp Vault PKI X.509 cert issuance, mTLS 1.3 SAN matching, CRL revocation checks |
+| **Tampering** | Forged JWT bearer tokens or tampered claims | RS256/HS256 signature verification, strict expiration (`exp`) enforcement |
+| **Repudiation** | User denies performing high-value alert approval | ABAC evaluation logging (`ABACEvaluationResult`) + Immutable SHA-256 Audit Chain |
+| **Information Disclosure** | Cross-tenant bank data leakage | Multi-tenant isolation rule (`RULE-TENANT-ISOLATION`) + clearance level enforcement |
+| **Denial of Service** | Unauthorized off-shift or out-of-range API spamming | IP Subnet Range Restriction (`RULE-IP-RANGE-RESTRICTION`) + Shift Hours Window |
+| **Elevation of Privilege** | User attempting transaction approval beyond limit | Approval Tier Limit rule (`RULE-APPROVAL-TIER-EXCEEDED`) |
+
+
 
 
 
