@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     import great_expectations as ge
     import great_expectations.expectations as gxe
     import pandera as pa
-    import pandera.errors
     from great_expectations import ExpectationSuite, ValidationDefinition
     from pandera.errors import SchemaError
     from pandera.typing import Series  # noqa: TC002
@@ -36,7 +35,6 @@ else:
 
     try:
         import pandera as pa
-        import pandera.errors
         from pandera.errors import SchemaError
         from pandera.typing import Series  # noqa: TC002
 
