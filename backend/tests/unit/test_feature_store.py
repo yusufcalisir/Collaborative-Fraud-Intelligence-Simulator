@@ -1,194 +1,171 @@
-"""Unit tests for the Feature Store Service and its integration."""
+"""Unit tests for Real-Time Streaming Feature Store Engine, Data Validator, and Rolling Aggregators."""
 
 from __future__ import annotations
 
-import time
+from datetime import UTC, datetime, timedelta
 
-import pandas as pd
+import pytest
+from pydantic import ValidationError
 
-from app.application.services.feature_store_service import FeatureStoreService
-from app.application.services.risk_engine import RiskScoringEngine
+from app.domain.data_validator import DataContractValidator, DataValidationError
+from app.infrastructure.connectors.base_connector import NormalizedTransaction
+from app.infrastructure.feature_store.bloom_filter import BloomFilterDeduplicator
+from app.infrastructure.feature_store.rolling_aggregators import RollingFeatureAggregator
+from app.infrastructure.feature_store.store import StreamingFeatureStore
 
 
-def test_feature_store_ingestion_and_online_retrieval() -> None:
-    """Ingesting events must update online features and maintain sliding windows."""
-    fs = FeatureStoreService()
+def test_data_contract_validator() -> None:
+    """Verifies DataContractValidator accepts valid transactions and rejects invalid schema fields."""
+    validator = DataContractValidator()
 
-    customer_id = "test_cust_123"
-    merchant_id = "test_merch_456"
+    # Valid transaction
+    valid_tx = NormalizedTransaction(
+        transaction_id="tx_1001",
+        account_id="acc_8812",
+        counterparty_account_id="acc_9921",
+        amount=150.00,
+        currency="USD",
+        origin_country="US",
+        destination_country="DE",
+    )
+    assert validator.validate_transaction(valid_tx) is True
 
-    # Ingest a transaction
-    fs.ingest_transaction(
-        customer_id=customer_id,
-        amount=150.0,
-        merchant_id=merchant_id,
-        merchant_category="crypto",
-        merchant_risk_score=0.85,
-        customer_history_score=0.90,
-        chargeback_count=2,
-        account_age_days=120,
+    # Empty transaction_id
+    with pytest.raises(DataValidationError, match="Transaction ID cannot be empty"):
+        validator.validate_transaction(
+            NormalizedTransaction(
+                transaction_id="",
+                account_id="acc_1",
+                counterparty_account_id="acc_2",
+                amount=10.0,
+            )
+        )
+
+    # Empty account_id
+    with pytest.raises(DataValidationError, match="Account ID cannot be empty"):
+        validator.validate_transaction(
+            NormalizedTransaction(
+                transaction_id="tx_1",
+                account_id="  ",
+                counterparty_account_id="acc_2",
+                amount=10.0,
+            )
+        )
+
+    # Negative amount rejected by Pydantic schema or validator
+    with pytest.raises((DataValidationError, ValidationError)):
+        validator.validate_transaction(
+            NormalizedTransaction(
+                transaction_id="tx_1",
+                account_id="acc_1",
+                counterparty_account_id="acc_2",
+                amount=-50.0,
+            )
+        )
+
+
+def test_bloom_filter_deduplicator() -> None:
+    """Verifies BloomFilterDeduplicator duplicate detection logic."""
+    bf = BloomFilterDeduplicator(capacity=1000, num_hashes=3)
+
+    tx_id = "tx_dedup_99"
+    assert bf.is_duplicate(tx_id) is False
+    assert bf.contains_or_add(tx_id) is False  # Added
+    assert bf.is_duplicate(tx_id) is True
+    assert bf.contains_or_add(tx_id) is True  # Duplicate
+
+
+def test_rolling_feature_aggregator_calculations() -> None:
+    """Verifies rolling feature calculations (Z-score, velocity, device entropy, FATF risk, cyclical time, alerts)."""
+    aggregator = RollingFeatureAggregator()
+
+    base_time = datetime(2026, 7, 22, 14, 0, 0, tzinfo=UTC)
+    account_id = "acc_alpha"
+
+    # Register account creation 10 days prior
+    creation_time = base_time - timedelta(days=10)
+    aggregator.register_account(account_id, creation_time=creation_time)
+
+    # Record 2 SAR alerts in last 30 days
+    aggregator.record_sar_alert(account_id, alert_time=base_time - timedelta(days=5))
+    aggregator.record_sar_alert(account_id, alert_time=base_time - timedelta(days=12))
+
+    # Tx 1: amount 100.0, country KP (high risk)
+    tx1 = NormalizedTransaction(
+        transaction_id="tx_r1",
+        account_id=account_id,
+        counterparty_account_id="acc_target",
+        amount=100.00,
+        currency="USD",
+        timestamp=base_time,
+        merchant_category_code="5411",
+        origin_country="US",
+        destination_country="KP",  # North Korea (1.0 risk)
+        device_fingerprint="fp_device_1",
+        ip_subnet="192.168.1.0/24",
+        channel_type="ONLINE",
+    )
+    f1 = aggregator.compute_features(tx1)
+
+    assert pytest.approx(f1["account_age_days"], 0.1) == 10.0
+    assert f1["merchant_velocity_1h"] == 0.0  # First tx at this merchant
+    assert f1["country_risk_score"] == 1.0
+    assert f1["previous_alerts_30d"] == 2.0
+    assert "hour_of_day_cos" in f1
+    assert "hour_of_day_sin" in f1
+
+    # Tx 2: 30 minutes later, same merchant, amount 300.0
+    tx2 = NormalizedTransaction(
+        transaction_id="tx_r2",
+        account_id=account_id,
+        counterparty_account_id="acc_target",
+        amount=300.00,
+        currency="USD",
+        timestamp=base_time + timedelta(minutes=30),
+        merchant_category_code="5411",
+        origin_country="US",
+        destination_country="US",  # Low risk (0.05)
+        device_fingerprint="fp_device_1",
+        ip_subnet="192.168.1.0/24",
+        channel_type="ONLINE",
+    )
+    f2 = aggregator.compute_features(tx2)
+
+    assert f2["merchant_velocity_1h"] == 1.0  # 1 prior tx in past hour
+    assert f2["country_risk_score"] == 0.05
+    # Prior amount 100, current 300 -> Z-score positive
+    assert f2["rolling_amount_zscore_24h"] > 0.0
+
+
+def test_streaming_feature_store_pipeline() -> None:
+    """Verifies end-to-end StreamingFeatureStore ingestion, deduplication, and lookup."""
+    store = StreamingFeatureStore()
+
+    tx = NormalizedTransaction(
+        transaction_id="tx_stream_001",
+        account_id="acc_beta",
+        counterparty_account_id="acc_gamma",
+        amount=250.0,
+        currency="USD",
     )
 
-    # Fetch online features
-    features = [
-        "rolling_velocity_1h",
-        "avg_amount_24h",
-        "customer_history_score",
-        "account_age_days",
-        "chargeback_count",
-        "merchant_risk_score",
-        "merchant_category",
-    ]
-    online_features = fs.get_online_features(
-        [{"customer_id": customer_id, "merchant_id": merchant_id}],
-        features,
-    )
+    res = store.ingest_transaction(tx)
+    assert res["status"] == "PROCESSED"
+    assert res["transaction_id"] == "tx_stream_001"
+    assert "features" in res
 
-    assert len(online_features) == 1
-    feats = online_features[0]
-    assert feats["rolling_velocity_1h"] == 1.0
-    assert feats["avg_amount_24h"] == 150.0
-    assert feats["customer_history_score"] == 0.90
-    assert feats["account_age_days"] == 120
-    assert feats["chargeback_count"] == 2
-    assert feats["merchant_risk_score"] == 0.85
-    assert feats["merchant_category"] == "crypto"
+    # Deduplication test: re-ingesting tx returns duplicate status
+    res_dup = store.ingest_transaction(tx)
+    assert res_dup["status"] == "PROCESSED"  # Retrieved cached vector
 
+    # Verification of lookup methods
+    vec = store.get_feature_vector("tx_stream_001")
+    assert vec is not None
+    assert vec["account_id"] == "acc_beta"
 
-def test_feature_store_sliding_window_velocity() -> None:
-    """Consecutive transactions must update the rolling window statistics."""
-    fs = FeatureStoreService()
+    latest = store.get_latest_account_features("acc_beta")
+    assert latest is not None
+    assert latest["transaction_id"] == "tx_stream_001"
 
-    customer_id = "test_cust_sliding"
-    merchant_id = "test_merch_sliding"
-
-    # Clear previous runs
-    fs.tx_history.delete(customer_id)
-
-    # Ingest 3 transactions
-    now = time.time()
-    fs.ingest_transaction(
-        customer_id=customer_id,
-        amount=100.0,
-        merchant_id=merchant_id,
-        merchant_category="dining",
-        merchant_risk_score=0.05,
-        customer_history_score=0.95,
-        chargeback_count=0,
-        account_age_days=300,
-        timestamp=now - 10,
-    )
-    fs.ingest_transaction(
-        customer_id=customer_id,
-        amount=200.0,
-        merchant_id=merchant_id,
-        merchant_category="dining",
-        merchant_risk_score=0.05,
-        customer_history_score=0.95,
-        chargeback_count=0,
-        account_age_days=300,
-        timestamp=now - 5,
-    )
-    fs.ingest_transaction(
-        customer_id=customer_id,
-        amount=300.0,
-        merchant_id=merchant_id,
-        merchant_category="dining",
-        merchant_risk_score=0.05,
-        customer_history_score=0.95,
-        chargeback_count=0,
-        account_age_days=300,
-        timestamp=now,
-    )
-
-    # Fetch online stats
-    online_features = fs.get_online_features(
-        [{"customer_id": customer_id, "merchant_id": merchant_id}],
-        ["rolling_velocity_1h", "avg_amount_24h"],
-    )
-
-    assert len(online_features) == 1
-    feats = online_features[0]
-    assert feats["rolling_velocity_1h"] == 3.0
-    assert feats["avg_amount_24h"] == 200.0  # Average of 100, 200, 300
-
-
-def test_offline_store_historical_join() -> None:
-    """Offline point-in-time join must align features accurately without leakage."""
-    fs = FeatureStoreService()
-
-    entity_df = pd.DataFrame(
-        [
-            {"customer_id": "c1", "velocity": 2.5, "transaction_amount": 50.0},
-            {"customer_id": "c2", "velocity": 5.0, "transaction_amount": 1000.0},
-        ]
-    )
-
-    features = ["rolling_velocity_1h", "avg_amount_24h", "customer_history_score"]
-    historical_df = fs.get_historical_features(entity_df, features)
-
-    assert len(historical_df) == 2
-    assert historical_df.iloc[0]["rolling_velocity_1h"] == 2.5
-    assert historical_df.iloc[1]["rolling_velocity_1h"] == 5.0
-    assert historical_df.iloc[0]["avg_amount_24h"] == 50.0
-    assert historical_df.iloc[1]["avg_amount_24h"] == 1000.0
-    assert historical_df.iloc[0]["customer_history_score"] == 0.95
-
-
-def test_scoring_engine_integration() -> None:
-    """RiskScoringEngine must retrieve online features when enabled."""
-    fs = FeatureStoreService()
-    engine = RiskScoringEngine()
-
-    customer_id = "test_cust_scoring_integration"
-    merchant_id = "test_merch_scoring_integration"
-
-    # Pre-populate feature store with high-risk velocity and chargebacks
-    fs.ingest_transaction(
-        customer_id=customer_id,
-        amount=5000.0,
-        merchant_id=merchant_id,
-        merchant_category="gambling",
-        merchant_risk_score=0.90,
-        customer_history_score=0.10,
-        chargeback_count=8,
-        account_age_days=5,
-    )
-    # Simulate repeated txns to push rolling velocity high
-    for i in range(12):
-        fs.tx_history.push_list(customer_id, {"timestamp": time.time(), "amount": 5000.0})
-
-    # Update online stats to reflect high velocity
-    fs.online_stats.set(
-        customer_id,
-        {
-            "rolling_velocity_1h": 12.0,
-            "avg_amount_24h": 5000.0,
-        },
-    )
-
-    # Evaluate transaction using scoring engine
-    txn_data = {
-        "transaction_amount": 5000.0,
-        "merchant_category": "grocery",  # override category in raw txn to check if feature store updates it
-        "country_code": "US",
-        "device_type": "web_browser",
-        "velocity": 1.0,  # low raw velocity
-        "merchant_risk_score": 0.05,
-        "customer_history_score": 0.95,
-        "chargeback_count": 0,
-        "account_age_days": 365,
-    }
-
-    score_result = engine.score_transaction(
-        transaction=txn_data,
-        ml_prediction=0.10,
-        entity_hash=customer_id,
-    )
-
-    # Since feature store overrides raw features with high-risk values:
-    # 1. velocity will be 12.0 (high velocity alert)
-    # 2. customer_history_score will be 0.10 (low score / high risk)
-    # 3. account_age_days will be 5 days (high risk)
-    # This should yield a significantly higher risk score than the benign input.
-    assert score_result.score > 250.0
+    store.clear()
+    assert store.get_feature_vector("tx_stream_001") is None

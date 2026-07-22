@@ -328,6 +328,7 @@ Secure Aggregation adds double-masked cryptographic pairwise vectors to paramete
 | **9-Signal Risk Engine** | Custom pipeline weighting ML scores, device status, IP velocity, and behavioral shifts. | Builds a comprehensive risk profile for automated alert generation. | Composite heuristics + ML Inference Score |
 | **Real-time Replay** | Replays historical fraud scenarios event-by-event via WebSockets. | Provides a high-fidelity demonstration of how cross-bank intelligence is shared. | Real-time WebSocket event dispatch |
 | **Private Set Intersection (PSI)** | Simulated zero-knowledge Diffie-Hellman protocol (DH-PSI) using modular exponentiation over a 512-bit prime field ($p$) with commutative private keys. **Fuzzy PSI** mode additionally applies the DH protocol independently over 5 standardized attributes (Phone, Email, Device ID, Birthdate, Surname) and flags a match when $k \ge 3$ attributes intersect. Configurable threshold slider in `PsiPage.tsx` UI. | Identifies common customers/devices between banks without disclosing any non-overlapping records. Fuzzy PSI handles realistic PII variation: partial matches (e.g., same phone + email but different device) are still flagged. | Exact: Perfect Forward Secrecy, zero-knowledge set comparison. Fuzzy: $k$-of-$n$ attribute threshold matching with configurable $k$ (1–5) |
+| **Real-Time Streaming Feature Store** | `StreamingFeatureStore` managing schema validation (`DataContractValidator`), $O(1)$ transaction deduplication (`BloomFilterDeduplicator`), and 7 rolling feature specifications (`RollingFeatureAggregator`: 24h amount Z-score, 1h merchant velocity, device entropy, FATF country risk, cyclical time encodings $\sin/\cos$, 30d AML alert history). | Maintains high-frequency sliding-window behavioral aggregations across continuous payment streams without transaction data leakage. | Schema data contracts; $O(1)$ Bloom filter deduplication; 24h rolling Z-score & FATF risk weighting |
 | **Graph-Based Fraud Detection** | Supports both in-memory/Redis and dedicated Neo4j/Memgraph backends. Traversal and aggregation operations (BFS/DFS, PageRank-like risk propagation with decay $\gamma=0.85$, community component analytics, temporal edge velocity sliding windows) are converted to Cypher queries when Neo4j is active. | Identifies organized fraud rings (mule networks, layering) and propagates risk scores to connected accounts/devices. Supports real-time Graph Neural Network inference runtimes. | Decoupled graph traversal; heuristic structural threat scoring; Bolt protocol driver with Cypher queries |
 
 ### 🟠 Distributed Production Microservices & Gateway Security
@@ -460,6 +461,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 ├── backend/
 │   ├── app/
 │   │   ├── domain/               # Core domain entities, enums, value objects (Pure Python)
+│   │   │   ├── data_validator.py # DataContractValidator enforcing schema, mandatory fields, ISO 3166-1/4217, and positive amount bounds
 │   │   │   ├── enums.py          # FL Engine Type, Privacy Mechanism, Simulation Status, Bank Tier
 │   │   │   ├── entities.py       # Bank, SimulationRun, TrainingRound models
 │   │   │   ├── entities_phase2.py # Alerts, Cases, Resolved Entities, Scenario definitions
@@ -478,6 +480,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── explainability_service.py # SHAP attribution, Counterfactual remediation engine, Deterministic Decision Replay, and GNNExplainer attribution
 
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
+│   │   │   ├── feature_store/    # Real-Time Streaming Feature Store Engine (BloomFilterDeduplicator, RollingFeatureAggregator, StreamingFeatureStore)
 │   │   │   ├── client_daemon/    # Standalone bank client daemon (cfi-bank-client)
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── config.py     # ClientDaemonConfig (mTLS, backoff, vault path)
@@ -559,6 +562,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   └── test_simulation_integration.py # Exercises multi-round federated training with DP
 │   │   ├── unit/                 # Domain, algorithm, and service unit tests
 │   │   │   ├── test_bank_client_daemon.py # Unit tests for cfi-bank-client daemon, LocalVault, hardware detector & backoff reconnector
+│   │   │   ├── test_feature_store.py # Unit tests for DataContractValidator, BloomFilterDeduplicator, RollingFeatureAggregator & StreamingFeatureStore
 │   │   │   ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency
 │   │   │   ├── test_distributed_fl.py # Asserts distributed HTTP federated training rounds
 │   │   │   ├── test_drift_metrics.py # Validates binned JS divergence, dynamic binning PSI thresholds, and empty checks
