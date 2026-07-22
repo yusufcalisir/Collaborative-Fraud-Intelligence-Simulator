@@ -485,6 +485,13 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── streaming_graph_service.py # Sliding-window transaction graph stream and features
 │   │   │       └── streaming_engine.py # Event emitter for scenario replay
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
+│   │   │   ├── grpc/             # High-Performance Bidirectional Streaming gRPC Transport Layer over HTTP/2
+│   │   │   │   ├── proto/
+│   │   │   │   │   └── fl_service.proto # Protocol Buffers specification for client registration, heartbeat streaming, parameter aggregation, and model downloading
+│   │   │   │   ├── servicer.py   # gRPC Servicer implementing FederatedLearningService RPC methods
+│   │   │   │   ├── client.py     # High-performance gRPC client driver for bank nodes
+│   │   │   │   ├── server.py     # gRPC server lifecycle manager
+│   │   │   │   └── types.py      # Python message types and CoordinatorCommand enum bindings
 │   │   │   ├── cache.py          # Local in-memory caching fallback logic
 │   │   │   ├── celery_app.py     # Celery app initialization for background jobs
 │   │   │   ├── database.py       # Multi-tenant SQLAlchemy 2.0 connection engine (database-per-tenant isolation)

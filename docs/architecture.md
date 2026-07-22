@@ -58,6 +58,7 @@ Concrete implementation of dependencies. Adapts foreign libraries and databases.
     *   `rest_connector.py`: HTTP REST adapter supporting mTLS, OAuth2, HMAC payload signing, and real-time webhook ingestion.
     *   `factory.py`: Configuration-driven `BankConnectorFactory` resolving per-bank connector implementations.
 *   `security/smart_contract_driver.py`: Web3 & CBDC settlement driver executing automated token disbursements (`wCBDC`, `USDC`, `e-TRY`) on `ConsortiumIncentiveSettlement.sol` based on LOO Shapley values.
+*   `grpc/`: High-Performance Bidirectional Streaming gRPC Transport Layer over HTTP/2 defined via `fl_service.proto` (`RegisterClient`, `Heartbeat` streaming, `StreamModelParameters` chunking, `DownloadGlobalModel` chunking).
 *   `telemetry.py`: Bypasses metrics or mounts a `/metrics` ASGI app for Prometheus based on configurations.
 *   `celery_app.py`: Background worker queue for handling long-running PyTorch training loops without blocking FastAPI.
 
@@ -103,7 +104,21 @@ Interactions with clients.
                                                                 │
                                                                 ▼
                                                         [React Flow Map]
+### 3.3 High-Performance Bidirectional gRPC Transport Layer
 ```
+[Bank Node Client] ──(HTTP/2 Channel)──► [gRPC Server (50051)] ──► [FederatedLearningServicer]
+        │                                                                   │
+        ├── 1. RegisterClient(bank_id, cert_fp) ──────────────────────────► session_token & cluster_id
+        ├── 2. Heartbeat(stream ClientHeartbeat) ◄──(Bidirectional)───────► stream CoordinatorStatus
+        ├── 3. StreamModelParameters(stream ParameterChunk) ──────────────► Reassemble & Validate Payload
+        └── 4. DownloadGlobalModel(ModelDownloadRequest) ◄──(Server Stream)── stream ModelChunk (SHA-256)
+```
+
+The gRPC transport layer handles high-throughput, low-latency node communications using Protocol Buffers (`cfi.fl.v1.FederatedLearningService`):
+1. **Node Registration (`RegisterClient`):** Validates bank certificate fingerprints and returns a session token and assigned cluster ID.
+2. **Bidirectional Heartbeat (`Heartbeat`):** Streams client telemetry (CPU, memory, dataset size) while receiving coordinator state commands (`IDLE`, `START_TRAINING`, `CANCEL_ROUND`, `UPDATE_CONFIG`).
+3. **Client-Streaming Parameters (`StreamModelParameters`):** Transmits encrypted model updates split into 1 KB binary chunks signed with digital signatures.
+4. **Server-Streaming Global Model (`DownloadGlobalModel`):** Delivers aggregated global model weights in SHA-256 checksum-verified binary chunks.
 
 ---
 

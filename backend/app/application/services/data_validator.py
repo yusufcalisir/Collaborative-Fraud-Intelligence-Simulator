@@ -107,9 +107,21 @@ class DataValidatorService:
         """
         if not HAS_PANDERA or pa is None:
             logger.warning(
-                "Pandera is not installed. Skipping Pandera schema validation for bank %s.",
+                "Pandera is not installed. Using Pandas fallback schema validation for bank %s.",
                 bank_id,
             )
+            # Lightweight Pandas fallback checks
+            reasons = []
+            if "transaction_amount" in df and (df["transaction_amount"] <= 0.0).any():
+                reasons.append("transaction_amount must be positive (> 0)")
+            if "country_code" in df and (df["country_code"].astype(str).str.len() != 2).any():
+                reasons.append("country_code must be ISO 2-letter format")
+            if reasons:
+                error_msg = "; ".join(reasons)
+                self._quarantine_batch(df, bank_id, f"Pandera Schema Validation Failure: {error_msg}")
+                raise DataContractValidationError(
+                    f"Pandera schema validation failed for bank {bank_id}: {error_msg}"
+                )
             return df
 
         try:
@@ -152,9 +164,30 @@ class DataValidatorService:
             or ValidationDefinition is None
         ):
             logger.warning(
-                "Great Expectations is not installed. Skipping GE statistical contract gating for bank %s.",
+                "Great Expectations is not installed. Using Pandas fallback statistical contract gating for bank %s.",
                 bank_id,
             )
+            # Lightweight Pandas fallback statistical contract checks
+            reasons = []
+            if "transaction_amount" in df and df["transaction_amount"].isnull().any():
+                reasons.append("Expectation 'ExpectColumnValuesToNotBeNull' on column 'transaction_amount' failed.")
+            if "velocity" in df and df["velocity"].isnull().any():
+                reasons.append("Expectation 'ExpectColumnValuesToNotBeNull' on column 'velocity' failed.")
+            if "transaction_amount" in df and not df["transaction_amount"].isnull().all():
+                mean_val = float(df["transaction_amount"].mean())
+                if mean_val < amount_mean_min or mean_val > amount_mean_max:
+                    reasons.append(f"Expectation 'ExpectColumnMeanToBeBetween' on column 'transaction_amount' failed (mean={mean_val:.2f}).")
+            if "device_type" in df:
+                invalid_devices = set(df["device_type"].dropna()) - set(self.ALLOWED_DEVICES)
+                if invalid_devices:
+                    reasons.append(f"Expectation 'ExpectColumnValuesToBeInSet' on column 'device_type' failed (invalid={invalid_devices}).")
+
+            if reasons:
+                error_msg = "; ".join(reasons)
+                self._quarantine_batch(df, bank_id, f"Great Expectations Contract Failure: {error_msg}")
+                raise DataContractValidationError(
+                    f"Great Expectations contract validation failed for bank {bank_id}: {error_msg}"
+                )
             return
 
         context = ge.get_context(mode="ephemeral")
