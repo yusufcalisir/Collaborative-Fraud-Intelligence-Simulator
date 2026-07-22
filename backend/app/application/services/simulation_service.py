@@ -1262,7 +1262,9 @@ class SimulationService:
                                 "tx_hash": settlement_receipt["transaction_hash"],
                                 "block_number": settlement_receipt["block_number"],
                                 "currency": settlement_receipt["currency"],
-                                "total_distributed_usd": settlement_receipt["total_distributed_usd"],
+                                "total_distributed_usd": settlement_receipt[
+                                    "total_distributed_usd"
+                                ],
                             },
                         )
                         logger.info(

@@ -33,9 +33,24 @@ CONTRACT_ABI = [
         "anonymous": False,
         "inputs": [
             {"indexed": True, "internalType": "uint256", "name": "epochId", "type": "uint256"},
-            {"indexed": True, "internalType": "bytes32", "name": "auditProofHash", "type": "bytes32"},
-            {"indexed": False, "internalType": "uint256", "name": "totalRecipients", "type": "uint256"},
-            {"indexed": False, "internalType": "uint256", "name": "totalPayoutWei", "type": "uint256"},
+            {
+                "indexed": True,
+                "internalType": "bytes32",
+                "name": "auditProofHash",
+                "type": "bytes32",
+            },
+            {
+                "indexed": False,
+                "internalType": "uint256",
+                "name": "totalRecipients",
+                "type": "uint256",
+            },
+            {
+                "indexed": False,
+                "internalType": "uint256",
+                "name": "totalPayoutWei",
+                "type": "uint256",
+            },
         ],
         "name": "IncentivesDistributed",
         "type": "event",
@@ -161,7 +176,9 @@ class SmartContractSettlementDriver:
             )
 
         # Generate cryptographic transaction hash
-        raw_tx_data = f"{epoch_id}:{audit_proof_hash}:{total_distributed_wei}:{self.current_block_height}"
+        raw_tx_data = (
+            f"{epoch_id}:{audit_proof_hash}:{total_distributed_wei}:{self.current_block_height}"
+        )
         tx_hash = f"0x{hashlib.sha256(raw_tx_data.encode('utf-8')).hexdigest()}"
 
         receipt = {
