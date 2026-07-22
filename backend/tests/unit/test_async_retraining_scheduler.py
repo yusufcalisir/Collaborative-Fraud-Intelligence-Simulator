@@ -49,7 +49,9 @@ def test_retraining_trigger_engine_scheduled_cadence() -> None:
 
 def test_retraining_trigger_engine_evaluate_triggers() -> None:
     """Verifies evaluate_triggers compiles reasons list correctly."""
-    engine = RetrainingTriggerEngine(ingestion_threshold=50000, psi_threshold=0.20, cadence_hours=24)
+    engine = RetrainingTriggerEngine(
+        ingestion_threshold=50000, psi_threshold=0.20, cadence_hours=24
+    )
 
     now = datetime.now(UTC)
 
