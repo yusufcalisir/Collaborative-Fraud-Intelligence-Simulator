@@ -478,6 +478,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── data_generator.py # Synthetic Non-IID transaction generation
 │   │   │       ├── entity_resolution.py # Matches cross-bank users deterministically via HMACs and fuzzily via MinHash LSH signatures stored in entity attributes; resolve_fuzzy_entities() for probabilistic cross-bank matching
 │   │   │       ├── explainability_service.py # SHAP attribution, Counterfactual remediation engine, Deterministic Decision Replay, and GNNExplainer attribution
+│   │   │       └── retraining_trigger_engine.py # Evaluates ingestion volume (>= 50k), statistical drift (PSI > 0.20), and scheduled cron cadences to dispatch background retraining tasks
 
 │   │   ├── infrastructure/       # Database, cache, event bus adapters (Adapters)
 │   │   │   ├── feature_store/    # Real-Time Streaming Feature Store Engine (BloomFilterDeduplicator, RollingFeatureAggregator, StreamingFeatureStore)
@@ -551,7 +552,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │       ├── streaming_ws.py # Manages live WebSocket streams for scenario replays
 │   │   │       └── training_ws.py # Manages persistent WebSocket feeds for training rounds progress
 │   │   ├── tasks/                # Background tasks (Celery asynchronous runners)
-│   │   │   └── simulation_tasks.py # Async tasks for running Flower/Custom simulation loops
+│   │   │   └── simulation_tasks.py # Async tasks for running Flower/Custom simulation loops and execute_automated_retraining_task worker
 │   │   ├── config.py             # Global application settings loading
 │   │   ├── dependencies.py       # FastAPI dependency injection providers
 │   │   └── main.py               # Application entrypoint and microservices gateways
@@ -561,6 +562,7 @@ To establish robust security and regulatory readiness, the platform addresses po
 │   │   │   ├── test_graph_analytics_api.py # Asserts PSI, risk propagation, and temporal anomaly routes
 │   │   │   └── test_simulation_integration.py # Exercises multi-round federated training with DP
 │   │   ├── unit/                 # Domain, algorithm, and service unit tests
+│   │   │   ├── test_async_retraining_scheduler.py # Unit tests for RetrainingTriggerEngine (50k threshold, PSI > 0.20, cron) and execute_automated_retraining_task worker
 │   │   │   ├── test_bank_client_daemon.py # Unit tests for cfi-bank-client daemon, LocalVault, hardware detector & backoff reconnector
 │   │   │   ├── test_feature_store.py # Unit tests for DataContractValidator, BloomFilterDeduplicator, RollingFeatureAggregator & StreamingFeatureStore
 │   │   │   ├── test_data_generator.py # Asserts columns, distributions, and Non-IID seed consistency

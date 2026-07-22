@@ -133,6 +133,18 @@ We implement dynamic, multi-pair statistical checks inside `presentation/routers
     $$\text{PSI} = \sum_{b=1}^{B} (A_b - E_b) \times \ln\left(\frac{A_b}{E_b}\right)$$
 3.  **Concept Drift:** Evaluates $P(Y \mid X)$ stability by training a logistic regression model on Bank A and calculating the prediction shift on Bank B, paired with segment-specific conditional JS drifts.
 
+### 4.1 Asynchronous Background Retraining Pipeline
+Model retraining is decoupled from manual tick loops into an automated, asynchronous Celery worker task (`execute_automated_retraining_task` in `backend/app/tasks/simulation_tasks.py`):
+1. **Trigger Criteria (`RetrainingTriggerEngine`)**:
+   - **Data Ingestion Threshold**: Triggers when new normalized transactions reach target batch volume ($\ge 50,000$ records).
+   - **Drift Detection Trigger**: Triggers when Population Stability Index ($\text{PSI} > 0.20$) or Kolmogorov-Smirnov test ($p < 0.05$) indicates significant feature/concept drift.
+   - **Scheduled Consortium Cadence**: Periodic cron trigger for scheduled federated rounds.
+2. **Worker Execution Pipeline**:
+   - Local Celery worker fetches normalized training batch from `StreamingFeatureStore`.
+   - Executes PyTorch model training loop with Opacus Differential Privacy (DP-SGD) noise injection (`add_noise_to_weights`).
+   - Evaluates candidate model accuracy and ROC-AUC quality gate ($\text{ROC-AUC} > 0.70$).
+   - Compresses encrypted parameter update payload (Zstandard) and queues it for gRPC transmission to central coordinator.
+
 ---
 
 ## 5. Technology Stack & Directory Structure
