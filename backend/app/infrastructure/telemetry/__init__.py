@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 # OpenTelemetry imports with graceful fallback
 try:
     from opentelemetry import trace
+
     OPENTELEMETRY_AVAILABLE = True
 except ImportError:  # pragma: no cover
     OPENTELEMETRY_AVAILABLE = False
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Telemetry Registry for Metric Exposition & Tracking
 # ---------------------------------------------------------------------------
+
 
 class TelemetryRegistry:
     """Thread-safe Prometheus metrics registry and OpenTelemetry tracer wrapper."""
@@ -123,14 +125,14 @@ class TelemetryRegistry:
             lines.append(f"{metric_name}_count {count}")
             lines.append(f"{metric_name}_sum {total_sum:.6f}")
 
-        for metric_name, labels_dict in self._histogram_labels.items():
-            if not labels_dict:
+        for metric_name, hist_labels_dict in self._histogram_labels.items():
+            if not hist_labels_dict:
                 continue
             lines.append(f"# HELP {metric_name} {self._metric_help.get(metric_name, '')}")
             lines.append(f"# TYPE {metric_name} summary")
-            for label_str, values in labels_dict.items():
-                count = len(values)
-                total_sum = sum(values)
+            for label_str, hist_values in hist_labels_dict.items():
+                count = len(hist_values)
+                total_sum = sum(hist_values)
                 lines.append(f"{metric_name}_count{{{label_str}}} {count}")
                 lines.append(f"{metric_name}_sum{{{label_str}}} {total_sum:.6f}")
 
@@ -144,6 +146,7 @@ class TelemetryRegistry:
 
 class DummySpan:
     """Fallback dummy OpenTelemetry span context manager."""
+
     def __enter__(self) -> DummySpan:
         return self
 
@@ -159,6 +162,7 @@ class DummySpan:
 
 class DummyTracer:
     """Fallback dummy OpenTelemetry tracer."""
+
     def start_as_current_span(self, name: str, **kwargs: Any) -> DummySpan:
         return DummySpan()
 
@@ -169,6 +173,7 @@ telemetry = TelemetryRegistry()
 
 def track_grpc_latency(method_name: str) -> Callable[..., Any]:
     """Decorator to measure and record gRPC handler execution duration."""
+
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -182,13 +187,18 @@ def track_grpc_latency(method_name: str) -> Callable[..., Any]:
                 raise
             finally:
                 duration = time.time() - start_time
-                telemetry.record_grpc_latency(method=method_name, duration_seconds=duration, status=status)
+                telemetry.record_grpc_latency(
+                    method=method_name, duration_seconds=duration, status=status
+                )
+
         return wrapper
+
     return decorator
 
 
 def track_fl_round(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to measure FL round duration and record telemetry."""
+
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.time()
@@ -201,12 +211,14 @@ def track_fl_round(func: Callable[..., Any]) -> Callable[..., Any]:
             participant_count = len(result)
         telemetry.record_fl_round(duration_seconds=duration, participant_count=participant_count)
         return result
+
     return wrapper
 
 
 # ---------------------------------------------------------------------------
 # Existing Legacy / FastAPI NoOp Handles
 # ---------------------------------------------------------------------------
+
 
 class _NoOpCounter:
     def add(self, amount: int | float, attributes: dict | None = None) -> None:

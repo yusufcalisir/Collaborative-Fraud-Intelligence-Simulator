@@ -7,7 +7,6 @@ No Kubernetes cluster is required — these are offline linting checks.
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
@@ -20,6 +19,7 @@ HELM_DIR = Path(__file__).parents[3] / "deployments" / "helm" / "cfi-platform"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def load_yaml(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
@@ -35,6 +35,7 @@ def load_yaml_all(path: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Chart.yaml tests
 # ---------------------------------------------------------------------------
+
 
 class TestChartYaml:
     def setup_method(self):
@@ -71,6 +72,7 @@ class TestChartYaml:
 # ---------------------------------------------------------------------------
 # values.yaml tests
 # ---------------------------------------------------------------------------
+
 
 class TestValuesYaml:
     def setup_method(self):
@@ -170,6 +172,7 @@ def test_template_uses_release_name(template_name: str):
 # Security posture tests (static checks on values)
 # ---------------------------------------------------------------------------
 
+
 class TestSecurityPosture:
     def setup_method(self):
         self.values = load_yaml(HELM_DIR / "values.yaml")
@@ -186,9 +189,7 @@ class TestSecurityPosture:
                 continue
             # Detect 'password: <non-placeholder>' patterns
             match = re.match(r"^\s*(?:sasl)?[Pp]assword:\s+\"?(?!changeme)(\S+)\"?", line)
-            assert not match, (
-                f"Potential plaintext password found in values.yaml: {line.strip()}"
-            )
+            assert not match, f"Potential plaintext password found in values.yaml: {line.strip()}"
 
     def test_hsm_secret_name_not_empty(self):
         secretName = self.values["bankNode"]["hsm"]["secretName"]

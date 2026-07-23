@@ -45,7 +45,9 @@ class BenchmarkRunner:
         self.seed = seed
         self.results: dict[str, BenchmarkResult] = {}
 
-    def compute_recall_at_fpr(self, y_true: np.ndarray, y_pred_prob: np.ndarray, target_fpr: float = 0.01) -> float:
+    def compute_recall_at_fpr(
+        self, y_true: np.ndarray, y_pred_prob: np.ndarray, target_fpr: float = 0.01
+    ) -> float:
         """Computes true positive recall at a fixed false positive rate target."""
         # Sort predictions
         order = np.argsort(y_pred_prob)[::-1]
@@ -76,7 +78,6 @@ class BenchmarkRunner:
         rng = np.random.default_rng(self.seed)
         start_time = time.perf_counter()
 
-
         # Generate ground truth & prediction distribution based on configuration profile
         n_samples = self.samples_per_bank * 3
         n_fraud = max(5, int(n_samples * 0.02))
@@ -85,15 +86,78 @@ class BenchmarkRunner:
 
         # Baseline performance profiles
         profiles = {
-            "C1": {"auc_mean": 0.820, "auc_std": 0.01, "eps": 0.0, "bytes": 0, "rounds": 1, "lat": 1.2},
-            "C2": {"auc_mean": 0.935, "auc_std": 0.01, "eps": 0.0, "bytes": 50_000_000, "rounds": 1, "lat": 2.5},
-            "C3": {"auc_mean": 0.912, "auc_std": 0.01, "eps": 0.0, "bytes": 12_500_000, "rounds": self.rounds, "lat": 2.8},
-            "C4": {"auc_mean": 0.918, "auc_std": 0.01, "eps": 0.0, "bytes": 12_500_000, "rounds": self.rounds, "lat": 3.1},
-            "C5": {"auc_mean": 0.885, "auc_std": 0.01, "eps": 1.0, "bytes": 12_500_000, "rounds": self.rounds, "lat": 3.0},
-            "C6": {"auc_mean": 0.912, "auc_std": 0.01, "eps": 0.0, "bytes": 14_200_000, "rounds": self.rounds, "lat": 3.5},
-            "C7": {"auc_mean": 0.888, "auc_std": 0.01, "eps": 1.0, "bytes": 14_200_000, "rounds": self.rounds, "lat": 3.6},
-            "C8": {"auc_mean": 0.924, "auc_std": 0.01, "eps": 0.0, "bytes": 16_800_000, "rounds": self.rounds, "lat": 4.2},
-            "C9": {"auc_mean": 0.894, "auc_std": 0.01, "eps": 1.0, "bytes": 15_500_000, "rounds": self.rounds, "lat": 4.0},
+            "C1": {
+                "auc_mean": 0.820,
+                "auc_std": 0.01,
+                "eps": 0.0,
+                "bytes": 0,
+                "rounds": 1,
+                "lat": 1.2,
+            },
+            "C2": {
+                "auc_mean": 0.935,
+                "auc_std": 0.01,
+                "eps": 0.0,
+                "bytes": 50_000_000,
+                "rounds": 1,
+                "lat": 2.5,
+            },
+            "C3": {
+                "auc_mean": 0.912,
+                "auc_std": 0.01,
+                "eps": 0.0,
+                "bytes": 12_500_000,
+                "rounds": self.rounds,
+                "lat": 2.8,
+            },
+            "C4": {
+                "auc_mean": 0.918,
+                "auc_std": 0.01,
+                "eps": 0.0,
+                "bytes": 12_500_000,
+                "rounds": self.rounds,
+                "lat": 3.1,
+            },
+            "C5": {
+                "auc_mean": 0.885,
+                "auc_std": 0.01,
+                "eps": 1.0,
+                "bytes": 12_500_000,
+                "rounds": self.rounds,
+                "lat": 3.0,
+            },
+            "C6": {
+                "auc_mean": 0.912,
+                "auc_std": 0.01,
+                "eps": 0.0,
+                "bytes": 14_200_000,
+                "rounds": self.rounds,
+                "lat": 3.5,
+            },
+            "C7": {
+                "auc_mean": 0.888,
+                "auc_std": 0.01,
+                "eps": 1.0,
+                "bytes": 14_200_000,
+                "rounds": self.rounds,
+                "lat": 3.6,
+            },
+            "C8": {
+                "auc_mean": 0.924,
+                "auc_std": 0.01,
+                "eps": 0.0,
+                "bytes": 16_800_000,
+                "rounds": self.rounds,
+                "lat": 4.2,
+            },
+            "C9": {
+                "auc_mean": 0.894,
+                "auc_std": 0.01,
+                "eps": 1.0,
+                "bytes": 15_500_000,
+                "rounds": self.rounds,
+                "lat": 4.0,
+            },
         }
 
         prof = profiles.get(config_id, profiles["C3"])
@@ -129,8 +193,8 @@ class BenchmarkRunner:
             recall_at_1pct_fpr=round(recall_1pct, 4),
             false_positive_rate=0.01,
             epsilon_consumed=prof["eps"],
-            total_bytes_transmitted=prof["bytes"],
-            rounds_to_convergence=prof["rounds"],
+            total_bytes_transmitted=int(prof["bytes"]),
+            rounds_to_convergence=int(prof["rounds"]),
             training_time_seconds=round(elapsed + 0.15, 3),
             inference_latency_p99_ms=prof["lat"],
         )
@@ -160,7 +224,6 @@ class BenchmarkRunner:
             ("C8", "FedGNN + DH-PSI Entity Resolution"),
             ("C9", "Full Architecture (C7 + Krum + Spectral)"),
         ]
-
 
         for cid, name in configs:
             self.evaluate_configuration(cid, name)

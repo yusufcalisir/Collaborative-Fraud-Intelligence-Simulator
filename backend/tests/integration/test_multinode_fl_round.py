@@ -10,6 +10,7 @@ project_root = str(Path(__file__).resolve().parents[3])
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# ruff: noqa: E402, I001
 import tempfile
 import yaml
 
