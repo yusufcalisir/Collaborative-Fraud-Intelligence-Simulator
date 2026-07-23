@@ -267,8 +267,6 @@ def test_psd2_flow_forbidden_no_consent(psd2_client: TestClient, valid_jwt_token
 # ── RabbitMQ Connector Tests ─────────────────────────────────────────────────
 
 
-
-
 @patch("app.infrastructure.connectors.rabbitmq_connector.pika")
 def test_rabbitmq_success_flow(mock_pika: MagicMock) -> None:
     # Setup mock connection and channel
