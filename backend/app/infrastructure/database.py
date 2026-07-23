@@ -87,14 +87,15 @@ def _resolve_database_url(tenant: str | None) -> str:
 
 
 def _make_engine_kwargs(tenant: str | None) -> dict[str, Any]:
-    """Build engine keyword arguments.  SQLite needs a minimal pool config."""
+    """Build engine keyword arguments with production connection pooling."""
     if settings.database_type == "sqlite":
         return {"echo": settings.app_debug}
 
     kwargs: dict[str, Any] = {
         "echo": settings.app_debug,
-        "pool_size": 10 if settings.database_type == "cockroachdb" else 5,
-        "max_overflow": 20 if settings.database_type == "cockroachdb" else 10,
+        "pool_size": 20,
+        "max_overflow": 10,
+        "pool_recycle": 3600,
         "pool_pre_ping": True,
     }
     if settings.database_type == "cockroachdb":

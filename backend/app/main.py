@@ -321,7 +321,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # ── Application ───────────────────────────────
-service_name = os.getenv("SERVICE_NAME", "").lower()
+mode_env = os.getenv("MODE", "").lower()
+service_name = (mode_env or os.getenv("SERVICE_NAME", "")).lower()
 
 app_title = "Collaborative Fraud Intelligence Simulator"
 app_description = (
@@ -334,9 +335,10 @@ app_description = (
 if service_name == "gateway":
     app_title = "Collaborative Fraud Intelligence Gateway"
     app_description = "API Gateway for proxying requests to downstream microservices and aggregating API documentation."
-elif service_name == "fl-coordinator":
+elif service_name in ("fl-coordinator", "coordinator"):
     app_title = "Federated Learning Coordinator Service"
     app_description = "Handles Federated Learning training simulations, participant bank configurations, and metrics."
+
 elif service_name == "identity-graph":
     app_title = "Identity & Graph Service"
     app_description = "Provides privacy-preserving cross-bank entity resolution and relationship network graph visualization."
@@ -376,7 +378,7 @@ if service_name == "gateway":
     app.include_router(health.router)
     app.include_router(gateway.router)
 
-elif service_name == "fl-coordinator":
+elif service_name in ("fl-coordinator", "coordinator"):
     app.include_router(health.router)
     app.include_router(simulation.router)
     app.include_router(banks.router)
@@ -408,10 +410,11 @@ elif service_name == "fraud-alert":
     app.include_router(dashboard.router)
     app.include_router(streaming_ws.router)
 
-elif service_name.startswith("bank-"):
+elif service_name.startswith("bank-") or service_name == "bank_client":
     app.include_router(health.router)
     app.include_router(bank_client.router)
     app.include_router(psd2.router)
+
 
 else:
     # Default/Monolith Mode: mount all routers

@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 from app.infrastructure.connectors.batch_connector import BatchEODFileConnector
 from app.infrastructure.connectors.iso20022_connector import ISO20022MessagingConnector
-from app.infrastructure.connectors.mock_connector import MockBankConnector
-from app.infrastructure.connectors.mq_skeleton_connector import MQSkeletonBankConnector
+from app.infrastructure.connectors.kafka_connector import KafkaBankConnector
+from app.infrastructure.connectors.open_banking_connector import OpenBankingConnector
+from app.infrastructure.connectors.parquet_connector import ParquetConnector
 from app.infrastructure.connectors.rabbitmq_connector import RabbitMQBankConnector
 from app.infrastructure.connectors.redis_connector import RedisBankConnector
 from app.infrastructure.connectors.rest_connector import RESTBankConnector
@@ -35,7 +36,7 @@ class BankConnectorFactory:
         # Convert bank-a to bank_a to lookup attributes
         key = bank_id.replace("-", "_")
 
-        connector_type = getattr(settings, f"{key}_connector_type", "mock")
+        connector_type = getattr(settings, f"{key}_connector_type", "parquet")
         auth_type = getattr(settings, f"{key}_auth_type", "none")
         api_key = getattr(settings, f"{key}_api_key", "")
 
@@ -45,6 +46,12 @@ class BankConnectorFactory:
             connector_type,
             auth_type,
         )
+
+        if connector_type in ("mock", "mq_skeleton"):
+            raise ValueError(
+                f"Connector type '{connector_type}' has been deprecated and removed under Enterprise Zero-Mock Policy. "
+                "Use 'open_banking', 'psd2', 'parquet', 'rabbitmq', 'kafka', 'iso20022', or 'rest'."
+            )
 
         if connector_type == "rest":
             base_url = settings.bank_urls.get(bank_id) or "http://localhost:8000"
@@ -59,31 +66,34 @@ class BankConnectorFactory:
         elif connector_type == "redis":
             redis_url = settings.redis_url or "redis://localhost:6379/0"
             return RedisBankConnector(redis_url=redis_url)
-        elif connector_type == "mq_skeleton":
-            broker_uri = getattr(settings, "mq_broker_uri", "amqp://guest:guest@localhost:5672//")
-            return MQSkeletonBankConnector(broker_uri=broker_uri)
         elif connector_type == "streaming":
             return StreamingPaymentConnector(topic=f"payments.{bank_id}")
         elif connector_type == "iso20022":
             return ISO20022MessagingConnector()
         elif connector_type == "batch":
             return BatchEODFileConnector()
+        elif connector_type in ("parquet", "benchmark"):
+            dataset_path = f"storage/benchmark_datasets/{bank_id.replace('-', '_')}.parquet"
+            return ParquetConnector(filepath=dataset_path)
+        elif connector_type in ("open_banking", "psd2"):
+            base_url = getattr(settings, "psd2_base_url", "https://sandbox.berlingroup.org/psd2/v1")
+            return OpenBankingConnector(base_url=base_url, auth_type=auth_type, api_key=api_key)
         elif connector_type == "rabbitmq":
-            mock_fallback = None
-            if model_service is not None and data_generator is not None:
-                mock_fallback = MockBankConnector(
-                    model_service=model_service, data_generator=data_generator
-                )
             return RabbitMQBankConnector(
                 host=getattr(settings, "rabbitmq_host", "localhost"),
                 port=getattr(settings, "rabbitmq_port", 5672),
                 username=getattr(settings, "rabbitmq_user", "guest"),
                 password=getattr(settings, "rabbitmq_password", "guest"),
-                fallback_connector=mock_fallback,
+            )
+        elif connector_type == "kafka":
+            return KafkaBankConnector(
+                bootstrap_servers=getattr(settings, "kafka_bootstrap_servers", "localhost:9092"),
+                topic_prefix=getattr(settings, "kafka_topic_prefix", "cfi.payments"),
+                security_protocol=getattr(settings, "kafka_security_protocol", "SASL_SSL"),
+                sasl_mechanism=getattr(settings, "kafka_sasl_mechanism", "SCRAM-SHA-256"),
             )
         else:
-            if model_service is None or data_generator is None:
-                raise ValueError(
-                    "model_service and data_generator are required for mock connector."
-                )
-            return MockBankConnector(model_service=model_service, data_generator=data_generator)
+            raise ValueError(
+                f"Unsupported connector_type '{connector_type}' requested for bank '{bank_id}'. "
+                "Available production connectors: 'open_banking', 'psd2', 'parquet', 'rabbitmq', 'kafka', 'iso20022', 'rest'."
+            )

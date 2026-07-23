@@ -1,0 +1,28 @@
+# Prometheus Configuration for CFI Platform Consortium Observability
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'cfi-production-consortium'
+    environment: 'production'
+
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  - job_name: 'cfi-aggregator'
+    metrics_path: '/metrics'
+    scheme: 'http'
+    static_configs:
+      - targets: ['cfi-aggregator:8080']
+        labels:
+          role: 'aggregator'
+
+  - job_name: 'cfi-bank-nodes'
+    metrics_path: '/metrics'
+    scheme: 'http'
+    static_configs:
+      - targets: ['cfi-bank-node:8081']
+        labels:
+          role: 'bank-node'

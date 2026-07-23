@@ -1,0 +1,42 @@
+groups:
+  - name: cfi_platform_alerts
+    rules:
+      - alert: DPBudgetExhaustionWarning
+        expr: cfi_dp_epsilon_consumed_total > 9.0
+        for: 1m
+        labels:
+          severity: warning
+          component: differential_privacy
+        annotations:
+          summary: "Differential Privacy Epsilon budget high for bank node {{ $labels.bank_id }}"
+          description: "Bank node {{ $labels.bank_id }} has consumed {{ $value }} epsilon, approaching the maximum allocation limit."
+
+      - alert: BankNodeOffline
+        expr: (time() - cfi_node_heartbeat_timestamp) > 60
+        for: 2m
+        labels:
+          severity: critical
+          component: node_daemon
+        annotations:
+          summary: "Bank node {{ $labels.bank_id }} heartbeat timeout"
+          description: "No heartbeat received from bank node {{ $labels.bank_id }} for over 60 seconds."
+
+      - alert: SpectralAnomalySpike
+        expr: rate(cfi_spectral_anomalies_detected_total[5m]) * 300 > 3
+        for: 1m
+        labels:
+          severity: critical
+          component: byzantine_defense
+        annotations:
+          summary: "Spike in spectral anomaly detections detected"
+          description: "Over 3 spectral anomalies detected in the last 5 minutes. Possible poisoning or Byzantine attack in progress."
+
+      - alert: GRPCSLABreach
+        expr: histogram_quantile(0.99, rate(cfi_grpc_request_duration_seconds_bucket[5m])) > 0.500
+        for: 5m
+        labels:
+          severity: warning
+          component: api_gateway
+        annotations:
+          summary: "gRPC p99 latency SLA breached (>500ms)"
+          description: "gRPC p99 latency is currently {{ $value }}s, exceeding the 500ms SLA target."

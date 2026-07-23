@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-aggregator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: cfi-aggregator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: aggregator
+    app.kubernetes.io/part-of: cfi-platform
+spec:
+  replicas: {{ .Values.aggregator.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cfi-aggregator
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cfi-aggregator
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+        - name: aggregator
+          image: "{{ .Values.aggregator.image.repository }}:{{ .Values.aggregator.image.tag }}"
+          imagePullPolicy: {{ .Values.aggregator.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.aggregator.service.grpcPort }}
+              protocol: TCP
+            - name: http
+              containerPort: {{ .Values.aggregator.service.httpPort }}
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: url
+            - name: KAFKA_BROKERS
+              value: {{ .Values.kafka.brokers | quote }}
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafka.secretName }}
+                  key: username
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafka.secretName }}
+                  key: password
+            - name: VAULT_ADDR
+              value: {{ .Values.vault.address | quote }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: token
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.aggregator.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.aggregator.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.aggregator.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.aggregator.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.aggregator.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.aggregator.probes.readiness.periodSeconds }}
+          resources:
+            requests:
+              cpu: {{ .Values.aggregator.resources.requests.cpu }}
+              memory: {{ .Values.aggregator.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.aggregator.resources.limits.cpu }}
+              memory: {{ .Values.aggregator.resources.limits.memory }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

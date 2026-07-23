@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  coordinator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cfi-fl-coordinator
+    environment:
+      - MODE=coordinator
+      - APP_ENV=production
+      - APP_LOG_LEVEL=INFO
+      - PORT=50051
+      - CA_CERT_PATH=/app/pki/ca.pem
+      - SERVER_CERT_PATH=/app/pki/coordinator/cert.pem
+      - SERVER_KEY_PATH=/app/pki/coordinator/key.pem
+    volumes:
+      - coordinator-data:/app/data
+      - coordinator-pki:/app/pki
+    networks:
+      - consortium-net
+    ports:
+      - "50051:50051"
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  bank-a:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cfi-bank-client-a
+    environment:
+      - MODE=bank_client
+      - BANK_ID=bank_a
+      - APP_ENV=production
+      - COORDINATOR_URL=coordinator:50051
+      - CA_CERT_PATH=/app/pki/ca.pem
+      - BANK_CERT_PATH=/app/pki/bank-a/cert.pem
+      - BANK_KEY_PATH=/app/pki/bank-a/key.pem
+    volumes:
+      - bank-a-data:/app/data
+      - bank-a-pki:/app/pki
+    networks:
+      - bank-a-net
+      - consortium-net
+    depends_on:
+      coordinator:
+        condition: service_healthy
+
+  bank-b:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cfi-bank-client-b
+    environment:
+      - MODE=bank_client
+      - BANK_ID=bank_b
+      - APP_ENV=production
+      - COORDINATOR_URL=coordinator:50051
+      - CA_CERT_PATH=/app/pki/ca.pem
+      - BANK_CERT_PATH=/app/pki/bank-b/cert.pem
+      - BANK_KEY_PATH=/app/pki/bank-b/key.pem
+    volumes:
+      - bank-b-data:/app/data
+      - bank-b-pki:/app/pki
+    networks:
+      - bank-b-net
+      - consortium-net
+    depends_on:
+      coordinator:
+        condition: service_healthy
+
+networks:
+  consortium-net:
+    driver: bridge
+    name: cfi-consortium-net
+  bank-a-net:
+    driver: bridge
+    internal: true
+    name: cfi-bank-a-private-net
+  bank-b-net:
+    driver: bridge
+    internal: true
+    name: cfi-bank-b-private-net
+
+volumes:
+  coordinator-data:
+  coordinator-pki:
+  bank-a-data:
+  bank-a-pki:
+  bank-b-data:
+  bank-b-pki:

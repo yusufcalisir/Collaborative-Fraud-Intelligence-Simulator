@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-bank-node
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: cfi-bank-node
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: bank-node
+    app.kubernetes.io/part-of: cfi-platform
+spec:
+  replicas: {{ .Values.bankNode.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cfi-bank-node
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cfi-bank-node
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+        - name: bank-node
+          image: "{{ .Values.bankNode.image.repository }}:{{ .Values.bankNode.image.tag }}"
+          imagePullPolicy: {{ .Values.bankNode.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.bankNode.service.grpcPort }}
+              protocol: TCP
+            - name: http
+              containerPort: {{ .Values.bankNode.service.httpPort }}
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: url
+            - name: KAFKA_BROKERS
+              value: {{ .Values.kafka.brokers | quote }}
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafka.secretName }}
+                  key: username
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafka.secretName }}
+                  key: password
+            - name: VAULT_ADDR
+              value: {{ .Values.vault.address | quote }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: token
+            {{- if .Values.bankNode.hsm.enabled }}
+            - name: HSM_PIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bankNode.hsm.secretName }}
+                  key: pin
+            - name: HSM_SLOT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bankNode.hsm.secretName }}
+                  key: slot
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.bankNode.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.bankNode.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.bankNode.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.bankNode.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.bankNode.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.bankNode.probes.readiness.periodSeconds }}
+          resources:
+            requests:
+              cpu: {{ .Values.bankNode.resources.requests.cpu }}
+              memory: {{ .Values.bankNode.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.bankNode.resources.limits.cpu }}
+              memory: {{ .Values.bankNode.resources.limits.memory }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.bankNode.hsm.enabled }}
+            - name: hsm-credentials
+              mountPath: /etc/cfi/hsm
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.bankNode.hsm.enabled }}
+        - name: hsm-credentials
+          secret:
+            secretName: {{ .Values.bankNode.hsm.secretName }}
+        {{- end }}

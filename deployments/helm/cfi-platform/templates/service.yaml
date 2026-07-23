@@ -1,0 +1,50 @@
+---
+# Aggregator Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-aggregator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: cfi-aggregator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: aggregator
+spec:
+  type: {{ .Values.aggregator.service.type }}
+  ports:
+    - name: grpc
+      port: {{ .Values.aggregator.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+    - name: http
+      port: {{ .Values.aggregator.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: cfi-aggregator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+# Bank Node Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-bank-node
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: cfi-bank-node
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: bank-node
+spec:
+  type: {{ .Values.bankNode.service.type }}
+  ports:
+    - name: grpc
+      port: {{ .Values.bankNode.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+    - name: http
+      port: {{ .Values.bankNode.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: cfi-bank-node
+    app.kubernetes.io/instance: {{ .Release.Name }}

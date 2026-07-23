@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import logging
+import re
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.infrastructure.connectors.base_connector import NormalizedTransaction
 
 logger = logging.getLogger(__name__)
+
 
 # Standard ISO 3166-1 alpha-2 country code set
 VALID_COUNTRY_CODES = {
@@ -44,7 +47,23 @@ VALID_COUNTRY_CODES = {
     "IE",
 }
 
-VALID_CURRENCIES = {"USD", "EUR", "GBP", "TRY", "CAD", "AUD", "JPY", "CHF"}
+VALID_CURRENCIES = {
+    "USD",
+    "EUR",
+    "GBP",
+    "TRY",
+    "CAD",
+    "AUD",
+    "JPY",
+    "CHF",
+    "SEK",
+    "NOK",
+    "DKK",
+    "CNY",
+    "SGD",
+    "BRL",
+    "INR",
+}
 
 
 class DataValidationError(ValueError):
@@ -53,6 +72,17 @@ class DataValidationError(ValueError):
 
 class DataContractValidator:
     """Validates incoming NormalizedTransaction events against strict banking data contracts."""
+
+    @staticmethod
+    def validate_iban(iban: str) -> bool:
+        """Validates an IBAN according to ISO 13616 mod-97 specification."""
+        clean_iban = re.sub(r"\s+", "", iban).upper()
+        if not re.match(r"^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}$", clean_iban):
+            return False
+
+        rearranged = clean_iban[4:] + clean_iban[:4]
+        numeric_str = "".join(str(ord(ch) - 55) if ch.isalpha() else ch for ch in rearranged)
+        return int(numeric_str) % 97 == 1
 
     @staticmethod
     def validate_transaction(tx: NormalizedTransaction) -> bool:
@@ -78,6 +108,15 @@ class DataContractValidator:
             logger.warning(
                 "Unrecognized currency code %s for tx %s", tx.currency, tx.transaction_id
             )
+
+        now = datetime.now(UTC)
+        tx_ts = (
+            tx.timestamp.astimezone(UTC)
+            if tx.timestamp.tzinfo
+            else tx.timestamp.replace(tzinfo=UTC)
+        )
+        if tx_ts > now + timedelta(minutes=10):
+            raise DataValidationError(f"Transaction timestamp is in the future: {tx.timestamp}.")
 
         origin_upper = tx.origin_country.upper()
         dest_upper = tx.destination_country.upper()

@@ -1,0 +1,71 @@
+---
+# Aggregator HPA
+{{- if .Values.aggregator.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-aggregator-hpa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: cfi-aggregator-hpa
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: aggregator
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-aggregator
+  minReplicas: {{ .Values.aggregator.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.aggregator.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.aggregator.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+---
+# Bank Node Network Policy — isolate inter-bank traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-bank-node-isolation
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: cfi-bank-node-netpol
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cfi-bank-node
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress ONLY from the aggregator
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cfi-aggregator
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.bankNode.service.grpcPort }}
+        - protocol: TCP
+          port: {{ .Values.bankNode.service.httpPort }}
+  egress:
+    # Allow egress to aggregator (FL rounds) and DNS
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cfi-aggregator
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.aggregator.service.grpcPort }}
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53

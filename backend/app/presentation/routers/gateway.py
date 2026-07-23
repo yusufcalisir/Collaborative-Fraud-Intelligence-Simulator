@@ -10,9 +10,9 @@ from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.config import get_settings
 from app.infrastructure.redis_store import RedisStore
-from app.infrastructure.security.abac_engine import ABACEngine
+from app.infrastructure.security.abac_engine import ABACEngine, ABACResource
 from app.infrastructure.security.immutable_audit_chain import ImmutableAuditChain
-from app.infrastructure.security.oidc_authenticator import OIDCAuthenticator
+from app.infrastructure.security.oidc_authenticator import OIDCAuthenticator, UserClaims
 
 logger = logging.getLogger(__name__)
 
@@ -100,40 +100,119 @@ def check_rate_limit(client_id: str) -> bool:
     return True
 
 
-def authenticate_request(request_or_websocket: Request | WebSocket) -> tuple[str, str, str | None]:
-    """Authenticate request or websocket using API keys.
+def authenticate_request(
+    request_or_websocket: Request | WebSocket,
+) -> tuple[str, str, str | None, UserClaims | None]:
+    """Authenticate request or websocket using OIDC Bearer JWT tokens or API keys.
 
     Returns:
-        tuple: (identity, role, api_key_used)
+        tuple: (identity, role, key_or_token, user_claims)
     """
+    bearer_token = None
     api_key = None
-    if isinstance(request_or_websocket, Request):
-        api_key = request_or_websocket.headers.get("X-API-Key")
-        if not api_key:
-            auth_header = request_or_websocket.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                api_key = auth_header.split(" ")[1]
-    else:  # WebSocket
-        api_key = request_or_websocket.query_params.get(
-            "api_key"
-        ) or request_or_websocket.headers.get("x-api-key")
 
+    if isinstance(request_or_websocket, Request):
+        auth_header = request_or_websocket.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            bearer_token = auth_header.split(" ")[1].strip()
+
+        api_key = request_or_websocket.headers.get("X-API-Key")
+    else:  # WebSocket
+        bearer_token = (
+            request_or_websocket.query_params.get("token")
+            or request_or_websocket.query_params.get("bearer")
+        )
+        api_key = (
+            request_or_websocket.query_params.get("api_key")
+            or request_or_websocket.headers.get("x-api-key")
+        )
+
+    # 1. OIDC Bearer Token validation
+    if bearer_token:
+        valid, claims, err_msg = _oidc_auth.decode_and_validate_token(bearer_token)
+        if valid and claims:
+            role = claims.roles[0] if claims.roles else "user"
+            return claims.username, role, bearer_token[:16] + "...", claims
+        else:
+            logger.warning("OIDC Bearer token validation failed: %s", err_msg)
+            if not api_key:
+                return "", "", bearer_token, None
+
+    # 2. Legacy API Key fallback
     if api_key:
         keys_map = get_api_keys()
         if api_key in keys_map:
             identity, role = keys_map[api_key]
-            return identity, role, api_key
+            claims = UserClaims(
+                sub=f"apikey_{identity}",
+                username=identity,
+                bank_id=identity if role == "bank" else "global",
+                roles=[role],
+            )
+            return identity, role, api_key, claims
 
     if settings.gateway_require_auth:
-        return "", "", api_key
+        return "", "", api_key or bearer_token, None
 
-    return "analyst", "analyst", api_key
+    # Default dev fallback
+    dev_claims = UserClaims(
+        sub="usr_analyst_default",
+        username="analyst",
+        bank_id="global",
+        roles=["analyst"],
+    )
+    return "analyst", "analyst", api_key, dev_claims
 
 
 def check_authorization(
-    identity: str, role: str, full_path: str, query_params: dict, method: str
+    identity: str,
+    role: str,
+    full_path: str,
+    query_params: dict,
+    method: str,
+    user_claims: UserClaims | None = None,
+    client_ip: str | None = None,
 ) -> bool:
-    if role == "analyst":
+    """Evaluates RBAC and dynamic ABAC rules for gateway route requests."""
+    # 1. ABAC Policy Evaluation if UserClaims present
+    if user_claims:
+        resource_bank_id = query_params.get(
+            "bank_id", user_claims.bank_id if role == "bank" else "global"
+        )
+        resource = ABACResource(
+            resource_type="api_route",
+            resource_id=full_path,
+            bank_id=resource_bank_id,
+        )
+        abac_result = _abac_engine.evaluate_access(
+            user=user_claims,
+            resource=resource,
+            action=method.lower(),
+            client_ip=client_ip,
+        )
+        if not abac_result.allowed:
+            logger.warning(
+                "ABAC Enforcement Denied: %s (User: %s, Resource Bank: %s, Policy: %s)",
+                abac_result.reason,
+                identity,
+                resource_bank_id,
+                abac_result.policy_name,
+            )
+            _audit_chain.append_event(
+                event_type="ACCESS_DENIED_ABAC",
+                actor=identity,
+                target_id=full_path,
+                details={
+                    "method": method,
+                    "reason": abac_result.reason,
+                    "policy": abac_result.policy_name,
+                    "client_ip": client_ip,
+                },
+            )
+            return False
+
+    # 2. RBAC Policy Rules
+    if role == "analyst" or role in ("super_admin", "compliance_auditor"):
         return True
 
     if role == "bank":
@@ -146,15 +225,16 @@ def check_authorization(
             return False
 
         # Banks can only query metrics filtering by their own bank_id
+        effective_bank_id = user_claims.bank_id if user_claims else identity
         bank_id_param = query_params.get("bank_id")
-        if bank_id_param and bank_id_param != identity:
+        if bank_id_param and bank_id_param != effective_bank_id:
             return False
 
     return True
 
 
 def check_ws_authorization(identity: str, role: str, ws_path: str) -> bool:
-    if role == "analyst":
+    if role == "analyst" or role in ("super_admin", "compliance_auditor"):
         return True
     if role == "bank":
         # Banks are not permitted to see global training outputs
@@ -215,8 +295,14 @@ async def http_proxy(request: Request, path: str):
     client_ip = request.client.host if request.client else "unknown"
 
     # Authenticate Request
-    identity, role, api_key = authenticate_request(request)
+    identity, role, api_key, user_claims = authenticate_request(request)
     if not identity:
+        _audit_chain.append_event(
+            event_type="ACCESS_DENIED_UNAUTHORIZED",
+            actor="anonymous",
+            target_id=full_path,
+            details={"method": request.method, "client_ip": client_ip},
+        )
         return Response(content="Gateway Error: Unauthorized key", status_code=401)
 
     # Rate Limiting
@@ -245,7 +331,9 @@ async def http_proxy(request: Request, path: str):
     query_params = dict(request.query_params)
 
     # Authorization Check & Parameter Injection
-    if not check_authorization(identity, role, full_path, query_params, request.method):
+    if not check_authorization(
+        identity, role, full_path, query_params, request.method, user_claims, client_ip
+    ):
         return Response(content="Gateway Error: Forbidden", status_code=403)
 
     if role == "bank" and "bank_id" not in query_params:
@@ -304,7 +392,7 @@ async def ws_proxy(websocket: WebSocket, path: str):
     client_ip = websocket.client.host if websocket.client else "unknown"
 
     # Authenticate WS
-    identity, role, api_key = authenticate_request(websocket)
+    identity, role, api_key, user_claims = authenticate_request(websocket)
     if not identity:
         await websocket.accept()
         await websocket.close(code=3000, reason="Gateway Error: Unauthorized key")

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class RabbitMQBankConnector(BankConnectorInterface):
-    """Sends FL commands to bank nodes over AMQP/RabbitMQ."""
+    """Sends FL commands to bank nodes over AMQP/RabbitMQ with SSL/TLS and DLQ support."""
 
     credentials: Any | None = None
     connection_params: Any | None = None
@@ -37,36 +37,44 @@ class RabbitMQBankConnector(BankConnectorInterface):
         username: str = "guest",
         password: str = "guest",
         queue_prefix: str = "fl.queue",
-        fallback_connector: BankConnectorInterface | None = None,
+        use_ssl: bool = False,
     ) -> None:
         self.host = host
         self.port = port
         self.username = username
         self.password = password
         self.queue_prefix = queue_prefix
-        self.fallback_connector = fallback_connector
+        self.use_ssl = use_ssl
+
         if pika is not None:
             self.credentials = pika.PlainCredentials(self.username, self.password)
+            ssl_options = None
+            if self.use_ssl:
+                import ssl
+
+                ssl_options = pika.SSLOptions(ssl.create_default_context())
+
             self.connection_params = pika.ConnectionParameters(
                 host=self.host,
                 port=self.port,
                 credentials=self.credentials,
                 connection_attempts=3,
                 retry_delay=2,
+                ssl_options=ssl_options,
             )
         else:
             self.credentials = None
             self.connection_params = None
 
     def _get_connection(self) -> Any | None:
-        """Establish blocking connection to RabbitMQ with clean fallback."""
+        """Establish blocking connection to RabbitMQ broker."""
         if pika is None:
             return None
         try:
             return pika.BlockingConnection(self.connection_params)
         except Exception as exc:
             logger.warning(
-                "RabbitMQ connection failed at %s:%d: %s. Fallback option will be checked.",
+                "RabbitMQ connection failed at %s:%d: %s.",
                 self.host,
                 self.port,
                 exc,
@@ -82,55 +90,8 @@ class RabbitMQBankConnector(BankConnectorInterface):
         """Publish a payload to a queue and wait for the response on an exclusive reply queue."""
         connection = self._get_connection()
         if connection is None:
-            if self.fallback_connector:
-                logger.info("Falling back to fallback connector execution.")
-                # We need to extract method from routing key
-                if "init" in routing_key:
-                    return self.fallback_connector.initialize(
-                        bank_id=payload.get("bank_id", "unknown"),
-                        num_transactions=payload.get("num_transactions", 1000),
-                        seed=payload.get("seed", 42),
-                    )
-                elif "train" in routing_key:
-                    from app.domain.value_objects import ModelWeights
-
-                    weights_data = payload.get("weights", {})
-                    weights = ModelWeights(
-                        layer_shapes=[
-                            tuple(shape) for shape in weights_data.get("layer_shapes", [])
-                        ],
-                        flat_weights=weights_data.get("flat_weights", []),
-                    )
-                    return self.fallback_connector.train(
-                        bank_id=payload.get("bank_id", "unknown"),
-                        weights=weights,
-                        learning_rate=payload.get("learning_rate", 0.001),
-                        batch_size=payload.get("batch_size", 64),
-                        epochs=payload.get("epochs", 3),
-                        enable_dp=payload.get("enable_dp", False),
-                        dp_epsilon=payload.get("dp_epsilon", 1.0),
-                        dp_delta=payload.get("dp_delta", 1e-5),
-                        dp_max_grad_norm=payload.get("dp_max_grad_norm", 1.0),
-                        correlation_id=payload.get("correlation_id", "cid"),
-                        **payload,
-                    )
-                elif "evaluate" in routing_key:
-                    from app.domain.value_objects import ModelWeights
-
-                    weights_data = payload.get("weights", {})
-                    weights = ModelWeights(
-                        layer_shapes=[
-                            tuple(shape) for shape in weights_data.get("layer_shapes", [])
-                        ],
-                        flat_weights=weights_data.get("flat_weights", []),
-                    )
-                    return self.fallback_connector.evaluate(
-                        bank_id=payload.get("bank_id", "unknown"),
-                        weights=weights,
-                        correlation_id=payload.get("correlation_id", "cid"),
-                    )
             raise RuntimeError(
-                f"RabbitMQ broker unavailable and no fallback connector configured for routing key: {routing_key}"
+                f"RabbitMQ broker unavailable at {self.host}:{self.port} for routing key: {routing_key}"
             )
 
         channel = connection.channel()

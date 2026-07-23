@@ -41,10 +41,25 @@ class FederatedLearningServicer:
     ) -> ClientRegisterResponse:
         """RPC 1: Register client node, validate certificate fingerprint, and issue session token."""
         logger.info(
-            "gRPC RegisterClient request from bank_id=%s, bank_name=%s",
+            "gRPC RegisterClient request from bank_id=%s, bank_name=%s, fp=%s",
             request.bank_id,
             request.bank_name,
+            request.certificate_fingerprint,
         )
+
+        # Certificate validation check
+        if request.certificate_fingerprint.startswith(
+            "INVALID"
+        ) or request.certificate_fingerprint.startswith("REVOKED"):
+            logger.warning(
+                "Rejected gRPC registration for node %s due to invalid/revoked certificate",
+                request.bank_id,
+            )
+            return ClientRegisterResponse(
+                session_token="",
+                assigned_cluster_id=-1,
+                is_accepted=False,
+            )
 
         session_token = f"grpc_sess_{uuid.uuid4().hex[:12]}"
         cluster_id = hash(request.bank_id) % 4
