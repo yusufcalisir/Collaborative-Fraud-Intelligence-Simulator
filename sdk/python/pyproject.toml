@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cfi-connector-sdk"
+version = "1.0.0"
+description = "Standardized Bank Connector SDK for Collaborative Fraud Intelligence Network"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Collaborative Fraud Intelligence Team"}
+]
+dependencies = [
+    "pydantic>=2.0.0",
+    "grpcio>=1.50.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]

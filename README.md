@@ -148,6 +148,13 @@ Instead of centralizing raw customer transactions, the framework uses a distribu
 8.  **Adversarial Poisoning Simulation:** Toggles active **Model Poisoning** attacks to corrupt specific client weights with noise scaling, enabling visual comparison of FedAvg vulnerability vs. robust aggregation defense.
 9.  **Non-IID Distribution Visualization:** Displays transaction amount distributions (overlapping area charts), hourly fraud patterns (grouped bar charts), and merchant risk profiles across institutions to visually demonstrate data drift and data heterogeneity before or after starting simulations, using Kolmogorov-Smirnov (KS) divergence to quantify the distribution difference.
 
+#### 🏛️ Federated Consortium Governance
+Consortiums (e.g. European AML Network) define democratic membership rules, voting quorums ($K/N$), differential privacy limits ($\epsilon_{max}$), and model sharing permissions across participating banks:
+- **Voting Quorums**: Member onboarding and node evictions require voting proposals meeting configured $K/N$ quorum ratios.
+- **Service & Domain Engine**: `ConsortiumGovernanceService` manages membership proposals, vote casting, and state transitions.
+- **Specification Document**: Detailed governance spec available in [docs/consortium_governance_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/consortium_governance_spec.md).
+
+
 ### Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine (Phase 2)
 To provide real-time transaction screening and investigation capabilities:
 1.  **Deterministic Entity Resolution:** Cross-bank customer and device matching is achieved via one-way HMAC-SHA256 hashes, allowing linkage of malicious actors without revealing identity.
@@ -218,6 +225,20 @@ To transform the prototype into a production-oriented distributed system:
 6.  **Enterprise Feature Store Integration (Feast / Hopsworks)**: Decoupled online features serving (<50ms from Redis) and offline point-in-time joins (preventing training data leakage) with dynamic sliding window streaming ingestion (Flink/Spark simulator).
 7.  **Real-Bank Connectors**: Concrete adapters (REST and RabbitMQ/AMQP) implementing `BankConnectorInterface` to connect with Core Banking Systems (CBS) using mTLS, OAuth2 client credentials, and message queue event pipelines.
 8.  **Open Banking PSD2 Interface**: A standardized XS2A API (`/api/v1/psd2`) that validates Bearer JWT signatures and manages dynamic user consent configurations.
+
+#### 🔌 Bank Connector SDK (`cfi-connector-sdk`)
+To allow external banking IT engineering teams to connect legacy core banking systems (Flexcube, Temenos, Thought Machine) to the CFI network, the platform provides a versioned, standalone Python SDK (`cfi-connector-sdk`):
+- **Abstract Adapters**: Bank developers extend `BaseTransactionAdapter`, `BaseEntityAdapter`, and `BaseFeatureAdapter` to map native core banking JSON/XML payloads into `NormalizedTransaction` records.
+- **Privacy Hashing**: Computes HMAC-SHA256 privacy masking on customer account IDs locally inside bank security perimeters before data enters network storage.
+- **Local FL Client Daemon**: Includes `LocalFLClient` managing gRPC mTLS communication with the central CFI coordinator and submitting Differential Privacy masked gradients.
+- **Developer Guide**: Comprehensive integration guide and reference implementations available in [docs/connector_sdk_guide.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/connector_sdk_guide.md).
+
+#### 🟢 Bank Connector Health & Reference Implementation
+- **Zero-Mock Health Monitor**: `ConnectorHealthMonitor` performs real connection probes verifying broker reachability, mTLS X.509 certificate expiration dates, and memory health.
+- **Reference Script**: Execute the standalone reference bank connector:
+  ```bash
+  python sdk/examples/reference_bank_connector.py --bank-id bank-a --salt sec_bank_a_salt
+  ```
 9.  **Financial Message Standard Parsers**: Built-in parsers for standard formats, including ISO 20022 XML (`pacs.008.001.08`), SWIFT MT103, and SEPA Credit Transfers.
 
 ### Track 4: MLOps, Explainability & Advanced Drift Detection (Phase 4)
@@ -226,8 +247,22 @@ To bring the platform closer to production ML operations standards:
 2.  **Advanced Drift Detection Suite:** A statistical drift analysis pipeline computes **Feature Drift** (PSI, Jensen-Shannon, KS-statistic per feature), **Concept Drift** ($P(Y|X)$ divergence via logistic regression), and categorical drift across all participating banks — exposed in the `DataDriftPanel` as a tabbed analytical dashboard.
 3.  **Canary Evaluation (Production Quality Gate):** After each federated aggregation round, the new candidate global model is evaluated on a combined global holdout test set and compared against the currently active (promoted) model. Promotion only occurs if the candidate meets or exceeds the active model's AUC-ROC within a configurable tolerance (`CANARY_GATE_TOLERANCE=0.005`).
 4.  **Enterprise Model Registry & Governance (SR 11-7 Compliance):** A versioned model registry persists every global model as `model_vN.pt` under `storage/registry/`. A `registry.json` manifest tracks versions with audit lineage (dataset hash, git commit hash, DP noise profile). Exposes a dual-role (ML engineer & compliance officer) cryptographic sign-off workflow, concurrent Champion/Challenger prediction shadowing with 10% traffic routing, and automated rollback if real-time performance degrades (AUC < 0.65, latency > 200ms, or FPR > 5%).
+- **Multi-Stage Production Model State Machine**: `ModelLifecycleManager` governs progressive model transitions (`STAGING` -> `SHADOW` -> `CANARY` -> `PRODUCTION` -> `ARCHIVED`), enforcing compliance sign-off gates and prohibiting illegal stage jumps.
+
 5.  **Threat Model (STRIDE / OWASP ASVS / MITRE ATLAS):** The `docs/threat_model.md` document maps all system components to STRIDE threat categories, OWASP ASVS v4.0 Level 2 controls, and MITRE ATLAS (Adversarial ML) attack tactics with mitigations.
 6.  **True Multi-Tenancy & Cryptographic Key Isolation (KMS/HSM):** Physical database-per-tenant isolation assigns each bank its own SQLite/PostgreSQL instance (`cfi_bank_a.db`, `cfi_bank_b.db`, `cfi_bank_c.db`) with zero cross-tenant query access.  A simulated KMS/HSM vault (`storage/{bank_id}/kms/`) manages per-tenant HMAC keys, DH-PSI private exponents, and secure aggregation mask seeds.  Local model checkpoints are persisted in isolated vaults (`storage/{bank_id}/model_vault/`), and application logs are routed to tenant-specific files (`storage/logs/{bank_id}.log`).  The `active_tenant` context variable and FastAPI middleware automate tenant routing for all downstream operations.
+
+#### 🏢 SaaS Multi-Tenancy & Hard Tenant Isolation
+Each financial institution operates within an isolated database schema (`tenant_<id>.*` or `cfi_<tenant_id>.db`) and isolated HashiCorp Vault transit key path:
+- **Tenant Lifecycle Engine**: `TenantRegistry` manages states (`PROVISIONING`, `ACTIVE`, `SUSPENDED`, `DELETED`).
+- **Automated Provisioner**: `TenantProvisioner` executes DDL schema table migrations and registers new bank nodes dynamically.
+- **Architecture Documentation**: Comprehensive multi-tenancy spec available in [docs/saas_multitenancy.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/saas_multitenancy.md).
+
+#### 💳 Billing & Usage Metering
+- **Per-Tenant KMS Key Isolation**: `TenantKMSManager` derives isolated AES-256-GCM envelope keys (`transit/keys/tenant_{tenant_id}`) preventing cross-tenant decryption.
+- **Resource Quotas & Metering**: `TenantMeteringService` tracks real-time inference request volume, monthly FL round participation, and storage utilization, enforcing quota boundaries (`check_quota`).
+
+
 7.  **Dynamic Policy & Rule Engine Integration (DSL/Drools):** A declarative JSON-based AST condition evaluator recursive parser supports logical and comparison constraints over transaction contexts. Risk analysts register, toggle active state, and hot-reload rules in real time via database-backed registries. Integrates into the `/predict` gateway routing to yield `BLOCK_TRANSACTION` actions immediately if matched.
 8.  **Advanced Privacy Defense & Attack Benchmarking (Bulyan, Leakage Audits, MIA/Model Inversion/DLG Evaluators):** Integrates coordinate-wise Trimmed Mean and multi-attacker Bulyan robust aggregation algorithms to neutralize colluding Byzantine nodes. Adds active privacy audit suites evaluating Membership Inference, Model Inversion, and Deep Leakage from Gradients (DLG) via Pearson correlation, coupled with a multi-simulation enterprise privacy budget log with automated epsilon limit triggers.
 
@@ -235,6 +270,8 @@ To bring the platform closer to production ML operations standards:
 
 To satisfy strict financial network boundary compliance (banking firewall rules prohibiting inbound traffic into internal database zones):
 1. **Outbound-Only mTLS Connection (`cfi-bank-client`):** Participating bank nodes run a containerized standalone client daemon (`cfi-bank-client`). The daemon initiates outbound-only gRPC/REST connections to the central FL coordinator on port 50051 using mutual TLS (X.509 client certificates).
+2. **Protocol Version Handshake & Negotiator:** Client daemons send `x-cfi-protocol-version` and `x-cfi-schema-hash` gRPC metadata headers on every call. `ProtocolVersionInterceptor` evaluates semantic version compatibility against `VersionCompatibilityMatrix`, gracefully aborting out-of-bounds client versions with `OUT_OF_RANGE` status before training starts. Detailed specification available in [docs/protocol_versioning_matrix.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/protocol_versioning_matrix.md).
+
 2. **Encrypted Local Vault Storage (`local_vault.py`):** Checkpoints, session tokens, and local PyTorch gradient states are stored locally in an AES-256 PBKDF2-derived encrypted vault (`LocalVault`) inside each bank's enclave.
 3. **Resilient Reconnector:** Employs an exponential backoff reconnector (`ExponentialBackoffReconnector`) with full jitter to automatically restore gRPC streaming channels during network disruptions without losing local checkpoint state.
 4. **Hardware Acceleration:** Auto-detects available PyTorch hardware acceleration (`CUDA`, Apple Silicon `MPS`, or `CPU`) for local bank model training routines.
