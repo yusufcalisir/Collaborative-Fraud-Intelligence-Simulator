@@ -55,7 +55,7 @@ class TestEnterpriseSecurityCIWorkflow:
         triggers = workflow_yaml.get("on")
         if triggers is None:
             for k, v in workflow_yaml.items():
-                if k is True or str(k).lower() in ("true", "on"):
+                if k in ("on", "true", "True") or k is True:
                     triggers = v
                     break
         assert triggers is not None, "Workflow missing 'on' trigger configuration"
