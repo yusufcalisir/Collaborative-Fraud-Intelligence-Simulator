@@ -176,7 +176,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "bank_nodes" {
   node_count            = var.bank_node_count
   min_count             = var.bank_node_min_count
   max_count             = var.bank_node_max_count
-  enable_auto_scaling   = true
+  auto_scaling_enabled  = true
   vnet_subnet_id        = azurerm_subnet.aks_nodes.id
 
   tags = local.common_tags
@@ -195,7 +195,7 @@ resource "azurerm_key_vault" "cfi" {
   sku_name                    = "premium"
   soft_delete_retention_days  = 90
   purge_protection_enabled    = true
-  enable_rbac_authorization   = true
+  rbac_authorization_enabled  = true
 
   network_acls {
     default_action = "Deny"
