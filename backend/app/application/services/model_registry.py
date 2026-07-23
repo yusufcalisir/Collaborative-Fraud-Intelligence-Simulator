@@ -165,7 +165,7 @@ class ModelRegistry:
             raise FileNotFoundError(f"Model file {filepath} not found on disk")
 
         try:
-            return torch.load(filepath, map_location="cpu")
+            return torch.load(filepath, map_location="cpu", weights_only=True)  # nosec B614
         except Exception as e:
             logger.error("Failed to load model file: %s", e)
             raise

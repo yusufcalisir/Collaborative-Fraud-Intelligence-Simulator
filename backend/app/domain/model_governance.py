@@ -149,7 +149,10 @@ class ShadowDeploymentEngine:
         if not request_id:
             return False
 
-        hash_val = int(hashlib.md5(request_id.encode("utf-8")).hexdigest(), 16) % 100
+        hash_val = (
+            int(hashlib.md5(request_id.encode("utf-8"), usedforsecurity=False).hexdigest(), 16)
+            % 100
+        )
         threshold = int(self.shadow_ratio * 100)
         return hash_val < threshold
 

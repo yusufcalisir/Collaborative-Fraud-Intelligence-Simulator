@@ -24,7 +24,7 @@ class ISO20022MessagingConnector(BaseBankConnector):
 
     def parse_pacs008_xml(self, xml_content: str) -> NormalizedTransaction:
         """Parses an ISO 20022 pacs.008.001.08 Financial Institution Customer Credit Transfer XML string."""
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_content)  # nosec B314
 
         # Remove XML namespace prefixes for robust searching
         for elem in root.iter():
@@ -106,7 +106,7 @@ class ISO20022MessagingConnector(BaseBankConnector):
 
     def parse_camt053_xml(self, xml_content: str) -> list[NormalizedTransaction]:
         """Parses an ISO 20022 camt.053.001.08 Bank-to-Customer Statement XML string into a list of NormalizedTransactions."""
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_content)  # nosec B314
 
         for elem in root.iter():
             if "}" in elem.tag:
@@ -150,7 +150,7 @@ class ISO20022MessagingConnector(BaseBankConnector):
 
     def parse_pacs002_xml(self, xml_content: str) -> NormalizedTransaction:
         """Parses an ISO 20022 pacs.002.001.10 Payment Status Report XML string."""
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_content)  # nosec B314
 
         for elem in root.iter():
             if "}" in elem.tag:

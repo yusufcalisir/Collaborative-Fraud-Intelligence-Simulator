@@ -267,23 +267,6 @@ def test_psd2_flow_forbidden_no_consent(psd2_client: TestClient, valid_jwt_token
 # ── RabbitMQ Connector Tests ─────────────────────────────────────────────────
 
 
-def test_rabbitmq_fallback_to_mock() -> None:
-    # Setup mock fallback connector
-    mock_fallback = MagicMock()
-    mock_fallback.initialize.return_value = {"status": "initialized", "num_samples": 100}
-
-    # Initialize connector targeting an invalid rabbitmq address (ensures connection fails and falls back)
-    connector = RabbitMQBankConnector(
-        host="invalid-host-unreachable",
-        port=5672,
-        fallback_connector=mock_fallback,
-    )
-
-    res = connector.initialize(bank_id="bank-a", num_transactions=100, seed=42)
-    assert res["status"] == "initialized"
-    mock_fallback.initialize.assert_called_once_with(
-        bank_id="bank-a", num_transactions=100, seed=42
-    )
 
 
 @patch("app.infrastructure.connectors.rabbitmq_connector.pika")

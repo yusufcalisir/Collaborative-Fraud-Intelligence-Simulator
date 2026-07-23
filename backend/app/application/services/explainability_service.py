@@ -274,7 +274,9 @@ class ExplainabilityService:
                 from app.application.services.model_service import FraudDetectionModel
 
                 model = FraudDetectionModel()
-                state_dict = torch.load(model_path, map_location=torch.device("cpu"))
+                state_dict = torch.load(
+                    model_path, map_location=torch.device("cpu"), weights_only=True
+                )  # nosec B614
                 model.load_state_dict(state_dict)
                 model.eval()
             except Exception as e:

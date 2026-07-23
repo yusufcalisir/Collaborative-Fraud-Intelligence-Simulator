@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     app_log_level: str = "INFO"
 
     # ── FastAPI ───────────────────────────────
-    api_host: str = "0.0.0.0"
+    api_host: str = "0.0.0.0"  # nosec B104
     api_port: int = 8000
     api_workers: int = 1
 

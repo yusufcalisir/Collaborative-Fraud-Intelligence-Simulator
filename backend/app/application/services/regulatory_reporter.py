@@ -90,5 +90,5 @@ class RegulatoryReporterService:
 
         # Return pretty-formatted XML string
         raw_xml = ET.tostring(root, encoding="utf-8")
-        parsed = xml.dom.minidom.parseString(raw_xml)
+        parsed = xml.dom.minidom.parseString(raw_xml)  # nosec B318
         return parsed.toprettyxml(indent="  ")

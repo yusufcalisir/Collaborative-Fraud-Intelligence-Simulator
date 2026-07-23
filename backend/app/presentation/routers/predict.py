@@ -238,7 +238,7 @@ async def predict_transaction(
                 detail="Active global model not found. Run a federated training run to generate one.",
             )
         try:
-            state_dict = torch.load(global_path, map_location="cpu")
+            state_dict = torch.load(global_path, map_location="cpu", weights_only=True)  # nosec B614
         except Exception as e:
             logger.error("Failed to load serving model: %s", e)
             raise HTTPException(

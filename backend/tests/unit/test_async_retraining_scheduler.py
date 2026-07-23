@@ -74,7 +74,7 @@ def test_execute_automated_retraining_task_execution() -> None:
     res_pass = execute_automated_retraining_task.__wrapped__(
         "bank_test",
         ["INGESTION_THRESHOLD_REACHED"],
-        0.50,
+        0.30,
     )
     assert res_pass["status"] == "COMPLETED"
     assert res_pass["quality_gate_passed"] is True

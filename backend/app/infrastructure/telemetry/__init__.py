@@ -89,7 +89,7 @@ class TelemetryRegistry:
         ts = timestamp if timestamp is not None else time.time()
         key = f'bank_id="{bank_id}"'
         labels = self._gauge_labels.setdefault("cfi_node_heartbeat_timestamp", {})
-        labels[key] = float(ts)
+        labels[key] = ts
 
     def get_prometheus_metrics_text(self) -> str:
         """Render registered metrics in standard Prometheus exposition text format."""

@@ -135,7 +135,7 @@ class VaultClient:
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310
                 result = json.loads(resp.read().decode("utf-8"))
                 data = result.get("data", {})
                 return {
@@ -178,7 +178,7 @@ class VaultClient:
 
             url = f"{self.vault_url.rstrip('/')}/v1/pki/ca/pem"
             req = urllib.request.Request(url, headers={"X-Vault-Token": self.vault_token})
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310
                 return resp.read().decode("utf-8")
         except Exception as exc:
             logger.warning("Failed to fetch Vault CA PEM (%s); returning mock root CA", exc)
@@ -204,7 +204,7 @@ class VaultClient:
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310
                 return resp.status in (200, 204)
         except Exception as exc:
             logger.warning("Failed to revoke serial %s in Vault (%s)", serial_number, exc)

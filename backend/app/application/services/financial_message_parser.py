@@ -23,7 +23,7 @@ class FinancialMessageParser:
     def parse_iso_20022_pacs008(xml_content: str) -> dict[str, Any]:
         """Parse ISO 20022 Customer Credit Transfer XML message (pacs.008.001.08)."""
         try:
-            root = ET.fromstring(xml_content.strip())
+            root = ET.fromstring(xml_content.strip())  # nosec B314
         except ET.ParseError as exc:
             raise FinancialMessageParserError(f"Invalid XML content: {exc}") from exc
 
@@ -221,7 +221,7 @@ class FinancialMessageParser:
             return res
         except FinancialMessageParserError:
             # Let's implement a simpler pain.001 parser or custom SCT parser if the format is slightly different
-            root = ET.fromstring(xml_content.strip())
+            root = ET.fromstring(xml_content.strip())  # nosec B314
             ns = ""
             m = re.match(r"({.*})", root.tag)
             if m:

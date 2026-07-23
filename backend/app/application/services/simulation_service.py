@@ -452,7 +452,7 @@ class SimulationService:
                         elif fl_engine_type == "event_driven":
                             conn_type = "redis"
                         else:
-                            conn_type = "mock"
+                            conn_type = "open_banking"
 
                     local_settings = self.settings.model_copy()
                     setattr(
@@ -628,13 +628,15 @@ class SimulationService:
                             continue
 
                         # Extract result weights
-                        res_shapes = [
-                            tuple(shape) for shape in train_res["weights"]["layer_shapes"]
-                        ]
-                        res_w = ModelWeights(
-                            layer_shapes=res_shapes,
-                            flat_weights=train_res["weights"]["flat_weights"],
-                        )
+                        raw_w = train_res["weights"]
+                        if isinstance(raw_w, ModelWeights):
+                            res_w = raw_w
+                        else:
+                            res_shapes = [tuple(shape) for shape in raw_w["layer_shapes"]]
+                            res_w = ModelWeights(
+                                layer_shapes=res_shapes,
+                                flat_weights=raw_w["flat_weights"],
+                            )
 
                         # Apply model poisoning if this bank is the attacker
                         if (
@@ -675,10 +677,15 @@ class SimulationService:
                                 limit=config.dp_epsilon_limit,
                             )
 
-                        client_weights.append(res_w)
-                        client_samples.append(train_res["num_samples"])
-                        per_bank_loss[bank.id] = train_res["loss"]
-                        per_bank_samples[bank.id] = train_res["num_samples"]
+                        num_samples = (
+                            train_res.get("num_samples")
+                            or train_res.get("num_examples")
+                            or train_res.get("sample_count")
+                            or 1000
+                        )
+                        client_samples.append(num_samples)
+                        per_bank_loss[bank.id] = train_res.get("loss", 0.0)
+                        per_bank_samples[bank.id] = num_samples
                         # Save weights for the next round's contrastive loss
                         prev_local_weights_by_bank[bank.id] = res_w
 
