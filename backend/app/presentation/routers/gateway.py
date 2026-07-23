@@ -118,14 +118,12 @@ def authenticate_request(
 
         api_key = request_or_websocket.headers.get("X-API-Key")
     else:  # WebSocket
-        bearer_token = (
-            request_or_websocket.query_params.get("token")
-            or request_or_websocket.query_params.get("bearer")
-        )
-        api_key = (
-            request_or_websocket.query_params.get("api_key")
-            or request_or_websocket.headers.get("x-api-key")
-        )
+        bearer_token = request_or_websocket.query_params.get(
+            "token"
+        ) or request_or_websocket.query_params.get("bearer")
+        api_key = request_or_websocket.query_params.get(
+            "api_key"
+        ) or request_or_websocket.headers.get("x-api-key")
 
     # 1. OIDC Bearer Token validation
     if bearer_token:

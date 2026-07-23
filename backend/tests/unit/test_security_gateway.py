@@ -27,6 +27,7 @@ from app.presentation.routers.gateway import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def oidc_auth() -> OIDCAuthenticator:
     return OIDCAuthenticator()
@@ -71,6 +72,7 @@ def make_request_with_header(name: str, value: str) -> Request:
 # 1. TestOIDCBearerAuthentication
 # ---------------------------------------------------------------------------
 
+
 class TestOIDCBearerAuthentication:
     def test_valid_oidc_token_authenticates_user(self, valid_jwt_token: str):
         """Valid OIDC Bearer token decodes claims and extracts username/role."""
@@ -94,7 +96,9 @@ class TestOIDCBearerAuthentication:
 
     def test_expired_token_returns_unauthorized(self):
         """Expired JWT token returns empty identity and None claims."""
-        expired_token = "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJlc3AiOjEsICJzdWIiOiAydXNyIn0.sig"
+        expired_token = (
+            "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJlc3AiOjEsICJzdWIiOiAydXNyIn0.sig"
+        )
 
         req = make_request_with_header("Authorization", f"Bearer {expired_token}")
         identity, role, key_used, claims = authenticate_request(req)
@@ -124,26 +128,37 @@ class TestOIDCBearerAuthentication:
 # 2. TestRBACRouteGating
 # ---------------------------------------------------------------------------
 
+
 class TestRBACRouteGating:
     def test_analyst_can_access_dashboard(self):
         """Analyst role can access all dashboard routes."""
         claims = UserClaims(sub="u1", username="analyst_1", bank_id="global", roles=["analyst"])
-        assert check_authorization("analyst_1", "analyst", "/api/v1/dashboard", {}, "GET", claims) is True
+        assert (
+            check_authorization("analyst_1", "analyst", "/api/v1/dashboard", {}, "GET", claims)
+            is True
+        )
 
     def test_bank_role_blocked_from_dashboard(self):
         """Bank role is forbidden from accessing dashboard routes."""
         claims = UserClaims(sub="u2", username="bank_a", bank_id="bank_a", roles=["bank"])
-        assert check_authorization("bank_a", "bank", "/api/v1/dashboard", {}, "GET", claims) is False
+        assert (
+            check_authorization("bank_a", "bank", "/api/v1/dashboard", {}, "GET", claims) is False
+        )
 
     def test_bank_role_blocked_from_editing_scenarios(self):
         """Bank role is forbidden from scenario configuration endpoints."""
         claims = UserClaims(sub="u2", username="bank_a", bank_id="bank_a", roles=["bank"])
-        assert check_authorization("bank_a", "bank", "/api/v1/scenarios", {}, "GET", claims) is False
+        assert (
+            check_authorization("bank_a", "bank", "/api/v1/scenarios", {}, "GET", claims) is False
+        )
 
     def test_bank_role_blocked_from_triggering_simulations(self):
         """Bank role is forbidden from POST /api/v1/simulations."""
         claims = UserClaims(sub="u2", username="bank_a", bank_id="bank_a", roles=["bank"])
-        assert check_authorization("bank_a", "bank", "/api/v1/simulations", {}, "POST", claims) is False
+        assert (
+            check_authorization("bank_a", "bank", "/api/v1/simulations", {}, "POST", claims)
+            is False
+        )
 
     def test_bank_ws_blocked_from_training_feed(self):
         """Bank role is forbidden from global training WebSocket feed."""
@@ -155,27 +170,50 @@ class TestRBACRouteGating:
 # 3. TestABACMultiTenantIsolation
 # ---------------------------------------------------------------------------
 
+
 class TestABACMultiTenantIsolation:
     def test_bank_user_allowed_for_own_bank_resource(self):
         """User from bank_a accessing bank_a data passes ABAC evaluation."""
-        claims = UserClaims(sub="u_bank_a", username="bank_node_a", bank_id="bank_a", roles=["bank"])
-        assert check_authorization("bank_node_a", "bank", "/api/v1/cases", {"bank_id": "bank_a"}, "GET", claims) is True
+        claims = UserClaims(
+            sub="u_bank_a", username="bank_node_a", bank_id="bank_a", roles=["bank"]
+        )
+        assert (
+            check_authorization(
+                "bank_node_a", "bank", "/api/v1/cases", {"bank_id": "bank_a"}, "GET", claims
+            )
+            is True
+        )
 
     def test_bank_user_denied_for_other_bank_resource(self):
         """User from bank_a requesting bank_b resource fails ABAC multi-tenant isolation."""
-        claims = UserClaims(sub="u_bank_a", username="bank_node_a", bank_id="bank_a", roles=["bank"])
+        claims = UserClaims(
+            sub="u_bank_a", username="bank_node_a", bank_id="bank_a", roles=["bank"]
+        )
         # Attempt to access bank_b data
-        assert check_authorization("bank_node_a", "bank", "/api/v1/cases", {"bank_id": "bank_b"}, "GET", claims) is False
+        assert (
+            check_authorization(
+                "bank_node_a", "bank", "/api/v1/cases", {"bank_id": "bank_b"}, "GET", claims
+            )
+            is False
+        )
 
     def test_super_admin_bypasses_tenant_isolation(self):
         """Super-admin role bypasses multi-tenant bank isolation restrictions."""
-        claims = UserClaims(sub="u_root", username="admin_root", bank_id="global", roles=["super_admin"])
-        assert check_authorization("admin_root", "super_admin", "/api/v1/cases", {"bank_id": "bank_b"}, "GET", claims) is True
+        claims = UserClaims(
+            sub="u_root", username="admin_root", bank_id="global", roles=["super_admin"]
+        )
+        assert (
+            check_authorization(
+                "admin_root", "super_admin", "/api/v1/cases", {"bank_id": "bank_b"}, "GET", claims
+            )
+            is True
+        )
 
 
 # ---------------------------------------------------------------------------
 # 4. TestAuditChainIntegration
 # ---------------------------------------------------------------------------
+
 
 class TestAuditChainIntegration:
     def test_abac_denial_appends_audit_log(self):
@@ -183,9 +221,13 @@ class TestAuditChainIntegration:
         audit_chain = ImmutableAuditChain.get_instance()
         initial_length = len(audit_chain.chain)
 
-        claims = UserClaims(sub="u_bank_a", username="bank_node_a", bank_id="bank_a", roles=["bank"])
+        claims = UserClaims(
+            sub="u_bank_a", username="bank_node_a", bank_id="bank_a", roles=["bank"]
+        )
         # Trigger ABAC denial
-        check_authorization("bank_node_a", "bank", "/api/v1/cases", {"bank_id": "bank_b"}, "GET", claims)
+        check_authorization(
+            "bank_node_a", "bank", "/api/v1/cases", {"bank_id": "bank_b"}, "GET", claims
+        )
 
         # Audit chain should have a new event
         assert len(audit_chain.chain) > initial_length

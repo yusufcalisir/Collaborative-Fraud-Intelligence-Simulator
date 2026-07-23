@@ -29,6 +29,7 @@ from run_enterprise_stress_test import (  # type: ignore[import]
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def generator() -> PaymentTransactionGenerator:
     return PaymentTransactionGenerator(num_banks=3)
@@ -53,6 +54,7 @@ def runner(quick_config: StressTestConfig) -> EnterpriseStressTestRunner:
 # ---------------------------------------------------------------------------
 # 1. TestPaymentTransactionGenerator
 # ---------------------------------------------------------------------------
+
 
 class TestPaymentTransactionGenerator:
     def test_transaction_has_required_iso20022_keys(self, generator: PaymentTransactionGenerator):
@@ -105,6 +107,7 @@ class TestPaymentTransactionGenerator:
 # 2. TestStressTestRunner
 # ---------------------------------------------------------------------------
 
+
 class TestStressTestRunner:
     def test_prepare_does_not_raise(self, runner: EnterpriseStressTestRunner):
         """prepare() validates generator and succeeds without exceptions."""
@@ -113,6 +116,7 @@ class TestStressTestRunner:
     def test_run_completes_within_time_tolerance(self, runner: EnterpriseStressTestRunner):
         """run() completes within duration_seconds + 5s tolerance."""
         import time
+
         start = time.monotonic()
         _ = runner.run()
         elapsed = time.monotonic() - start
@@ -136,9 +140,7 @@ class TestStressTestRunner:
         assert result.error_rate_pct >= 0.0
         assert result.duration_actual_seconds > 0.0
 
-    def test_run_result_per_bank_throughput_has_all_banks(
-        self, runner: EnterpriseStressTestRunner
-    ):
+    def test_run_result_per_bank_throughput_has_all_banks(self, runner: EnterpriseStressTestRunner):
         """per_bank_throughput contains an entry for each bank node."""
         result = runner.run()
         for bank_id in runner._bank_ids:
@@ -148,6 +150,7 @@ class TestStressTestRunner:
 # ---------------------------------------------------------------------------
 # 3. TestStressTestResultSerialization
 # ---------------------------------------------------------------------------
+
 
 class TestStressTestResultSerialization:
     def test_to_dict_contains_required_keys(self, runner: EnterpriseStressTestRunner):

@@ -50,6 +50,7 @@ INCOMPLETE_SIGNOFFS = [
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def vault() -> ModelRegistryVault:
     return ModelRegistryVault()
@@ -70,6 +71,7 @@ def registered_checkpoint(vault: ModelRegistryVault) -> ModelCheckpoint:
 # ---------------------------------------------------------------------------
 # 1. TestModelRegistryRegistration
 # ---------------------------------------------------------------------------
+
 
 class TestModelRegistryRegistration:
     def test_register_checkpoint_creates_candidate_checkpoint(
@@ -111,6 +113,7 @@ class TestModelRegistryRegistration:
 # 2. TestModelRegistrySigning
 # ---------------------------------------------------------------------------
 
+
 class TestModelRegistrySigning:
     def test_sign_checkpoint_attaches_signature(
         self, vault: ModelRegistryVault, registered_checkpoint: ModelCheckpoint
@@ -126,7 +129,9 @@ class TestModelRegistrySigning:
     ):
         """Signature verification must return True for correct key."""
         vault.sign_checkpoint(registered_checkpoint.model_id, SIGNING_KEY)
-        assert vault.verify_checkpoint_signature(registered_checkpoint.model_id, SIGNING_KEY) is True
+        assert (
+            vault.verify_checkpoint_signature(registered_checkpoint.model_id, SIGNING_KEY) is True
+        )
 
     def test_verify_signature_fails_with_wrong_key(
         self, vault: ModelRegistryVault, registered_checkpoint: ModelCheckpoint
@@ -139,12 +144,15 @@ class TestModelRegistrySigning:
         self, vault: ModelRegistryVault, registered_checkpoint: ModelCheckpoint
     ):
         """Signature verification must return False if checkpoint has not been signed."""
-        assert vault.verify_checkpoint_signature(registered_checkpoint.model_id, SIGNING_KEY) is False
+        assert (
+            vault.verify_checkpoint_signature(registered_checkpoint.model_id, SIGNING_KEY) is False
+        )
 
 
 # ---------------------------------------------------------------------------
 # 3. TestModelRegistryPromotion
 # ---------------------------------------------------------------------------
+
 
 class TestModelRegistryPromotion:
     def test_promote_to_production_succeeds_with_valid_signoff_and_signature(
@@ -224,6 +232,7 @@ class TestModelRegistryPromotion:
 # 4. TestModelRegistryRollback
 # ---------------------------------------------------------------------------
 
+
 class TestModelRegistryRollback:
     def test_rollback_production_demotes_active_and_restores_archived(
         self, vault: ModelRegistryVault
@@ -241,7 +250,9 @@ class TestModelRegistryRollback:
         assert vault.get_production_model() == cp2
 
         # Execute rollback
-        rolled_back, restored = vault.rollback_production(reason="AUC dropped below 0.65 in production telemetry")
+        rolled_back, restored = vault.rollback_production(
+            reason="AUC dropped below 0.65 in production telemetry"
+        )
 
         assert rolled_back == cp2
         assert cp2.status == ModelStatus.ROLLED_BACK
@@ -268,6 +279,7 @@ class TestModelRegistryRollback:
 # ---------------------------------------------------------------------------
 # 5. TestModelCheckpointSerialization
 # ---------------------------------------------------------------------------
+
 
 class TestModelCheckpointSerialization:
     def test_model_checkpoint_to_dict_contains_all_manifest_keys(

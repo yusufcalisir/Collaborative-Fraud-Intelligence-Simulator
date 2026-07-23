@@ -424,7 +424,6 @@ class NetworkResilienceEvaluator:
             qm_c.record_node_submission(n)
         status_c = qm_c.evaluate_quorum_status()
 
-
         staleness_f1 = 0.932
         zero_deadlock = (
             status_a.state.value == "QUORUM_REACHED"

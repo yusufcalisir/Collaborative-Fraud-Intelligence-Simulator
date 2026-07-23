@@ -37,6 +37,7 @@ SCRIPTS_DIR = Path(__file__).parents[3] / "scripts"
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def compliant_engine() -> EUAIActComplianceEngine:
     """Returns a fully-compliant EUAIActComplianceEngine instance."""
@@ -65,6 +66,7 @@ def compliant_cert(compliant_engine: EUAIActComplianceEngine) -> ComplianceCerti
 # ---------------------------------------------------------------------------
 # 1. TestComplianceCertificateStructure
 # ---------------------------------------------------------------------------
+
 
 class TestComplianceCertificateStructure:
     def test_certificate_has_all_eu_ai_act_articles(self, compliant_cert: ComplianceCertificate):
@@ -99,7 +101,9 @@ class TestComplianceCertificateStructure:
         assert len(ch) == 64
         int(ch, 16)
 
-    def test_overall_compliant_true_when_all_articles_pass(self, compliant_cert: ComplianceCertificate):
+    def test_overall_compliant_true_when_all_articles_pass(
+        self, compliant_cert: ComplianceCertificate
+    ):
         """overall_compliant must be True when all article assessments are compliant."""
         assert compliant_cert.overall_compliant is True
 
@@ -123,6 +127,7 @@ class TestComplianceCertificateStructure:
 # ---------------------------------------------------------------------------
 # 2. TestSignatureVerification
 # ---------------------------------------------------------------------------
+
 
 class TestSignatureVerification:
     def test_signature_verifies_with_correct_key(self, compliant_cert: ComplianceCertificate):
@@ -148,7 +153,9 @@ class TestSignatureVerification:
         )
         assert verify_certificate_signature(tampered, SIGNING_KEY) is False
 
-    def test_tampered_overall_compliant_fails_verification(self, compliant_cert: ComplianceCertificate):
+    def test_tampered_overall_compliant_fails_verification(
+        self, compliant_cert: ComplianceCertificate
+    ):
         """Flipping overall_compliant must cause signature verification to fail."""
         tampered = ComplianceCertificate(
             cert_id=compliant_cert.cert_id,
@@ -166,6 +173,7 @@ class TestSignatureVerification:
 # ---------------------------------------------------------------------------
 # 3. TestArticleAssessments
 # ---------------------------------------------------------------------------
+
 
 class TestArticleAssessments:
     def test_article_10_fails_on_low_iban_pass_rate(self):
@@ -217,6 +225,7 @@ class TestArticleAssessments:
 # 4. TestMarkdownExport
 # ---------------------------------------------------------------------------
 
+
 class TestMarkdownExport:
     def test_markdown_contains_all_article_headings(self, compliant_cert: ComplianceCertificate):
         """Markdown must contain headings for all six EU AI Act articles."""
@@ -243,6 +252,7 @@ class TestMarkdownExport:
 # ---------------------------------------------------------------------------
 # 5. TestCLIScript
 # ---------------------------------------------------------------------------
+
 
 class TestCLIScript:
     def test_cli_script_exists(self):

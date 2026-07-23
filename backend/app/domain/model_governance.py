@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Enums & Exceptions
 # ---------------------------------------------------------------------------
 
+
 class ModelStatus(str, Enum):  # noqa: UP042
     """Production lifecycle states for registered FL global model checkpoints."""
 
@@ -51,6 +52,7 @@ class InvalidSignatureError(ModelGovernanceError):
 # ---------------------------------------------------------------------------
 # Semantic Versioning & Sign-Off Gating
 # ---------------------------------------------------------------------------
+
 
 @dataclass(order=True)
 class SemanticVersion:
@@ -134,6 +136,7 @@ class DualSignoffGate:
 # ---------------------------------------------------------------------------
 # MLOps Deployment & Rollback Evaluators
 # ---------------------------------------------------------------------------
+
 
 class ShadowDeploymentEngine:
     """Manages shadow prediction traffic routing (default 10% candidate, 90% champion)."""
@@ -222,6 +225,7 @@ class CryptographicAuditLineage:
 # Model Checkpoint & Registry Vault
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ModelCheckpoint:
     """Immutable model version artifact registered in the ModelRegistryVault."""
@@ -236,9 +240,7 @@ class ModelCheckpoint:
     dp_delta: float = 1e-5
     lineage: CryptographicAuditLineage | None = None
     hsm_signature: str = ""
-    created_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     promoted_at: str | None = None
     promoted_by: list[dict[str, Any]] = field(default_factory=list)
 
@@ -336,7 +338,9 @@ class ModelRegistryVault:
         payload = checkpoint.compute_signature_payload().encode("utf-8")
         signature = hmac.new(signing_key, payload, hashlib.sha256).hexdigest()
         checkpoint.hsm_signature = signature
-        logger.info("Signed checkpoint %s with HSM signature envelope (%s...)", model_id, signature[:16])
+        logger.info(
+            "Signed checkpoint %s with HSM signature envelope (%s...)", model_id, signature[:16]
+        )
         return signature
 
     def verify_checkpoint_signature(self, model_id: str, signing_key: bytes) -> bool:
@@ -373,8 +377,12 @@ class ModelRegistryVault:
             raise ModelGovernanceError(f"Promotion Gate Failed: {reason}")
 
         # 2. Cryptographic Signature Gate
-        if not checkpoint.hsm_signature or not self.verify_checkpoint_signature(model_id, signing_key):
-            logger.error("Promotion blocked for model %s: HSM signature verification failed", model_id)
+        if not checkpoint.hsm_signature or not self.verify_checkpoint_signature(
+            model_id, signing_key
+        ):
+            logger.error(
+                "Promotion blocked for model %s: HSM signature verification failed", model_id
+            )
             raise InvalidSignatureError(
                 f"Invalid Signature Gate Failed: Model checkpoint {model_id} does not have "
                 "a valid cryptographic signature envelope."
@@ -384,7 +392,11 @@ class ModelRegistryVault:
         current_prod = self.get_production_model()
         if current_prod and current_prod.model_id != model_id:
             current_prod.status = ModelStatus.ARCHIVED
-            logger.info("Archived previous production model %s (%s)", current_prod.model_id, current_prod.version.to_tag())
+            logger.info(
+                "Archived previous production model %s (%s)",
+                current_prod.model_id,
+                current_prod.version.to_tag(),
+            )
 
         # 4. Promote target model
         checkpoint.status = ModelStatus.PRODUCTION
@@ -421,7 +433,9 @@ class ModelRegistryVault:
             c for c in self._checkpoints.values() if c.status == ModelStatus.ARCHIVED
         ]
         if not archived_candidates:
-            raise ModelGovernanceError("Rollback Failed: No ARCHIVED checkpoint available for restoration.")
+            raise ModelGovernanceError(
+                "Rollback Failed: No ARCHIVED checkpoint available for restoration."
+            )
 
         # Sort archived models by creation/promotion timestamp descending
         archived_candidates.sort(key=lambda c: c.promoted_at or c.created_at, reverse=True)

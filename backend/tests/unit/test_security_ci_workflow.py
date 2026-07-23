@@ -21,11 +21,10 @@ import yaml
 # Helpers & Fixtures
 # ---------------------------------------------------------------------------
 
+
 def get_workflow_path() -> str:
     """Returns absolute path to enterprise_security_ci.yml workflow file."""
-    repo_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..")
-    )
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     return os.path.join(repo_root, ".github", "workflows", "enterprise_security_ci.yml")
 
 
@@ -43,6 +42,7 @@ def workflow_yaml() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # 1. TestEnterpriseSecurityCIWorkflow
 # ---------------------------------------------------------------------------
+
 
 class TestEnterpriseSecurityCIWorkflow:
     def test_workflow_file_exists_and_parses_cleanly(self, workflow_yaml: dict[str, Any]):

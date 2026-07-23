@@ -82,5 +82,3 @@ async def test_grpc_server_manager_lifecycle() -> None:
     assert server_mgr.is_running
     await server_mgr.stop()
     assert not server_mgr.is_running
-
-

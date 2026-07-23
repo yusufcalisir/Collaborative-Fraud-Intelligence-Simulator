@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-
 class GRPCServerManager:
     """Manages starting, hosting, and gracefully stopping the gRPC transport server."""
 

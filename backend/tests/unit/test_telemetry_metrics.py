@@ -1,5 +1,4 @@
-"""Unit tests for telemetry, Prometheus metrics exporter, Grafana dashboards, and Alert rules.
-"""
+"""Unit tests for telemetry, Prometheus metrics exporter, Grafana dashboards, and Alert rules."""
 
 from __future__ import annotations
 
@@ -25,6 +24,7 @@ PROMETHEUS_DIR = DEPLOYMENTS_DIR / "prometheus"
 # 1. Telemetry & Metric Recording Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTelemetryMetrics:
     def setup_method(self):
         self.reg = TelemetryRegistry()
@@ -44,10 +44,15 @@ class TestTelemetryMetrics:
     def test_record_spectral_anomaly(self):
         self.reg.record_spectral_anomaly(bank_id="bank-002", anomaly_type="backdoor")
         text = self.reg.get_prometheus_metrics_text()
-        assert 'cfi_spectral_anomalies_detected_total{bank_id="bank-002",anomaly_type="backdoor"} 1.000000' in text
+        assert (
+            'cfi_spectral_anomalies_detected_total{bank_id="bank-002",anomaly_type="backdoor"} 1.000000'
+            in text
+        )
 
     def test_record_grpc_latency(self):
-        self.reg.record_grpc_latency(method="DownloadGlobalModel", duration_seconds=0.045, status="OK")
+        self.reg.record_grpc_latency(
+            method="DownloadGlobalModel", duration_seconds=0.045, status="OK"
+        )
         text = self.reg.get_prometheus_metrics_text()
         assert "cfi_grpc_request_duration_seconds" in text
         assert 'method="DownloadGlobalModel"' in text
@@ -74,6 +79,7 @@ class TestTelemetryMetrics:
 # 2. OpenTelemetry Tracer Tests
 # ---------------------------------------------------------------------------
 
+
 class TestOpenTelemetryTracer:
     def test_get_tracer_returns_span_context(self):
         reg = TelemetryRegistry()
@@ -86,6 +92,7 @@ class TestOpenTelemetryTracer:
 # ---------------------------------------------------------------------------
 # 3. Decorator Tests
 # ---------------------------------------------------------------------------
+
 
 class TestDecorators:
     def test_track_grpc_latency_decorator(self):
@@ -136,6 +143,7 @@ def test_grafana_dashboard_json_validity(filename: str):
 # ---------------------------------------------------------------------------
 # 5. Prometheus Configuration & Alert Rules Validation
 # ---------------------------------------------------------------------------
+
 
 def test_prometheus_yml_validity():
     path = PROMETHEUS_DIR / "prometheus.yml"

@@ -40,12 +40,13 @@ REGULATION_REFERENCE = "Regulation (EU) 2024/1689 of the European Parliament and
 
 # Compliance tier thresholds
 MIN_IBAN_VALIDATION_PASS_RATE = 0.999  # 99.9% IBAN ISO 13616 validity required
-MAX_DP_EPSILON_THRESHOLD = 10.0        # Hard ceiling for DP epsilon budget
+MAX_DP_EPSILON_THRESHOLD = 10.0  # Hard ceiling for DP epsilon budget
 
 
 # ---------------------------------------------------------------------------
 # Value Objects
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ArticleAssessment:
@@ -105,6 +106,7 @@ class ComplianceCertificate:
 # ---------------------------------------------------------------------------
 # Compliance Engine
 # ---------------------------------------------------------------------------
+
 
 class EUAIActComplianceEngine:
     """Automated EU AI Act Article 10–15 compliance assessment and certificate generator.
@@ -180,7 +182,9 @@ class EUAIActComplianceEngine:
 
         if self.fl_rounds_completed < 1:
             compliant = False
-            findings.append("No FL training rounds completed — dataset processing cannot be verified.")
+            findings.append(
+                "No FL training rounds completed — dataset processing cannot be verified."
+            )
 
         return ArticleAssessment(
             article=ARTICLE_10,
@@ -207,7 +211,9 @@ class EUAIActComplianceEngine:
 
         if not self.hyperparams_sha256:
             compliant = False
-            findings.append("Hyperparameter SHA-256 hash not provided — technical documentation incomplete.")
+            findings.append(
+                "Hyperparameter SHA-256 hash not provided — technical documentation incomplete."
+            )
 
         if self.consortium_size < 1:
             compliant = False
@@ -238,7 +244,9 @@ class EUAIActComplianceEngine:
 
         if not self.audit_log_sha256:
             compliant = False
-            findings.append("FL round audit log SHA-256 hash not provided — record-keeping incomplete.")
+            findings.append(
+                "FL round audit log SHA-256 hash not provided — record-keeping incomplete."
+            )
 
         if self.fl_rounds_completed < 1:
             compliant = False
@@ -268,7 +276,9 @@ class EUAIActComplianceEngine:
 
         if not self.explainability_method:
             compliant = False
-            findings.append("No explainability method specified — transparency requirements not met.")
+            findings.append(
+                "No explainability method specified — transparency requirements not met."
+            )
 
         return ArticleAssessment(
             article=ARTICLE_13,
@@ -486,6 +496,7 @@ class EUAIActComplianceEngine:
 # ---------------------------------------------------------------------------
 # Signature Verification Utility
 # ---------------------------------------------------------------------------
+
 
 def verify_certificate_signature(cert: ComplianceCertificate, signing_key: bytes) -> bool:
     """Verifies the HMAC-SHA256 signature of a ComplianceCertificate.
