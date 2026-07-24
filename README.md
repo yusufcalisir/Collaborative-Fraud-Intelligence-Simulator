@@ -146,7 +146,14 @@ Instead of centralizing raw customer transactions, the framework uses a distribu
     *   **Opacus Mode (Industry-Standard):** Per-sample gradient clipping and noise injection during training via Meta AI's [Opacus](https://opacus.ai/) library, with Rényi Differential Privacy (RDP) accounting for tighter privacy bounds.
 7.  **Byzantine-Robust Aggregation:** Supports advanced aggregation strategies including **Krum** (Blanchard et al., 2017) and **Coordinate-wise Median** to securely isolate and discard corrupted model updates.
 8.  **Adversarial Poisoning Simulation:** Toggles active **Model Poisoning** attacks to corrupt specific client weights with noise scaling, enabling visual comparison of FedAvg vulnerability vs. robust aggregation defense.
-9.  **Non-IID Distribution Visualization:** Displays transaction amount distributions (overlapping area charts), hourly fraud patterns (grouped bar charts), and merchant risk profiles across institutions to visually demonstrate data drift and data heterogeneity before or after starting simulations, using Kolmogorov-Smirnov (KS) divergence to quantify the distribution difference.
+
+#### 🔄 Privacy-Preserving Label Feedback & Continuous Learning
+- **Zero-PII Label Ingestion**: `LocalLabelFeedbackPipeline` ingests ground-truth analyst determinations (`CONFIRMED_FRAUD` / `FALSE_POSITIVE`) strictly into local bank buffers.
+- **Label Privacy Guard**: `LabelPrivacyGuard` enforces HMAC-SHA256 hash masking for all identifiers and blocks raw PII (IBAN, SSN, name) before local model fine-tuning.
+- **DP Gradient Updates**: Local weight deltas are injected with Gaussian Differential Privacy noise ($\epsilon \le 2.0$) before federated aggregation.
+- **Specification Document**: Full feedback loop spec available in [docs/label_feedback_loop_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/label_feedback_loop_spec.md).
+
+
 
 #### 🏛️ Federated Consortium Governance
 Consortiums (e.g. European AML Network) define democratic membership rules, voting quorums ($K/N$), differential privacy limits ($\epsilon_{max}$), and model sharing permissions across participating banks:
@@ -168,6 +175,31 @@ To provide real-time transaction screening and investigation capabilities:
 9.  **Supervisor Dual-Authorization (Four-Eyes Principle):** Enforces a multi-signature supervisor signature verification check to validate and approve all final case closure status changes.
 10. **Investigator Role Activity Audits:** Logs analyst session durations, case accesses, entity views, and cross-bank search queries in an immutable compliance audit trail.
 11. **Web3 & CBDC Smart Contract Incentive Settlement:** Replaces virtual clearing house estimates with programmatic, automated EVM smart contract token disbursements (`wCBDC`, `USDC`, `e-TRY`) on `ConsortiumIncentiveSettlement.sol` based on Leave-One-Out (LOO) Shapley basis points, while executing on-chain quarantine locks (`BLOCKED_QUARANTINE`) for free-riders and poisoners.
+
+#### 🔌 Public Integration API & Webhook Gateway
+- **Webhook Gateway Router**: `POST /v1/webhooks/subscriptions` registers developer webhook endpoints for event notifications (`ALERT_CREATED`, `CASE_RESOLVED`, `MODEL_PROMOTED`, `DRIFT_DETECTED`).
+- **HMAC-SHA256 Payload Signing**: All webhook deliveries compute and append a cryptographic `X-CFI-Signature` header (`HMAC_SHA256(secret_key, payload_body)`).
+- **Developer Guide**: Complete webhook spec available in [docs/public_api_webhooks_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/public_api_webhooks_spec.md).
+
+
+#### 🕵️ Human-in-the-Loop Case Management & Workbench
+- **6-Stage Case State Machine**: `CaseLifecycleStateMachine` governs case progression (`NEW` -> `ASSIGNED` -> `UNDER_INVESTIGATION` -> `ESCALATED` -> `RESOLVED_CONFIRMED_FRAUD` / `RESOLVED_FALSE_POSITIVE`).
+- **Four-Eyes Supervisor Dual-Authorization**: Enforces mandatory supervisor cryptographic signoff (`SIG_SUPERVISOR_*`) before any case can be closed or resolved.
+- **Specification Document**: Full workflow spec available in [docs/case_management_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/case_management_spec.md).
+
+#### 🎛️ Commercial Multi-Role Web Management Console
+- **Tailored Personas**: Serves 4 distinct enterprise personas (`EXECUTIVE`, `COMPLIANCE_OFFICER`, `ML_ENGINEER`, `FRAUD_INVESTIGATOR`) via `GET /v1/admin/dashboard/role-config`.
+- **Unified Summary Metrics**: `GET /v1/admin/dashboard/summary` streams real-time active node counts, global model AUC, open case statistics, and SLA compliance.
+- **UI Design Spec**: Complete glassmorphism console design spec available in [docs/commercial_console_ui_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/commercial_console_ui_spec.md).
+
+
+
+#### ⚡ Real-Time Fraud Scoring API & <100ms SLA Engine
+- **Inference Gateway**: `POST /v1/inference/score` scores incoming transactions in real time, returning `ALLOW`, `REVIEW`, or `BLOCK` decisions with sub-100ms response times.
+- **Fast Real-Time Explainer**: `FastInferenceExplainer` computes sub-millisecond feature attributions (`INCREASES_RISK` / `DECREASES_RISK`) without compromising latency budgets.
+- **Latency SLA Monitor**: `RealtimeSLAMonitor` continuously calculates $p50$, $p95$, and $p99$ percentile distributions and triggers SLA violation alerts if response time breaches target limits (<100ms).
+
+
 
 #### 🧬 Diffie-Hellman Private Set Intersection (DH-PSI) & Fuzzy Matching (LSH)
 
@@ -247,7 +279,60 @@ To bring the platform closer to production ML operations standards:
 2.  **Advanced Drift Detection Suite:** A statistical drift analysis pipeline computes **Feature Drift** (PSI, Jensen-Shannon, KS-statistic per feature), **Concept Drift** ($P(Y|X)$ divergence via logistic regression), and categorical drift across all participating banks — exposed in the `DataDriftPanel` as a tabbed analytical dashboard.
 3.  **Canary Evaluation (Production Quality Gate):** After each federated aggregation round, the new candidate global model is evaluated on a combined global holdout test set and compared against the currently active (promoted) model. Promotion only occurs if the candidate meets or exceeds the active model's AUC-ROC within a configurable tolerance (`CANARY_GATE_TOLERANCE=0.005`).
 4.  **Enterprise Model Registry & Governance (SR 11-7 Compliance):** A versioned model registry persists every global model as `model_vN.pt` under `storage/registry/`. A `registry.json` manifest tracks versions with audit lineage (dataset hash, git commit hash, DP noise profile). Exposes a dual-role (ML engineer & compliance officer) cryptographic sign-off workflow, concurrent Champion/Challenger prediction shadowing with 10% traffic routing, and automated rollback if real-time performance degrades (AUC < 0.65, latency > 200ms, or FPR > 5%).
-- **Multi-Stage Production Model State Machine**: `ModelLifecycleManager` governs progressive model transitions (`STAGING` -> `SHADOW` -> `CANARY` -> `PRODUCTION` -> `ARCHIVED`), enforcing compliance sign-off gates and prohibiting illegal stage jumps.
+- **Automated Retention Engine**: `AutomatedRetentionEngine` configures per-tenant Time-To-Live (TTL) policies and purges expired records across categories (`TRANSACTION_LOGS`, `GRAPH_EDGES`, `INFERENCE_AUDITS`).
+- **Multi-Region Failover Manager**: `MultiRegionFailoverManager` monitors geo-distributed coordinator nodes and executes sub-30s failover upon primary region heartbeat failure.
+- **Backup Integrity Verifier**: `BackupVerifier` validates SHA-256 checksums and executes automated sandbox restore dry-runs (`run_sandbox_restore_probe`).
+- **Corruption Detection**: Instantly flags tampered or degraded backup artifacts as `CORRUPTED` and alerts compliance operators.
+- **Specification Document**: Full verification spec available in [docs/backup_verification_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/backup_verification_spec.md).
+
+#### 📊 Enterprise SLA/SLO Monitoring & Contract Enforcement (99.9% Uptime SLA)
+- **Contract Engine**: `SLAContractEngine` tracks error budget burn rates (99.9% uptime SLA, <100ms $p95$ latency SLO).
+- **Automated Service Credits**: Automatically calculates contractual billing credit discounts (`PenaltyReport`) if measured monthly availability drops below 99.9%.
+- **Specification Document**: Full contract spec available in [docs/sla_slo_contract_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/sla_slo_contract_spec.md).
+
+#### 🚨 SRE Operational Runbooks & Incident Playbooks (SEV1-SEV4)
+- **Incident Triage Engine**: `IncidentTriageEngine` automatically classifies system alerts (`PRIVACY_LEAK_ALERT`, `CONSENSUS_FAILURE`, `SLA_BREACH`, `PSI_DRIFT_SPIKE`) into severity levels (`SEV1` to `SEV4`).
+- **Mitigation Playbooks**: Attaches exact step-by-step SRE remediation commands (`PlaybookAction`) for emergency node isolation, DR failover, and retraining.
+- **Playbook Document**: Complete SRE operational guide available in [docs/incident_response_playbook.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/incident_response_playbook.md).
+
+#### 🔄 Zero-Downtime Platform Upgrades & Client Compatibility (Rolling Deployments)
+- **Deployment Manager**: `ZeroDowntimeDeploymentManager` orchestrates 5-stage rolling releases (`DRAINING_CONNECTIONS` -> `ROLLING_UPGRADE` -> `DUAL_VERSION_ACTIVE` -> `UPGRADE_COMPLETED`).
+- **Connection Draining & Compatibility**: Gracefully drains active client connections without dropping requests while providing a 48-hour dual-version compatibility window (`UpgradeWindow`).
+- **Strategy Document**: Complete upgrade strategy spec available in [docs/zero_downtime_upgrade_strategy.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/zero_downtime_upgrade_strategy.md).
+
+#### 💻 Official CLI Tooling (cfi-cli)
+- **Standardized Operator Commands**: Provides terminal subcommands (`cfi-cli status`, `cfi-cli health`, `cfi-cli export-diagnostics`, `cfi-cli deploy`).
+- **Packaging & Console Script**: PyPI console entrypoint configured in `pyproject.toml` (`app.presentation.cli.cfi_cli:main`).
+- **User Guide**: Complete CLI manual available in [docs/cfi_cli_user_guide.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/cfi_cli_user_guide.md).
+
+#### 🛡️ Edge Security Perimeter & Air-Gapped Deployment Bundle
+- **Perimeter WAF Guard**: `PerimeterWAFGuard` filters malicious SQLi, XSS, and enforces strict IP whitelisting at the edge.
+- **Air-Gapped Installer Builder**: `AirGapBundleBuilder` packages self-contained, zero-internet tarball bundles validated with SHA-256 manifests.
+- **Deployment Guide**: Complete air-gapped data center guide available in [docs/airgapped_deployment_guide.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/airgapped_deployment_guide.md).
+
+#### 📑 Enterprise Security Attestations & Compliance Matrix
+- **Compliance Auditor Engine**: `SecurityComplianceEngine` audits platform controls against SOC2 Type II, ISO 27001, and GDPR Art. 17 standards.
+- **Responsible Vulnerability Disclosure**: Policy and PGP key details published in [SECURITY.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/SECURITY.md).
+- **Controls Matrix Document**: Complete enterprise controls matrix available in [docs/security_controls_matrix.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/security_controls_matrix.md).
+
+#### 📊 SIEM Log Forwarding & Automated Support Telemetry
+- **SIEM CEF Exporter**: `SIEMLogExporter` exports audit events in Syslog Common Event Format (CEF), Splunk HEC, and Datadog JSON formats.
+- **Support Diagnostic Compiler**: `SupportDiagnosticCompiler` packages PII-redacted, SHA-256 signed telemetry bundles for customer support.
+- **Integration Guide**: Complete SIEM and support guide available in [docs/siem_and_support_guide.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/siem_and_support_guide.md).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 5.  **Threat Model (STRIDE / OWASP ASVS / MITRE ATLAS):** The `docs/threat_model.md` document maps all system components to STRIDE threat categories, OWASP ASVS v4.0 Level 2 controls, and MITRE ATLAS (Adversarial ML) attack tactics with mitigations.
 6.  **True Multi-Tenancy & Cryptographic Key Isolation (KMS/HSM):** Physical database-per-tenant isolation assigns each bank its own SQLite/PostgreSQL instance (`cfi_bank_a.db`, `cfi_bank_b.db`, `cfi_bank_c.db`) with zero cross-tenant query access.  A simulated KMS/HSM vault (`storage/{bank_id}/kms/`) manages per-tenant HMAC keys, DH-PSI private exponents, and secure aggregation mask seeds.  Local model checkpoints are persisted in isolated vaults (`storage/{bank_id}/model_vault/`), and application logs are routed to tenant-specific files (`storage/logs/{bank_id}.log`).  The `active_tenant` context variable and FastAPI middleware automate tenant routing for all downstream operations.
