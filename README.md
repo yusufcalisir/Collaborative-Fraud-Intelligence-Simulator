@@ -33,61 +33,47 @@ The **Collaborative Fraud Intelligence Platform** solves this fundamental privac
 ### High-Level Topology ASCII Diagram
 
 ```
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │           3 Participating Client Institutions               │
-                                  │      (Bank Alpha, Bank Beta, and Bank Gamma Nodes)          │
-                                  └───────────────┬─────────────┬─────────────┬─────────────────┘
-                                                  │             │             │
-                                                  ▼             ▼             ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │              Local PyTorch Model Training                   │
-                                  │        (Stratified Private Local Holdout Split)             │
-                                  └───────────────┬─────────────────────────────┴─────────────────┘
-                                                  │
-                                                  ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │       Differential Privacy Guard (Gaussian / Opacus)        │
-                                  │        - L2 Gradient Clipping (C) & Noise Scale (σ)         │
-                                  └───────────────┬─────────────────────────────┴─────────────────┘
-                                                  │
-                                                  ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │       Outbound Outlier Defense & Secure Aggregation         │
-                                  │       - Pairwise Cryptographic Seed Masking (SecAgg)        │
-                                  └───────────────┬─────────────────────────────┴─────────────────┘
-                                                  │
-                                                  ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │          Byzantine-Robust Server Aggregation                │
-                                  │   (FedAvg / Krum / Multi-Krum / Coordinate Median / Bulyan) │
-                                  └───────────────┬─────────────────────────────┴─────────────────┘
-                                                  │
-                                                  ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │         Evaluated & Promoted Global Model Weights           │
-                                  │       (Canary Quality Gate: AUC-ROC Validation Check)       │
-                                  └───────────────┬─────────────────────────────┴─────────────────┘
-                                                  │
-                                           ┌──────┴──────────────────────────────┐
-                                           │                                     │
-                                           ▼                                     ▼
-┌────────────────────────────────────────────────────────────────────────┐ ┌────────────────────────────────────────────────────────────────────────┐
-│             Real-Time Scoring Gateway (<100ms SLA)                     │ │             Human-in-the-Loop Case Management Workbench               │
-│  - Sub-millisecond Fast Feature SHAP Explainer                         │ │  - 6-Stage State Machine & Four-Eyes Supervisor Dual Sign-Off          │
-│  - Realtime SLA Latency Monitor (p50, p95, p99)                        │ │  - FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing            │
-└────────────────────────────────────────────────────────────────────────┘ └────────────────────────────────────────────────────────────────────────┘
-                                           │                                     │
-                                           └──────────────────┬──────────────────┘
-                                                              │
-                                                              ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │         Enterprise Infrastructure & Security Perimeter       │
-                                  │ - Edge WAF Guard (SQLi / XSS / IP Whitelist)                │
-                                  │ - Active-Passive Multi-Region Coordinator Failover (RTO<30s) │
-                                  │ - Developer Webhook Gateway (HMAC-SHA256 Signed Payloads)    │
-                                  │ - SIEM Log Exporter (Syslog CEF / Splunk / Datadog)          │
-                                  │ - Web3 CBDC Smart Contract Incentive Settlement (.sol)      │
-                                  └─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│              3 Client Financial Institutions                       │
+│        [ Bank Alpha ]     [ Bank Beta ]     [ Bank Gamma ]         │
+└──────────────────────────────────┬─────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────┐
+│              Local Privacy & Model Training Boundary               │
+│  - Opacus Differential Privacy Guard (L2 Clipping C, Noise Scale σ)│
+│  - Outbound Outlier Defense & Cryptographic SecAgg Seed Masking    │
+└──────────────────────────────────┬─────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────┐
+│             Byzantine-Robust Server Coordinator Engine             │
+│   (FedAvg / FedProx / Krum / Trimmed Mean / Median / Bulyan)       │
+└──────────────────────────────────┬─────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                Canary Quality Gate & Model Registry                │
+│   (Holdout AUC Validation -> Promote Champion / Auto-Rollback)     │
+└──────────────────────────────────┬─────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────┐
+│             Real-Time Inference & Operational Serving              │
+│  - Real-Time Scoring Gateway (<100ms SLA) & Fast SHAP Explainer    │
+│  - 6-Stage Case Management Workbench (Four-Eyes Supervisor Auth)   │
+│  - FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing        │
+└──────────────────────────────────┬─────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────┐
+│             Enterprise Infrastructure & Security Perimeter         │
+│  - Edge WAF Guard (SQLi / XSS / IP Whitelist)                      │
+│  - Active-Passive Multi-Region DR Failover (RTO < 30s)             │
+│  - Developer Webhook Gateway (HMAC-SHA256 Payload Signing)         │
+│  - SIEM Log Exporter (Syslog CEF / Splunk HEC / Datadog)           │
+│  - Web3 CBDC Smart Contract Incentive Settlement (.sol)            │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ### End-to-End Federated Execution Flow
@@ -95,33 +81,32 @@ The **Collaborative Fraud Intelligence Platform** solves this fundamental privac
 ```mermaid
 flowchart TD
     subgraph Banks["Participating Financial Institutions"]
-        A[Bank Alpha Node]
-        B[Bank Beta Node]
-        C[Bank Gamma Node]
+        A["Bank Alpha Node"]
+        B["Bank Beta Node"]
+        C["Bank Gamma Node"]
     end
 
-    subgraph LocalTraining["Local Privacy Boundary"]
-        A -->|Local PyTorch Model| D1[Opacus DP Noise Addition]
-        B -->|Local PyTorch Model| D2[Opacus DP Noise Addition]
-        C -->|Local PyTorch Model| D3[Opacus DP Noise Addition]
-        D1 -->|Pairwise Masking| S1[Outbound Outlier Guard]
-        D2 -->|Pairwise Masking| S2[Outbound Outlier Guard]
-        D3 -->|Pairwise Masking| S3[Outbound Outlier Guard]
+    subgraph LocalPrivacy["Local Privacy Boundary"]
+        A --> D1["Opacus DP Noise Injection"]
+        B --> D2["Opacus DP Noise Injection"]
+        C --> D3["Opacus DP Noise Injection"]
+        D1 --> S1["SecAgg Masking & Outlier Defense"]
+        D2 --> S2["SecAgg Masking & Outlier Defense"]
+        D3 --> S3["SecAgg Masking & Outlier Defense"]
     end
 
-    subgraph Coordinator["Byzantine-Robust Federated Coordinator"]
-        S1 & S2 & S3 --> Agg{Robust Aggregator}
-        Agg -->|FedAvg / FedProx / MOON| G[Candidate Global Model]
-        Agg -->|Krum / Trimmed Mean / Bulyan| G
-        G --> Canary{Canary Test Gate}
-        Canary -->|AUC-ROC Approved| Promoted[Active Champion Model]
-        Canary -->|AUC Degraded| Rollback[Auto-Rollback Trigger]
+    subgraph Coordinator["Robust Aggregator Engine"]
+        S1 & S2 & S3 --> Agg{"Byzantine-Robust Server"}
+        Agg -->|FedAvg / Krum / Median| G["Candidate Global Model"]
+        G --> Canary{"Canary Quality Gate"}
+        Canary -->|AUC Approved| Promoted["Active Champion Model"]
+        Canary -->|AUC Degraded| Rollback["Auto-Rollback Trigger"]
     end
 
-    subgraph Serving["Real-Time Serving & Operational Control"]
-        Promoted --> InferenceGateway[Real-Time Scoring Gateway]
-        InferenceGateway -->|Sub-100ms SLA| API[POST /v1/inference/score]
-        InferenceGateway --> Explainer[Fast SHAP Explainer]
+    subgraph Serving["Real-Time Serving & Operations"]
+        Promoted --> InferenceGateway["Real-Time Scoring Gateway"]
+        InferenceGateway -->|Sub-100ms SLA| API["POST /v1/inference/score"]
+        InferenceGateway --> Explainer["Fast SHAP Explainer"]
     end
 ```
 
@@ -130,26 +115,25 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     autonumber
-    participant App as Enterprise API Client
-    participant Primary as Primary Coordinator (US-East)
-    participant Standby as Standby Coordinator (US-West)
-    participant DB as Shared State / Vault Store
+    participant App as API Client
+    participant Primary as Primary (US-East)
+    participant Standby as Standby (US-West)
+    participant DB as Shared State
 
     App->>Primary: POST /v1/inference/score
     Primary-->>App: 200 OK (Score: 895.4)
     Primary->>Standby: Heartbeat Ping (Interval: 3s)
-    Standby-->>Primary: Heartbeat Ack
     
-    Note over Primary: 💥 Primary Coordinator Outage / Network Partition
+    Note over Primary: 💥 Primary Node Outage
     
     Standby->>Primary: Heartbeat Probe (Timeout 15s)
     Standby->>Primary: Heartbeat Retries (3/3 Failed)
     
-    Note over Standby: ⚡ Primary Failure Confirmed (Heartbeat Loss > 15s)
-    Standby->>DB: Promote Standby -> ACTIVE_PRIMARY (RTO < 30s)
-    DB-->>Standby: State Lock Acquired
+    Note over Standby: ⚡ Standby Promotion (RTO < 30s)
+    Standby->>DB: Acquire Active Lock
+    DB-->>Standby: State Lock Granted
     
-    App->>Standby: POST /v1/inference/score (Failover Complete)
+    App->>Standby: POST /v1/inference/score
     Standby-->>App: 200 OK (Score: 895.4)
 ```
 
