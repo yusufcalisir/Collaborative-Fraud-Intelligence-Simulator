@@ -5,11 +5,14 @@
 ### *Enterprise-Grade, Privacy-Preserving Cross-Bank Financial Fraud Detection & Collaborative Anti-Money Laundering (AML) Intelligence*
 
 [![CI Build](https://github.com/yusufcalisir/CF-Intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/CF-Intelligence/actions)
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Live_Demo-000000.svg?style=flat&logo=vercel&logoColor=white)](https://cf-intelligence.vercel.app)
 [![Python Version](https://img.shields.io/badge/python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2.0-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org)
 [![Uptime SLA](https://img.shields.io/badge/SLA-99.9%25-brightgreen.svg?style=flat&logo=prometheus&logoColor=white)](#9-real-time-scoring-gateway--high-availability-sla)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+🌐 **[Live Web Application Console](https://cf-intelligence.vercel.app)**
 
 [Executive Summary](#1-executive-summary--architectural-vision) • [System Architecture](#2-master-system-architecture) • [Core Subsystems](#3-multi-bank-synthetic-data--multi-standard-ingestion) • [Feature Matrix](#13-enterprise-feature-matrix--verification-mapping) • [Directory Tree](#14-complete-clean-architecture-directory-structure) • [API Blueprints](#15-api-endpoint-blueprints--json-schemas) • [Operator Guide](#16-cli-operator-tooling-guide-cfi-cli) • [Quick Start](#17-step-by-step-operator-quick-start)
 
