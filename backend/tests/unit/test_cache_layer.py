@@ -5,13 +5,24 @@ Tests:
   2. Read-aside and Write-through operations for Alerts, Cases, and Entities.
   3. TTL expiration logic & key formatting.
   4. Graceful degradation when Redis is offline (all methods fall back gracefully without raising exceptions).
+  5. test_cache_miss_falls_back_to_db
+  6. test_cache_hit_skips_db
+  7. test_cache_invalidation_on_write
 """
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
 
-from app.infrastructure.cache import TTL_ALERT, TTL_CASE, TTL_ENTITY, CacheService
+from app.infrastructure.cache import (
+    TTL_ALERT,
+    TTL_CASE,
+    TTL_ENTITY,
+    CacheService,
+    write_through_cache,
+)
 
 
 @pytest.fixture
@@ -62,3 +73,51 @@ async def test_ttl_constants() -> None:
     assert TTL_ALERT == 300
     assert TTL_CASE == 300
     assert TTL_ENTITY == 600
+
+
+@pytest.mark.asyncio
+async def test_cache_miss_falls_back_to_db(cache_service: CacheService) -> None:
+    """Mock Redis miss -> assert DB function is called -> assert result returned."""
+    mock_db_func = AsyncMock(return_value={"id": "alert-999", "status": "new"})
+
+    @write_through_cache(ttl_seconds=300, key_prefix="alert")
+    async def get_alert_from_db(self, alert_id: str):
+        return await mock_db_func(alert_id)
+
+    # Force cache miss
+    CacheService._unavailable = True
+
+    res = await get_alert_from_db(None, "alert-999")
+    assert res == {"id": "alert-999", "status": "new"}
+    mock_db_func.assert_called_once_with("alert-999")
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_skips_db(cache_service: CacheService) -> None:
+    """When cache has data, DB function must NOT be called."""
+    mock_db_func = AsyncMock(return_value={"id": "alert-888", "status": "new"})
+
+    @write_through_cache(ttl_seconds=300, key_prefix="alert")
+    async def get_alert_from_db(self, alert_id: str):
+        return await mock_db_func(alert_id)
+
+    # Mock Redis client get to return cached data
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = '{"id": "alert-888", "status": "cached"}'
+    CacheService._client = mock_redis
+    CacheService._unavailable = False
+
+    res = await get_alert_from_db(None, "alert-888")
+    assert res == {"id": "alert-888", "status": "cached"}
+    mock_db_func.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cache_invalidation_on_write(cache_service: CacheService) -> None:
+    """Invalidate alert must delete key from Redis."""
+    mock_redis = AsyncMock()
+    CacheService._client = mock_redis
+    CacheService._unavailable = False
+
+    await cache_service.invalidate_alert("alert-777", "bank_alpha")
+    mock_redis.delete.assert_called_once_with("alert:alert-777", "alerts:bank:bank_alpha")

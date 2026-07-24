@@ -252,6 +252,55 @@ class CacheService:
 # ── Module-level helpers (backward-compat with cache.py imports) ───────────────
 
 
+def write_through_cache(ttl_seconds: int = 900, key_prefix: str = ""):
+    """Decorator: on read -> check Redis first -> on miss, read DB -> populate Redis.
+
+    Swallows Redis exceptions gracefully so DB calls always succeed.
+    """
+    import functools
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            cache = CacheService.get()
+            # Construct a cache key from prefix and first string arg/kwarg
+            key_arg = None
+            if args and len(args) > 1 and isinstance(args[1], str):
+                key_arg = args[1]
+            elif kwargs:
+                key_arg = next((v for v in kwargs.values() if isinstance(v, str)), None)
+
+            prefix = key_prefix or func.__name__
+            cache_key = f"{prefix}:{key_arg}" if key_arg else None
+
+            # 1. Try Cache Read
+            if cache_key:
+                cached = await cache._get(cache_key)
+                if cached is not None:
+                    return cached
+
+            # 2. Cache Miss: Execute DB query
+            result = await func(*args, **kwargs)
+
+            # 3. Populate Cache on DB result
+            if cache_key and result is not None:
+                # Convert ORM model or object to dict if needed
+                data_to_cache = result
+                if hasattr(result, "_to_dict"):
+                    data_to_cache = result._to_dict()
+                elif hasattr(result, "__dict__"):
+                    data_to_cache = {
+                        k: v for k, v in result.__dict__.items() if not k.startswith("_")
+                    }
+                await cache._set(cache_key, data_to_cache, ttl_seconds)
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
 async def set_simulation_progress(simulation_id: str, data: dict) -> None:
     """Backward-compatible wrapper kept for callers that import from cache directly."""
     await CacheService.get().set_simulation_progress(simulation_id, data)
