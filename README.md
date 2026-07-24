@@ -9,58 +9,61 @@ A production-grade, enterprise-ready platform delivering privacy-preserving, cro
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ```
-                     ┌────────────────────────────────────────┐
-                     │   3 Participating Client Institutions  │
-                     │  (Bank A, Bank B, and Bank C Nodes)    │
-                     └────────┬───────────┬───────────┬───────┘
-                              │           │           │
-                              ▼           ▼           ▼
-                     ┌────────────────────────────────────────┐
-                     │       Local PyTorch Model Training     │
-                     │    (Stratified Private Holdout Split)  │
-                     └────────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                     ┌────────────────────────────────────────┐
-                     │ Differential Privacy (Opacus/Gaussian) │
-                     │   - L2 Gradient Clipping & DP Noise    │
-                     └────────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                     ┌────────────────────────────────────────┐
-                     │   Outbound Outlier Defense (SecAgg)    │
-                     │   - Pairwise Cryptographic Masks       │
-                     └────────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                     ┌────────────────────────────────────────┐
-                     │    Byzantine-Robust Server Aggregation │
-                     │  (FedAvg / Krum / Coordinate Median)   │
-                     └────────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                     ┌────────────────────────────────────────┐
-                     │     Evaluated & Promoted Global Model  │
-                     │     (Canary Test Gate: AUC-ROC Check)  │
-                     └────────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                     ┌────────────────────────────────────────┐
-                     │   Real-Time Inference Gateway (<100ms) │
-                     │  - Sub-ms Feature SHAP Explainability  │
-                     └────────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                     ┌────────────────────────────────────────┐
-                     │  Human-in-the-Loop Case Workbench      │
-                     │  - 4-Eyes Supervisor Dual Sign-Off     │
-                     └────────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                     ┌────────────────────────────────────────┐
-                     │   MLOps Logging & Telemetry Suite     │
-                     │ (Prometheus, Grafana, SIEM CEF, WAF)   │
-                     └────────────────────┴───────────────────┘
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │           3 Participating Client Institutions               │
+                                  │      (Bank Alpha, Bank Beta, and Bank Gamma Nodes)          │
+                                  └───────────────┬─────────────┬─────────────┬─────────────────┘
+                                                  │             │             │
+                                                  ▼             ▼             ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │              Local PyTorch Model Training                   │
+                                  │        (Stratified Private Local Holdout Split)             │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │       Differential Privacy Guard (Gaussian / Opacus)        │
+                                  │        - L2 Gradient Clipping (C) & Noise Scale (σ)         │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │         Outbound Outlier Defense & Secure Aggregation       │
+                                  │         - Pairwise Cryptographic Seed Masking               │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │          Byzantine-Robust Server Aggregation                │
+                                  │   (FedAvg / Krum / Multi-Krum / Coordinate Median)          │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │         Evaluated & Promoted Global Model Weights           │
+                                  │       (Canary Quality Gate: AUC-ROC Validation Check)       │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                           ┌─────────────────────┴─────────────────────┐
+                                           │                                           │
+                                           ▼                                           ▼
+┌────────────────────────────────────────────────────────────────────────┐ ┌────────────────────────────────────────────────────────────────────────┐
+│             Real-Time Inference Gateway (<100ms SLA)                  │ │             Human-in-the-Loop Case Management Workbench               │
+│  - Sub-millisecond Fast Feature SHAP Explainer                         │ │  - 6-Stage State Machine & Four-Eyes Supervisor Dual Sign-Off          │
+│  - Realtime SLA Latency Monitor (p50, p95, p99)                        │ │  - FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing            │
+└────────────────────────────────────────────────────────────────────────┘ └────────────────────────────────────────────────────────────────────────┘
+                                           │                                           │
+                                           └─────────────────────┬─────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │         Enterprise Infrastructure & Security Perimeter       │
+                                  │ - Edge WAF Guard (SQLi / XSS / IP Whitelist)                │
+                                  │ - Active-Passive Multi-Region Coordinator Failover (RTO<30s) │
+                                  │ - Developer Webhook Gateway (HMAC-SHA256 Signed Payloads)    │
+                                  │ - SIEM Log Exporter (Syslog CEF / Splunk / Datadog)          │
+                                  │ - Web3 CBDC Smart Contract Incentive Settlement (.sol)      │
+                                  └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -96,7 +99,7 @@ A production-grade, enterprise-ready platform delivering privacy-preserving, cro
   - [🪙 Web3 & CBDC Smart Contract Incentive Settlement](#-web3--cbdc-smart-contract-incentive-settlement)
 - [Feature Matrix & Enterprise Compliance](#feature-matrix--enterprise-compliance)
 - [Threat Modeling Summary (STRIDE Matrix)](#threat-modeling-summary-stride-matrix)
-- [Clean Architecture Directory Structure](#clean-architecture-directory-structure)
+- [Complete Clean Architecture Directory Structure](#complete-clean-architecture-directory-structure)
 - [API Endpoint Blueprints & JSON Schemas](#api-endpoint-blueprints--json-schemas)
 - [Quick Start & Operator Guide](#quick-start--operator-guide)
 - [Automated Verification and Quality Suite](#automated-verification-and-quality-suite)
@@ -138,7 +141,7 @@ Each participating bank node (Bank Alpha, Bank Beta, Bank Gamma) trains local Py
 ### 1.2 Differential Privacy ($\epsilon, \delta$)
 Integrates Opacus Gaussian noise addition and L2 gradient clipping to mathematically bound privacy leakage.
 $$\sigma = \frac{\sqrt{2 \ln(1.25/\delta)}}{\epsilon}$$
-The noise scale $\sigma$ guarantees differential privacy, preventing reconstruction attacks or gradient inversion attempt by untrusted participants.
+The noise scale $\sigma$ guarantees differential privacy, preventing reconstruction attacks or gradient inversion attempts by untrusted participants.
 
 ### 1.3 Secure Aggregation (SecAgg) & Outbound Outlier Guard
 Pairwise cryptographic masking hides individual model updates before transmission:
@@ -312,60 +315,153 @@ Exports real-time metrics tracking latency, throughput, error rates, and system 
 
 ---
 
-## Clean Architecture Directory Structure
+## Complete Clean Architecture Directory Structure
 
 ```
 Collaborative-Fraud-Intelligence-Simulator/
-├── SECURITY.md                             # Responsible Vulnerability Disclosure Policy
-├── pyproject.toml                          # Python packaging & cfi-cli entrypoint
+├── SECURITY.md                                      # Responsible Vulnerability Disclosure Policy
+├── pyproject.toml                                   # Python packaging & cfi-cli entrypoint
 ├── backend/
 │   ├── app/
+│   │   ├── __init__.py
+│   │   ├── config.py                                # Platform configuration settings
+│   │   ├── dependencies.py                          # FastAPI Dependency Injection
+│   │   ├── main.py                                  # Application entrypoint & lifespan router
 │   │   ├── application/
-│   │   │   ├── services/
-│   │   │   │   ├── auto_rollback.py        # Automatic performance rollback manager
-│   │   │   │   ├── automated_retraining.py # PSI drift-triggered retraining pipeline
-│   │   │   │   ├── case_workbench.py       # 6-stage case management workbench service
-│   │   │   │   ├── incident_triage.py      # SEV1-SEV4 SRE incident triage engine
-│   │   │   │   ├── label_feedback_pipeline.py # DP noise-protected label feedback loop
-│   │   │   │   ├── retention_engine.py     # Automated data retention & GDPR Art. 17
-│   │   │   │   ├── security_compliance.py  # SOC2 / ISO 27001 / GDPR compliance auditor
-│   │   │   │   ├── sla_contract_engine.py  # SLA/SLO contract & billing credit engine
-│   │   │   │   ├── sla_monitor.py          # Real-time p50/p95/p99 latency SLA monitor
-│   │   │   │   ├── support_diagnostics.py  # Support diagnostic compiler & PII redactor
-│   │   │   │   ├── webhook_service.py      # Developer webhook & HMAC-SHA256 signer
-│   │   │   │   └── zero_downtime_deployer.py # Rolling deployment manager
+│   │   │   └── services/
+│   │   │       ├── adversarial_service.py           # Adversarial attack & robustness evaluator
+│   │   │       ├── alert_service.py                 # Real-time alert dispatching service
+│   │   │       ├── auto_rollback.py                 # Automatic performance rollback manager
+│   │   │       ├── automated_retraining.py          # PSI drift-triggered retraining pipeline
+│   │   │       ├── case_service.py                  # Core case service
+│   │   │       ├── case_workbench.py                # 6-stage case management workbench service
+│   │   │       ├── consortium_service.py            # Consortium lifecycle service
+│   │   │       ├── coordinator_service.py           # FL Coordinator service
+│   │   │       ├── data_generator.py                # Synthetic financial data generator
+│   │   │       ├── data_validator.py                # Schema & distribution data validator
+│   │   │       ├── dataloader.py                    # PyTorch DataLoader pipeline
+│   │   │       ├── drift_service.py                 # PSI & Jensen-Shannon feature drift service
+│   │   │       ├── entity_resolution.py             # Cross-bank entity resolution service
+│   │   │       ├── explainability_service.py        # SHAP Kernel Explainer service
+│   │   │       ├── feature_store_service.py         # Offline & online feature store
+│   │   │       ├── financial_message_parser.py      # ISO 20022 message parser
+│   │   │       ├── fl_engine.py                     # Federated Learning training engine
+│   │   │       ├── flower_engine.py                 # Flower FL framework engine
+│   │   │       ├── graph_analytics_service.py       # Graph analytics service
+│   │   │       ├── graph_embedding_model.py         # PyTorch GNN Graph Embedding model
+│   │   │       ├── graph_embedding_service.py       # Graph Embedding generation service
+│   │   │       ├── graph_engine.py                  # NetworkX entity graph engine
+│   │   │       ├── incident_triage.py               # SEV1-SEV4 SRE incident triage engine
+│   │   │       ├── kms_service.py                   # Key Management System (KMS) service
+│   │   │       ├── label_feedback_pipeline.py       # DP noise-protected label feedback loop
+│   │   │       ├── metrics_service.py               # System metrics service
+│   │   │       ├── model_registry.py                # Versioned model registry service
+│   │   │       ├── model_service.py                 # Model lifecycle service
+│   │   │       ├── policy_engine.py                 # Governance policy engine
+│   │   │       ├── privacy_audit_service.py         # Privacy budget audit logger
+│   │   │       ├── privacy_service.py               # Opacus Differential Privacy service
+│   │   │       ├── psi_service.py                   # Population Stability Index service
+│   │   │       ├── regulatory_reporter.py           # Regulatory SAR report compiler
+│   │   │       ├── retention_engine.py              # Automated data retention & GDPR Art. 17
+│   │   │       ├── retraining_trigger_engine.py     # Drift trigger evaluator engine
+│   │   │       ├── risk_engine.py                   # 9-Signal composite risk scoring engine
+│   │   │       ├── scenario_service.py              # Typology simulation scenario service
+│   │   │       ├── security_compliance.py           # SOC2 / ISO 27001 / GDPR compliance auditor
+│   │   │       ├── simulation_service.py            # End-to-end simulation runner
+│   │   │       ├── sla_contract_engine.py           # SLA/SLO contract & billing credit engine
+│   │   │       ├── sla_monitor.py                   # Real-time p50/p95/p99 latency SLA monitor
+│   │   │       ├── streaming_engine.py              # Async streaming transaction engine
+│   │   │       ├── streaming_gnn_model.py           # PyTorch Streaming GNN model
+│   │   │       ├── streaming_graph_service.py       # Streaming graph update service
+│   │   │       ├── support_diagnostics.py           # Support diagnostic compiler & PII redactor
+│   │   │       ├── tenant_metering.py               # Multi-tenant resource metering service
+│   │   │       ├── webhook_service.py               # Developer webhook & HMAC-SHA256 signer
+│   │   │       └── zero_downtime_deployer.py        # Rolling deployment manager
 │   │   ├── domain/
-│   │   │   ├── backup_record.py            # Backup artifact & restore probe models
-│   │   │   ├── case_management.py          # Case state machine & supervisor signature
-│   │   │   ├── deployment_state.py         # Rolling upgrade session & compatibility window
-│   │   │   ├── dr_coordinator.py           # Multi-region DR coordinator failover models
-│   │   │   ├── incident_playbook.py        # SEV1-SEV4 incident severity & playbook actions
-│   │   │   ├── inference_fallback.py       # High-availability heuristic fallback engine
-│   │   │   ├── label_privacy_guard.py      # Zero-PII leak validator & DP epsilon guard
-│   │   │   ├── realtime_explainer.py       # Fast SHAP feature attribution explainer
-│   │   │   ├── retention_policy.py         # Data retention TTL policy & erasure audit
-│   │   │   ├── sla_contract.py             # SLA contract, SLO metrics & penalty report
-│   │   │   └── web_console.py              # Multi-role console view config & metrics
+│   │   │   ├── ai_act_compliance.py                 # EU AI Act risk classification & audit
+│   │   │   ├── async_fl_engine.py                   # Asynchronous FL coordinator engine
+│   │   │   ├── backup_record.py                     # Backup artifact & restore probe models
+│   │   │   ├── benchmark_runner.py                  # System benchmarking suite
+│   │   │   ├── case_management.py                   # Case state machine & supervisor signature
+│   │   │   ├── consortium_governance.py             # Consortium voting & quorum entities
+│   │   │   ├── consortium_policy.py                 # Governance policy models
+│   │   │   ├── data_validator.py                    # Data validation rules
+│   │   │   ├── deployment_state.py                  # Rolling upgrade session & window
+│   │   │   ├── dr_coordinator.py                    # Multi-region DR failover models
+│   │   │   ├── entities.py                          # Core domain entities
+│   │   │   ├── entities_phase2.py                   # Extended domain entities
+│   │   │   ├── enums.py                             # Core domain enums
+│   │   │   ├── fuzzy_psi.py                         # Private Set Intersection algorithm
+│   │   │   ├── incident_playbook.py                 # SEV1-SEV4 incident severity & playbooks
+│   │   │   ├── inference_fallback.py                # High-availability heuristic fallback engine
+│   │   │   ├── label_privacy_guard.py               # Zero-PII leak validator & DP epsilon guard
+│   │   │   ├── metrics_service.py                   # Metric calculation domain models
+│   │   │   ├── model_governance.py                  # SR 11-7 model governance entities
+│   │   │   ├── model_lifecycle.py                   # Champion/Challenger state machine
+│   │   │   ├── protocol_versioning.py               # Protocol version compatibility matrix
+│   │   │   ├── psi_service.py                       # PSI calculation models
+│   │   │   ├── quorum_manager.py                    # Consortium quorum manager
+│   │   │   ├── realtime_explainer.py                # Fast SHAP feature attribution explainer
+│   │   │   ├── regional_governance.py               # Regional data residency models
+│   │   │   ├── retention_policy.py                  # Data retention TTL policy & erasure audit
+│   │   │   ├── security_evaluator.py                # Security evaluation models
+│   │   │   ├── sla_contract.py                      # SLA contract, SLO metrics & penalty report
+│   │   │   ├── spectral_defense.py                  # Spectral anomaly poisoning defense
+│   │   │   ├── tenant_management.py                 # Multi-tenant isolation models
+│   │   │   ├── value_objects.py                     # Core value objects
+│   │   │   ├── value_objects_phase2.py              # Extended value objects
+│   │   │   └── web_console.py                       # Multi-role console view config & metrics
 │   │   ├── infrastructure/
 │   │   │   ├── deployment/
-│   │   │   │   └── airgap_installer.py     # Air-gapped bundle builder & checksum verifier
+│   │   │   │   └── airgap_installer.py              # Air-gapped bundle builder & checksum verifier
 │   │   │   ├── disaster_recovery/
-│   │   │   │   ├── backup_verifier.py      # SHA-256 checksum & sandbox restore probe
-│   │   │   │   └── region_failover.py      # Active-passive multi-region failover manager
+│   │   │   │   ├── backup_verifier.py               # SHA-256 checksum & sandbox restore probe
+│   │   │   │   └── region_failover.py               # Active-passive multi-region failover manager
 │   │   │   ├── logging/
-│   │   │   │   └── siem_exporter.py        # Syslog CEF / Splunk / Datadog exporter
+│   │   │   │   └── siem_exporter.py                 # Syslog CEF / Splunk / Datadog exporter
 │   │   │   └── security/
-│   │   │       └── perimeter_waf.py        # Edge WAF guard (SQLi / XSS / IP Whitelist)
+│   │   │       └── perimeter_waf.py                 # Edge WAF guard (SQLi / XSS / IP Whitelist)
 │   │   └── presentation/
 │   │       ├── cli/
-│   │       │   └── cfi_cli.py              # Official operator cfi-cli utility
+│   │       │   └── cfi_cli.py                       # Official operator cfi-cli utility
 │   │       └── routers/
-│   │           ├── admin_console.py        # Commercial web console dashboard router
-│   │           ├── realtime_inference.py   # Real-time scoring API router (<100ms)
-│   │           └── webhook_gateway.py      # Developer webhook subscriptions router
+│   │           ├── admin_console.py                 # Commercial web console dashboard router
+│   │           ├── realtime_inference.py            # Real-time scoring API router (<100ms)
+│   │           └── webhook_gateway.py               # Developer webhook subscriptions router
 │   └── tests/
-│       └── unit/                           # Complete automated unit test suite
-└── docs/                                   # Architectural specifications & guides
+│       └── unit/                                    # Automated unit test suite
+│           ├── test_admin_console_router.py
+│           ├── test_automated_retraining.py
+│           ├── test_backup_verifier.py
+│           ├── test_case_management_workbench.py
+│           ├── test_disaster_recovery_failover.py
+│           ├── test_incident_triage_engine.py
+│           ├── test_label_feedback_pipeline.py
+│           ├── test_perimeter_airgap.py
+│           ├── test_realtime_inference_engine.py
+│           ├── test_realtime_sla_explanation.py
+│           ├── test_retention_erasure_engine.py
+│           ├── test_security_compliance.py
+│           ├── test_siem_support_diagnostics.py
+│           ├── test_sla_contract_engine.py
+│           ├── test_webhook_gateway.py
+│           └── test_zero_downtime_deployment.py
+└── docs/                                            # Architectural specifications & guides
+    ├── airgapped_deployment_guide.md
+    ├── backup_verification_spec.md
+    ├── case_management_spec.md
+    ├── cfi_cli_user_guide.md
+    ├── commercial_console_ui_spec.md
+    ├── data_retention_policy_spec.md
+    ├── disaster_recovery_plan.md
+    ├── incident_response_playbook.md
+    ├── label_feedback_loop_spec.md
+    ├── public_api_webhooks_spec.md
+    ├── realtime_inference_api.md
+    ├── security_controls_matrix.md
+    ├── siem_and_support_guide.md
+    ├── sla_slo_contract_spec.md
+    └── zero_downtime_upgrade_strategy.md
 ```
 
 ---
@@ -413,6 +509,18 @@ Content-Type: application/json
 {
   "tenant_id": "bank_alpha",
   "target_url": "https://api.bank-alpha.com/webhooks/cfi",
+  "events": ["ALERT_CREATED", "CASE_RESOLVED"]
+}
+```
+
+#### Response (`200 OK`)
+
+```json
+{
+  "subscription_id": "sub_882211aa",
+  "tenant_id": "bank_alpha",
+  "target_url": "https://api.bank-alpha.com/webhooks/cfi",
+  "secret_key": "whsec_99887766554433221100",
   "events": ["ALERT_CREATED", "CASE_RESOLVED"]
 }
 ```
