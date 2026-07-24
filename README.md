@@ -4,7 +4,7 @@
 
 ### *Enterprise-Grade, Privacy-Preserving Cross-Bank Financial Fraud Detection & Collaborative Anti-Money Laundering (AML) Intelligence*
 
-[![CI Build](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions)
+[![CI Build](https://github.com/yusufcalisir/CF-Intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/CF-Intelligence/actions)
 [![Python Version](https://img.shields.io/badge/python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2.0-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org)
@@ -367,7 +367,7 @@ Exports audit events in Syslog CEF (`CEF:0|CFI|...`), Splunk HEC, and Datadog JS
 ## 14. Complete Clean Architecture Directory Structure
 
 ```
-Collaborative-Fraud-Intelligence-Simulator/
+CF-Intelligence/
 ├── SECURITY.md                                      # Responsible Vulnerability Disclosure Policy
 ├── pyproject.toml                                   # Python packaging & cfi-cli entrypoint
 ├── backend/
@@ -627,8 +627,8 @@ cfi-cli deploy --stage rolling --target-version 2.1.0
 
 ```bash
 # Clone repository
-git clone https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator.git
-cd Collaborative-Fraud-Intelligence-Simulator
+git clone https://github.com/yusufcalisir/CF-Intelligence.git
+cd CF-Intelligence
 
 # Install backend package in editable mode
 cd backend
@@ -665,6 +665,6 @@ If you reference or utilize this platform in academic research or corporate ente
   title = {Collaborative Fraud Intelligence Platform: Privacy-Preserving Cross-Bank Fraud Detection using Federated Learning},
   year = {2026},
   publisher = {GitHub},
-  url = {https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator}
+  url = {https://github.com/yusufcalisir/CF-Intelligence}
 }
 ```
