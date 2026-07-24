@@ -30,6 +30,7 @@ from app.presentation.routers import (
     entities,
     graph,
     health,
+    maintenance_cron,
     model_registry,
     monitoring,
     predict,
@@ -419,6 +420,7 @@ elif service_name.startswith("bank-") or service_name == "bank_client":
 else:
     # Default/Monolith Mode: mount all routers
     app.include_router(health.router)
+    app.include_router(maintenance_cron.router)
     app.include_router(simulation.router)
     app.include_router(banks.router)
     app.include_router(training.router)

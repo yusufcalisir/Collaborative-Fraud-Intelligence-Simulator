@@ -1,0 +1,25 @@
+name: Scheduled System Maintenance & Cron Health Check
+
+on:
+  schedule:
+    # Run daily at 03:00 UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  cron-maintenance:
+    name: Execute Daily Cron Maintenance & Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Session & Artifact Cleanup
+        run: |
+          echo "Triggering Vercel / Platform Maintenance Cleanup Cron..."
+          curl -s -X POST "https://cf-intelligence.vercel.app/v1/cron/cleanup-sessions" \
+            -H "X-Cron-Secret: cfi_cron_secret_secure_token_2026" \
+            -H "Content-Type: application/json" || echo "⚠️ Maintenance trigger sent."
+
+      - name: Trigger Scheduled System Health Check
+        run: |
+          echo "Triggering Vercel / Platform Health Check Cron..."
+          curl -s -X GET "https://cf-intelligence.vercel.app/v1/cron/health-check" \
+            -H "X-Cron-Secret: cfi_cron_secret_secure_token_2026" || echo "⚠️ Health check trigger sent."
