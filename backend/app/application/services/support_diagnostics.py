@@ -54,13 +54,15 @@ class SupportDiagnosticCompiler:
         raw_logs = "User email customer@bank.com accessed IBAN TR100000000000000000000001. System status HEALTHY."
         sanitized_logs = self.redact_pii_content(raw_logs) if redact_pii else raw_logs
 
+        sys_info: dict[str, str] = {
+            "platform": "CFI Simulator v2.0.0",
+            "python_version": "3.12.10",
+            "nodes": "3",
+        }
+
         bundle_payload = {
             "bundle_id": bundle_id,
-            "system_info": {
-                "platform": "CFI Simulator v2.0.0",
-                "python_version": "3.12.10",
-                "nodes": "3",
-            },
+            "system_info": sys_info,
             "sla_metrics": {"p95_latency_ms": 42.5, "uptime_pct": 99.95},
             "sanitized_logs": sanitized_logs,
         }
@@ -73,7 +75,7 @@ class SupportDiagnosticCompiler:
 
         bundle = SupportDiagnosticBundle(
             bundle_id=bundle_id,
-            system_info=bundle_payload["system_info"],
+            system_info=sys_info,
             redacted_logs_count=1,
             checksum_sha256=checksum,
             bundle_filepath=str(out_file.resolve()),
