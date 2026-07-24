@@ -8,10 +8,10 @@
 [![Python Version](https://img.shields.io/badge/python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2.0-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org)
-[![Uptime SLA](https://img.shields.io/badge/SLA-99.9%25-brightgreen.svg?style=flat&logo=prometheus&logoColor=white)](#-real-time-scoring-gateway--high-availability-sla-track-3)
+[![Uptime SLA](https://img.shields.io/badge/SLA-99.9%25-brightgreen.svg?style=flat&logo=prometheus&logoColor=white)](#9-real-time-scoring-gateway--high-availability-sla)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Executive Summary](#1-executive-summary--architectural-vision) • [System Topography](#2-master-system-architecture) • [Comprehensive Specifications](#3-comprehensive-domain--technical-specifications) • [Feature Matrix](#4-enterprise-feature-matrix--verification-mapping) • [Directory Tree](#5-complete-clean-architecture-directory-structure) • [API Schemas](#6-api-endpoint-blueprints--json-schemas) • [Operator Guide](#7-cli-operator-tooling-guide-cfi-cli) • [Quick Start](#8-step-by-step-operator-quick-start)
+[Executive Summary](#1-executive-summary--architectural-vision) • [System Architecture](#2-master-system-architecture) • [Core Subsystems](#3-multi-bank-synthetic-data--multi-standard-ingestion) • [Feature Matrix](#13-enterprise-feature-matrix--verification-mapping) • [Directory Tree](#14-complete-clean-architecture-directory-structure) • [API Blueprints](#15-api-endpoint-blueprints--json-schemas) • [Operator Guide](#16-cli-operator-tooling-guide-cfi-cli) • [Quick Start](#17-step-by-step-operator-quick-start)
 
 </div>
 
@@ -139,163 +139,208 @@ sequenceDiagram
 
 ---
 
-## 3. Comprehensive Domain & Technical Specifications
+## 3. Multi-Bank Synthetic Data & Multi-Standard Ingestion
 
-### 🧬 Track 1: Privacy-Preserving Federated Learning Engine
+### 3.1 Synthetic Multi-Bank Data Generator (`data_generator.py`)
+- Generates realistic cross-bank transaction datasets across 3 distinct financial institutions (**Bank Alpha**, **Bank Beta**, **Bank Gamma**).
+- Models heterogeneous local fraud distributions (e.g., Bank Alpha specializing in high-value wire fraud, Bank Beta in credit card velocity, Bank Gamma in cross-border layering).
+- Enforces reproducible seeds and outputs normalized feature matrices ready for local model training.
 
-#### 1.1 Local Model Pipelines & Multi-Tenant Data Ingestion
-- **Heterogeneous Model Architectures:** Implements PyTorch Deep Neural Networks (MLP), Streaming Graph Neural Networks (GraphSAGE), Federated XGBoost, and contrastive MOON (Model-Contrastive Federated Learning) representations across participating institutions.
-- **Normalized Financial Ingestion:** Parses live financial messages including **ISO 20022** (`pacs.008` credit transfer, `camt.053` bank statement), **SWIFT MT103**, Open Banking PSD2 REST webhooks, and PyArrow zero-copy Parquet batch files into a unified `NormalizedTransaction` schema.
+### 3.2 Multi-Standard Message Parser (`financial_message_parser.py`)
+Parses financial payload formats into a unified `NormalizedTransaction` schema:
+- **ISO 20022 Messages:** `pacs.008` (Financial Interbank Credit Transfer) and `camt.053` (Bank-to-Customer Statement XML).
+- **SWIFT MT Messages:** Legacy `MT103` Single Customer Credit Transfer.
+- **PSD2 Open Banking:** Open Banking REST API webhook JSON payloads.
 
-#### 1.2 Differential Privacy ($\epsilon, \delta$) & Gradient Clipping
-- **Opacus Integration:** Enforces mathematically proven differential privacy bounds on local model gradients before transmission to the central coordinator.
-- **Gradient Norm Clipping ($C$):** Clips local gradient vectors $g_i$ to a maximum $L_2$ threshold $C$:
-  $$\bar{g}_i = \frac{g_i}{\max\left(1, \frac{\|g_i\|_2}{C}\right)}$$
-- **Gaussian Noise Addition ($\sigma$):** Injects calibrated zero-mean Gaussian noise scaled to the privacy parameters $\epsilon$ (privacy loss) and $\delta$ (failure probability):
-  $$\sigma = \frac{\sqrt{2 \ln(1.25/\delta)}}{\epsilon}, \quad \tilde{g}_i = \bar{g}_i + \mathcal{N}(0, \sigma^2 C^2 I)$$
-- **Budget Accountant:** Tracks cumulative privacy expenditure per tenant, blocking training rounds if privacy budgets ($\epsilon_{\text{max}} = 2.0$, $\delta_{\text{max}} = 10^{-5}$) are exhausted.
+### 3.3 Data Contracts & Gating (`data_validator.py` & `data_contracts.py`)
+- **Pandera Data Contracts:** Validates incoming DataFrame schema types, non-negative transaction amounts, and valid country codes.
+- **Great Expectations Gating:** Enforces distribution bounds (e.g., mean transaction amount, null velocity checks) before data ingestion.
+- **Arrow Parquet Streaming:** Ingests large offline datasets using PyArrow zero-copy streaming.
 
-#### 1.3 Secure Aggregation (SecAgg) & Outbound Outlier Defense
-- **Pairwise Cryptographic Masking:** Implements pairwise seed mask exchange between member nodes ($y_k = w_k + \sum_{j > k} s_{kj} - \sum_{j < k} s_{jk} \pmod{2^{32}}$). When all updates are summed at the coordinator, pairwise masks cancel out identically ($\sum_k y_k = \sum_k w_k$), leaving individual model parameters cryptographically hidden from the server.
-- **Outbound Outlier Defense (`spectral_defense.py`):** Computes top Singular Value Decomposition (SVD) of parameter matrices to isolate and quarantine backdoor poisoning attempts prior to global aggregation.
-
-#### 1.4 Byzantine-Robust Aggregation Suite
-The coordinator supports 6 distinct robust aggregation strategies to maintain convergence under active adversarial poisoning (up to 50% compromised nodes):
-1. **FedAvg / FedProx:** Standard weighted averaging with proximal regularization terms to address non-IID data distribution across banks.
-2. **Krum & Multi-Krum:** Computes pairwise Euclidean distances between client updates, selecting update vectors with minimal distance sums to $N - f - 2$ neighbors.
-3. **Trimmed Mean:** Sorts individual parameter values per coordinate and trims the upper/lower $\beta$ fraction of extreme outliers.
-4. **Coordinate-Wise Median:** Computes the element-wise median across all client weight vectors, neutralizing arbitrary parameter manipulation.
-5. **Bulyan:** Combines Multi-Krum selection with coordinate-wise trimmed mean to resist sophisticated colluding Byzantine attackers.
-
-#### 1.5 Asynchronous Coordinator & Dynamic Quorum Management
-- **Asynchronous Ingestion (`async_fl_engine.py`):** Accepts parameter updates asynchronously without requiring straggling clients to block training rounds.
-- **Staleness Attenuation:** Scales client update weights according to staleness age $\tau$:
-  $$\alpha_t = (1 + \tau)^{-\gamma}, \quad \Delta w_{\text{global}} = \alpha_t \cdot \Delta w_{\text{client}}$$
-- **Dynamic Quorum Manager (`quorum_manager.py`):** Automatically triggers model aggregation when minimum client threshold conditions ($\text{Minimum Clients} \ge 3$) or timeout expirations occur.
-
-#### 1.6 Model Governance, Shadow Deployment & Auto-Rollback
-- **SR 11-7 Model Risk Governance:** Implements formal champion/challenger registration, semantic versioning (`v1.2.0`), and cryptographic lineage manifests.
-- **Canary Quality Gate:** Evaluates candidate global models against a global holdout dataset. Candidates are promoted only if $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{champion}} - \text{tolerance}$.
-- **Shadow Prediction Routing:** Routes 10% of live production traffic to candidate challenger models in shadow mode for real-time validation.
-- **Automatic Rollback Engine (`auto_rollback.py`):** Automatically demotes active champion models and reverts to previous stable versions if live metrics breach operational thresholds ($\text{AUC} < 0.65$, latency $> 200\text{ms}$, or $\text{FPR} > 5\%$).
-- **PSI Drift-Triggered Retraining (`automated_retraining.py`):** Monitors Population Stability Index (PSI) and feature distributions, automatically triggering new federated training rounds when $\text{PSI} \ge 0.20$.
+### 3.4 Resilient Database Persistence (`database_persistence.py`)
+- Configures SQLAlchemy Async engine connection pools (`pool_pre_ping=True`, `pool_size=20`).
+- Implements CockroachDB transaction retry loops with serializable conflict resolution.
 
 ---
 
-### 🧠 Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine
+## 4. Federated Learning Optimizers & Framework Engines
 
-#### 2.1 9-Signal Composite Risk Scoring Engine
-The platform evaluates 9 distinct anti-fraud signals into a unified risk score ($0 - 1000$):
+### 4.1 Federated Learning Engine (`fl_engine.py`)
+Orchestrates global model training rounds supporting 7 distinct aggregation algorithms:
+1. **FedAvg:** Standard weighted parameter averaging.
+2. **FedProx:** Proximal regularization term ($\mu \frac{1}{2} \|w - w^t\|^2$) to handle non-IID data heterogeneity across banks.
+3. **FedYogi & FedAdam:** Server-side adaptive optimization with momentum.
+4. **FedAdagrad:** Adaptive gradient server-side scaling.
+5. **SCAFFOLD:** Control variates ($c_i, c$) correcting client-side drift.
+6. **MOON (Model-Contrastive FL):** Contrastive representation learning between local and global embeddings.
+
+### 4.2 Flower Framework Engine (`flower_engine.py`)
+Integrated Flower FL framework adapter executing distributed client-server training cycles with Opacus DP integration.
+
+### 4.3 Asynchronous FL Coordinator (`async_fl_engine.py`)
+Accepts parameter updates asynchronously without requiring straggling clients to block training rounds. Incorporates staleness attenuation:
+$$\alpha_t = (1 + \tau)^{-\gamma}, \quad \Delta w_{\text{global}} = \alpha_t \cdot \Delta w_{\text{client}}$$
+
+### 4.4 Dynamic Quorum Manager (`quorum_manager.py`)
+Automatically triggers aggregation when minimum client threshold conditions ($\text{Minimum Clients} \ge 3$) or timeout expirations occur.
+
+---
+
+## 5. Differential Privacy, Secure Aggregation & Privacy Auditing
+
+### 5.1 Opacus Differential Privacy Guard (`privacy_service.py`)
+- **$L_2$ Gradient Norm Clipping ($C$):** Clips local gradient vectors $g_i$:
+  $$\bar{g}_i = \frac{g_i}{\max\left(1, \frac{\|g_i\|_2}{C}\right)}$$
+- **Gaussian Noise Addition ($\sigma$):** Injects calibrated zero-mean Gaussian noise:
+  $$\sigma = \frac{\sqrt{2 \ln(1.25/\delta)}}{\epsilon}, \quad \tilde{g}_i = \bar{g}_i + \mathcal{N}(0, \sigma^2 C^2 I)$$
+- **Privacy Budget Accountant:** Enforces privacy loss limits ($\epsilon \le 2.0$, $\delta \le 10^{-5}$).
+
+### 5.2 Secure Aggregation (SecAgg)
+Applies pairwise cryptographic seed mask exchange ($y_k = w_k + \sum_{j > k} s_{kj} - \sum_{j < k} s_{jk} \pmod{2^{32}}$). Pairwise masks cancel out identically at the coordinator ($\sum_k y_k = \sum_k w_k$), hiding individual updates.
+
+### 5.3 Privacy Audit Suite (`privacy_audit_service.py`, `dlg_validation.py`, `mia_validation.py`)
+- **Deep Leakage from Gradients (DLG):** Simulates gradient reconstruction attacks to verify that differential privacy and SecAgg prevent image/feature recovery.
+- **Membership Inference Attack (MIA):** Computes MIA advantage bounds to verify that non-participating accounts cannot be inferred from global updates.
+
+### 5.4 Multi-Tenant Key Management Service (`kms_service.py` & `tenant_kms_metering.py`)
+Isolated per-tenant KMS managing HMAC privacy masking keys, PSI exponent keys, and SecAgg seed generation.
+
+---
+
+## 6. Byzantine Poisoning Defense, Backdoors & Adversarial Robustness
+
+### 6.1 Byzantine-Robust Aggregation Suite (`byzantine_defense_validation.py`)
+Resists up to 50% compromised nodes using 5 robust aggregators:
+- **Krum & Multi-Krum:** Distance-based update selection.
+- **Trimmed Mean:** Trims upper/lower $\beta$ fraction of extreme outliers per coordinate.
+- **Coordinate-Wise Median:** Element-wise median calculation.
+- **Bulyan:** Combines Multi-Krum with coordinate-wise trimmed mean.
+
+### 6.2 Spectral SVD Backdoor Defense (`spectral_defense.py`)
+Uses top Singular Value Decomposition (SVD) of parameter matrices to isolate and quarantine backdoor poisoning triggers prior to aggregation.
+
+### 6.3 Adversarial Attack Evaluator (`adversarial_service.py` & `adversarial_defense.py`)
+Generates Fast Gradient Sign Method (FGSM) and Projected Gradient Descent (PGD) multi-step perturbations with tabular constraint projection, executing adversarial training (`train_local_with_adversarial_training`).
+
+---
+
+## 7. Streaming Graph Neural Networks & Fuzzy PSI Identity Resolution
+
+### 7.1 Entity Graph Engine & Neo4j Integration (`graph_engine.py`, `graph_analytics_service.py`, `neo4j_graph.py`)
+- Dual NetworkX and Neo4j graph backends executing Cypher queries.
+- Computes PageRank centrality, Louvain community detection, and temporal risk score propagation.
+
+### 7.2 PyTorch Streaming Graph Neural Networks (`graph_embedding_model.py`, `streaming_gnn_model.py`)
+PyTorch GraphSAGE GNN models producing $L_2$-normalized node embeddings updated dynamically as streaming transaction edges arrive.
+
+### 7.3 Private Set Intersection & Entity Resolution (`fuzzy_psi.py`, `entity_resolution.py`)
+MinHash LSH (Locality-Sensitive Hashing) Fuzzy PSI resolving customer identities across institutions without revealing raw customer bases.
+
+---
+
+## 8. 9-Signal Composite Risk Engine & Model Explainability
+
+### 8.1 9-Signal Composite Risk Scoring Engine (`risk_engine.py`)
+Evaluates 9 distinct anti-fraud signals into a composite score ($0 - 1000$):
 1. $S_{\text{local}}$: Local PyTorch deep model probability score.
 2. $S_{\text{velocity}}$: Cross-bank 1-hour transaction velocity anomaly index.
 3. $S_{\text{graph}}$: Graph Neural Network entity centrality risk index.
-4. $S_{\text{typology}}$: Known money laundering typology pattern match score (smurfing, pass-through mule, rapid layering).
+4. $S_{\text{typology}}$: Known money laundering typology pattern match score.
 5. $S_{\text{amount}}$: Statistical Z-score transaction amount deviation.
 6. $S_{\text{device}}$: Device fingerprinting & IP reputation risk index.
 7. $S_{\text{temporal}}$: Off-hours & rapid temporal clustering anomaly score.
 8. $S_{\text{mule}}$: Probabilistic money mule account score.
 9. $S_{\text{structuring}}$: Structuring pattern detection index.
 
-**Composite Formula:**
 $$\text{Risk Score} = \min\left(1000, \max\left(0, \sum_{i=1}^{9} w_i S_i \times 1000\right)\right)$$
 
-#### 2.2 Streaming Graph Neural Networks & Fuzzy PSI Identity Resolution
-- **Streaming GNN (`streaming_gnn_model.py`):** Dynamically updates GraphSAGE node embeddings as streaming transaction edges arrive, maintaining $L_2$-normalized risk embeddings.
-- **Private Set Intersection (Fuzzy PSI):** Uses MinHash LSH (Locality-Sensitive Hashing) and standardize identifier tokenization to detect cross-bank shared bad actors without revealing customer identity bases.
-
-#### 2.3 FinCEN BSA SAR XML E-Filing & Audit Event Chaining
-- **FinCEN BSA SAR E-Filing (`regulatory_reporter.py`):** Automatically compiles Suspicious Activity Report (SAR) XML documents conforming to FinCEN BSA Electronic Filing specifications upon confirmed case escalations.
-- **Cryptographic Action Chaining:** Chains analyst actions and case stage transitions using SHA-256 block hashes ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) for non-repudiation and judicial admissibility.
-
-#### 2.4 Web3 CBDC Smart Contract Settlement (`ConsortiumIncentiveSettlement.sol`)
-- **Shapley Value Token Payouts:** Calculates Leave-One-Out (LOO) Shapley contribution values for each participating institution, executing token rewards (`wCBDC`, `USDC`, `e-TRY`) via smart contract functions.
-- **On-Chain Quarantine Locks:** Locks payouts and revokes consortium voting rights (`BLOCKED_QUARANTINE`) for malicious or poor-quality data contributors.
+### 8.2 Model Explainability Engine (`explainability_service.py` & `realtime_explainer.py`)
+- **Fast Feature Explainer:** Computes sub-1ms Shapley feature attributions during live scoring.
+- **Counterfactual Engine (`generate_counterfactuals`):** Generates minimum perturbation feature edits required to reduce risk scores.
+- **Decision Replay Audit (`replay_inference_audit`):** Reproduces exact historical scoring outputs.
+- **GNN Edge Contribution Explainer:** Identifies graph edges contributing to entity risk.
 
 ---
 
-### ⚡ Track 3: Real-Time Scoring Gateway & High-Availability SLA
+## 9. Real-Time Scoring Gateway & High-Availability SLA
 
-#### 3.1 Real-Time Scoring API (`POST /v1/inference/score`)
-- **Sub-100ms Latency SLA:** Receives transaction payloads and evaluates scoring models under strict SLA guarantees ($p95 < 100\text{ms}$).
-- **Decision Categorization:**
-  - `ALLOW` ($\text{Risk Score} < 300$): Low risk, immediate approval.
-  - `REVIEW` ($300 \le \text{Risk Score} < 700$): Medium risk, routed to Case Management.
-  - `BLOCK` ($\text{Risk Score} \ge 700$): High risk, transaction blocked immediately.
+### 9.1 Real-Time Scoring API (`POST /v1/inference/score` / `realtime_inference.py`)
+- Evaluates incoming transactions under a sub-100ms SLA ($p95$).
+- Returns decisions: `ALLOW` (<300), `REVIEW` (300-699), or `BLOCK` (>=700).
 
-#### 3.2 Sub-Millisecond Fast Feature SHAP Explainer (`realtime_explainer.py`)
-- Computes Shapley feature attributions in under $1\text{ms}$ during live scoring, returning top feature contributors (e.g., `velocity_1h`, `cross_border`) alongside score outputs for instant analyst interpretability.
+### 9.2 Heuristic Inference Fallback Engine (`inference_fallback.py`)
+Executes deterministic heuristic rules if model service latency exceeds 150ms.
 
-#### 3.3 High-Availability Heuristic Fallback Engine (`inference_fallback.py`)
-- Executes deterministic heuristic risk rules if model inference latency exceeds $150\text{ms}$, guaranteeing uninterrupted transaction authorization.
-
-#### 3.4 SLA/SLO Contract Enforcement (`sla_contract_engine.py`)
-- Tracks 99.9% uptime SLA compliance and generates contractual `PenaltyReport` issuing percentage-based billing service credits if monthly uptime drops below 99.9%.
+### 9.3 Real-Time SLA Monitor & SLO Contract Engine (`sla_monitor.py` & `sla_contract_engine.py`)
+- Tracks real-time $p50, p95, p99$ latency percentiles.
+- Enforces 99.9% uptime SLA compliance and generates `PenaltyReport` issuing percentage-based billing service credits upon breaches.
 
 ---
 
-### 🛠️ Track 4: Human-in-the-Loop MLOps, Governance & Security Perimeter
+## 10. Human-in-the-Loop Workbench, Feedback Loop & Data Retention
 
-#### 4.1 Human-in-the-Loop 6-Stage Case Management Workbench (`case_workbench.py`)
-Governs case progression across 6 enforced states:
+### 10.1 6-Stage Case Management Workbench (`case_workbench.py`, `case_service.py`, `case_management.py`)
+Governs case progression across 6 enforced states (`NEW` -> `ASSIGNED` -> `UNDER_INVESTIGATION` -> `ESCALATED` -> `RESOLVED_CONFIRMED_FRAUD` / `RESOLVED_FALSE_POSITIVE`). Enforces **Four-Eyes Supervisor Dual Sign-Off** (`SIG_SUPERVISOR_*`).
 
-```mermaid
-stateDiagram-v2
-    [*] --> NEW
-    NEW --> ASSIGNED: Assign Investigator
-    ASSIGNED --> UNDER_INVESTIGATION: Start Analysis
-    UNDER_INVESTIGATION --> ESCALATED: Escalate to Supervisor
-    ESCALATED --> RESOLVED_CONFIRMED_FRAUD: Supervisor Signature (SIG_SUPERVISOR_*)
-    ESCALATED --> RESOLVED_FALSE_POSITIVE: Supervisor Signature (SIG_SUPERVISOR_*)
-    RESOLVED_CONFIRMED_FRAUD --> [*]
-    RESOLVED_FALSE_POSITIVE --> [*]
-```
+### 10.2 Privacy-Preserving Label Feedback Loop (`label_privacy_guard.py`)
+Validates analyst determinations, enforcing zero-PII leak constraints and computing DP noise-protected local gradient updates ($\epsilon \le 2.0$).
 
-> [!IMPORTANT]
-> **Four-Eyes Supervisor Dual Sign-Off:** Case resolution strictly requires a cryptographic supervisor authorization starting with `SIG_SUPERVISOR_*`. Requisitions missing this signature are rejected with HTTP `403 Forbidden`.
-
-#### 4.2 Privacy-Preserving Label Feedback Loop (`label_privacy_guard.py`)
-- Validates analyst determinations, enforcing zero-PII leak constraints and computing DP noise-protected local gradient updates ($\epsilon \le 2.0$).
-
-#### 4.3 Enterprise Data Retention & GDPR Art. 17 Erasure Engine (`retention_engine.py`)
-- Manages per-tenant TTL policies and executes cryptographic zeroization for customer identifiers upon right-to-be-forgotten requests, outputting an immutable `ErasureAuditRecord`.
-
-#### 4.4 Active-Passive Multi-Region Coordinator Failover (`region_failover.py`)
-- Monitors coordinator health, executing automated failover ($RTO < 30\text{s}$, $RPO = 0$) upon primary heartbeat failure (>15s).
-
-#### 4.5 Backup Integrity Verifier & Sandbox Restore Probes (`backup_verifier.py`)
-- Validates SHA-256 checksums and executes automated sandbox restore dry-runs (`run_sandbox_restore_probe`).
-
-#### 4.6 Developer Webhook Gateway (`webhook_service.py`)
-- Registers webhook subscriptions (`POST /v1/webhooks/subscriptions`) and signs outbound payloads with HMAC-SHA256 headers (`X-CFI-Signature`).
-
-#### 4.7 SRE Incident Triage Engine (`incident_triage.py`)
-- Automatically classifies system alerts into severity levels (`SEV1` to `SEV4`) and attaches step-by-step SRE remediation commands (`PlaybookAction`).
-
-#### 4.8 Zero-Downtime Platform Upgrade Manager (`zero_downtime_deployer.py`)
-- Orchestrates 5-stage rolling releases (`DRAINING_CONNECTIONS` -> `ROLLING_UPGRADE` -> `DUAL_VERSION_ACTIVE` -> `UPGRADE_COMPLETED`) with a 48-hour dual-version window (`UpgradeWindow`).
-
-#### 4.9 Commercial Multi-Role Web Management Console (`admin_console.py`)
-- Serves 4 distinct enterprise personas (`EXECUTIVE`, `COMPLIANCE_OFFICER`, `ML_ENGINEER`, `FRAUD_INVESTIGATOR`).
-
-#### 4.10 Official PyPI Operator CLI Utility (`cfi_cli.py`)
-- Provides terminal subcommands (`cfi-cli status`, `cfi-cli health`, `cfi-cli export-diagnostics`, `cfi-cli deploy`).
-
-#### 4.11 Edge Security Perimeter WAF Guard (`perimeter_waf.py`)
-- Filters malicious SQLi, XSS, and enforces strict IP whitelisting at the edge.
-
-#### 4.12 Air-Gapped Installer Package Builder (`airgap_installer.py`)
-- Packages self-contained, zero-internet tarball bundles validated with SHA-256 manifests.
-
-#### 4.13 Enterprise Security Attestations Auditor (`security_compliance.py`)
-- Audits platform controls against SOC2 Type II, ISO 27001, and GDPR Art. 17 standards.
-
-#### 4.14 SIEM Log Exporter (`siem_exporter.py`) & Support Diagnostic Compiler (`support_diagnostics.py`)
-- Exports audit events in Syslog CEF (`CEF:0|CFI|...`), Splunk HEC, and Datadog JSON formats.
-- Compiles SHA-256 signed support telemetry bundles with automatic PII redaction (email, IBAN).
+### 10.3 GDPR Article 17 Data Retention & Erasure Engine (`retention_engine.py` & `retention_policy.py`)
+Manages per-tenant TTL policies and executes cryptographic zeroization for customer identifiers, outputting an immutable `ErasureAuditRecord`.
 
 ---
 
-## 4. Enterprise Feature Matrix & Verification Mapping
+## 11. Disaster Recovery, High-Availability Failover & SRE Operations
+
+### 11.1 Active-Passive Multi-Region Coordinator Failover (`region_failover.py` & `dr_coordinator.py`)
+Monitors coordinator health, executing automated failover ($RTO < 30\text{s}$, $RPO = 0$) upon primary heartbeat failure (>15s).
+
+### 11.2 Backup Integrity Verifier & Sandbox Restore Probes (`backup_verifier.py`)
+Validates SHA-256 checksums and executes automated sandbox restore dry-runs (`run_sandbox_restore_probe`).
+
+### 11.3 Developer Webhook Gateway (`webhook_service.py` & `webhook_gateway.py`)
+Registers webhook subscriptions (`POST /v1/webhooks/subscriptions`) and signs outbound payloads with HMAC-SHA256 headers (`X-CFI-Signature`).
+
+### 11.4 SRE Incident Triage Engine (`incident_triage.py`)
+Classifies system alerts into severity levels (`SEV1` to `SEV4`) and attaches step-by-step SRE remediation commands (`PlaybookAction`).
+
+### 11.5 Zero-Downtime Platform Upgrade Manager (`zero_downtime_deployer.py`)
+Orchestrates 5-stage rolling releases (`DRAINING_CONNECTIONS` -> `ROLLING_UPGRADE` -> `DUAL_VERSION_ACTIVE` -> `UPGRADE_COMPLETED`) with a 48-hour dual-version window (`UpgradeWindow`).
+
+---
+
+## 12. Management Console, CLI, Security Perimeter & Compliance
+
+### 12.1 Commercial Multi-Role Web Management Console (`admin_console.py`)
+Serves 4 distinct enterprise personas (`EXECUTIVE`, `COMPLIANCE_OFFICER`, `ML_ENGINEER`, `FRAUD_INVESTIGATOR`).
+
+### 12.2 Official PyPI Operator CLI Utility (`cfi_cli.py`)
+Provides terminal subcommands (`cfi-cli status`, `cfi-cli health`, `cfi-cli export-diagnostics`, `cfi-cli deploy`).
+
+### 12.3 Edge Security Perimeter WAF Guard (`perimeter_waf.py`)
+Filters SQLi, XSS, and enforces strict IP whitelisting.
+
+### 12.4 Air-Gapped Installer Package Builder (`airgap_installer.py`)
+Packages self-contained, zero-internet tarball bundles validated with SHA-256 manifests.
+
+### 12.5 Security Attestations & Regulatory Compliance Auditor (`security_compliance.py` & `ai_act_compliance.py`)
+Audits platform controls against SOC2 Type II, ISO 27001, GDPR Art. 17, and exports EU AI Act risk compliance certificates.
+
+### 12.6 SIEM Log Exporter (`siem_exporter.py`) & Support Diagnostic Compiler (`support_diagnostics.py`)
+Exports audit events in Syslog CEF (`CEF:0|CFI|...`), Splunk HEC, and Datadog JSON formats. Compiles SHA-256 signed support telemetry bundles with automatic PII redaction.
+
+### 12.7 Enterprise Security Suite (`enterprise_security_suite.py`, `hsm_signer.py`, `vault_client.py`)
+- mTLS x509 cert manager with CRL revocation detection.
+- OIDC JWT authenticator & ABAC tenant isolation rules.
+- Vault PKI client & Zero-Disk Hardware Security Module (HSM) signing engine.
+
+### 12.8 Web3 CBDC Smart Contract Settlement (`ConsortiumIncentiveSettlement.sol`) & FinCEN BSA SAR XML (`regulatory_reporter.py`)
+- Manages token payouts (`wCBDC`, `USDC`) based on Leave-One-Out Shapley values and applies on-chain quarantine locks (`BLOCKED_QUARANTINE`).
+- Serializes BSA Suspicious Activity Report (SAR) XML e-filings.
+
+---
+
+## 13. Enterprise Feature Matrix & Verification Mapping
 
 | Feature / Module | Technical Specification | Compliance Standard | Verification File | Status |
 | :--- | :--- | :--- | :--- | :--- |
@@ -319,7 +364,7 @@ stateDiagram-v2
 
 ---
 
-## 5. Complete Clean Architecture Directory Structure
+## 14. Complete Clean Architecture Directory Structure
 
 ```
 Collaborative-Fraud-Intelligence-Simulator/
@@ -470,9 +515,9 @@ Collaborative-Fraud-Intelligence-Simulator/
 
 ---
 
-## 6. API Endpoint Blueprints & JSON Schemas
+## 15. API Endpoint Blueprints & JSON Schemas
 
-### 6.1 Real-Time Inference Scoring Endpoint
+### 15.1 Real-Time Inference Scoring Endpoint
 
 ```http
 POST /v1/inference/score HTTP/1.1
@@ -503,7 +548,7 @@ Content-Type: application/json
 }
 ```
 
-### 6.2 Developer Webhook Registration Endpoint
+### 15.2 Developer Webhook Registration Endpoint
 
 ```http
 POST /v1/webhooks/subscriptions HTTP/1.1
@@ -529,7 +574,7 @@ Content-Type: application/json
 }
 ```
 
-### 6.3 Commercial Web Management Console Summary Endpoint
+### 15.3 Commercial Web Management Console Summary Endpoint
 
 ```http
 GET /v1/admin/dashboard/summary HTTP/1.1
@@ -550,7 +595,7 @@ Host: api.cfi-platform.org
 
 ---
 
-## 7. CLI Operator Tooling Guide (`cfi-cli`)
+## 16. CLI Operator Tooling Guide (`cfi-cli`)
 
 The platform includes a standardized PyPI command-line utility (`cfi-cli`) configured in `pyproject.toml`.
 
@@ -570,15 +615,15 @@ cfi-cli deploy --stage rolling --target-version 2.1.0
 
 ---
 
-## 8. Step-by-Step Operator Quick Start
+## 17. Step-by-Step Operator Quick Start
 
-### 8.1 Prerequisites
+### 17.1 Prerequisites
 
 - Python 3.12+
 - PyTorch 2.2+
 - FastAPI & Uvicorn
 
-### 8.2 Environment Setup
+### 17.2 Environment Setup
 
 ```bash
 # Clone repository
@@ -592,7 +637,7 @@ pip install -e .
 
 ---
 
-## 9. Verification & Quality Testing Suite
+## 18. Verification & Quality Testing Suite
 
 Execute full automated unit test suite:
 
@@ -608,7 +653,7 @@ ruff check backend/app/ backend/tests/
 
 ---
 
-## 10. License & Academic Citation
+## 19. License & Academic Citation
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
