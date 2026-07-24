@@ -1,0 +1,235 @@
+"""Bank Onboarding API Router — Phase 36.1.
+
+Admin endpoints for registering new bank nodes, issuing mTLS certificates,
+provisioning tenant schemas, and retrieving onboarding bundles.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
+
+from app.application.services.bank_onboarding_service import (
+    BankAlreadyExistsError,
+    BankOnboardingService,
+)
+from app.infrastructure.database import get_async_session
+
+router = APIRouter(prefix="/v1/admin/banks", tags=["Bank Onboarding"])
+
+
+# ── Request / Response Models ─────────────────────────────────────────────────
+
+
+class BankRegisterRequest(BaseModel):
+    """Payload to register a new bank node."""
+
+    bank_id: str = Field(..., description="Unique bank node identifier (e.g. bank_alpha)")
+    legal_name: str = Field(..., description="Legal institution name")
+    jurisdiction: str = Field(..., description="ISO 3166-1 alpha-2 country code (e.g. TR, US, DE)")
+    contact_email: str = Field(..., description="Primary security contact email")
+    data_residency_region: str = Field(..., description="Regulatory cloud region (e.g. eu-west-1)")
+
+
+class BankOnboardingBundleResponse(BaseModel):
+    """Complete bundle returned to a bank IT team upon registration."""
+
+    bank_id: str
+    status: str
+    legal_name: str
+    jurisdiction: str
+    contact_email: str
+    data_residency_region: str
+    cert_fingerprint: str
+    mtls_cert_pem: str
+    mtls_key_pem: str
+    connector_config_yaml: str
+    coordinator_endpoint: str
+
+
+class BankStatusResponse(BaseModel):
+    """Detailed status of a bank node."""
+
+    bank_id: str
+    legal_name: str
+    jurisdiction: str
+    status: str
+    cert_fingerprint: str | None = None
+    vault_key_path: str | None = None
+    schema_provisioned: bool
+    created_at: str
+    activated_at: str | None = None
+
+
+class CertRotationResponse(BaseModel):
+    """Response after rotating a bank's mTLS certificate."""
+
+    bank_id: str
+    mtls_cert_pem: str
+    mtls_key_pem: str
+    cert_fingerprint: str
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/register",
+    response_model=BankOnboardingBundleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new bank node and receive the onboarding bundle",
+)
+async def register_bank(
+    payload: BankRegisterRequest,
+    session: AsyncSession = Depends(get_async_session),
+) -> Any:
+    """Run full automated bank onboarding pipeline:
+
+    1. Register bank record (PENDING_VERIFICATION)
+    2. Issue mTLS certificate & key
+    3. Provision tenant database schema
+    4. Provision KMS key path
+    5. Generate connector config YAML
+    6. Activate bank node (ACTIVE)
+    """
+    service = BankOnboardingService(session)
+    try:
+        # Step 1: Register
+        await service.register_bank(
+            bank_id=payload.bank_id,
+            legal_name=payload.legal_name,
+            jurisdiction=payload.jurisdiction,
+            contact_email=payload.contact_email,
+            data_residency_region=payload.data_residency_region,
+        )
+
+        # Step 2: Issue Cert
+        cert_pem, key_pem = await service.issue_mtls_certificate(payload.bank_id)
+
+        # Step 3: Provision Schema
+        await service.provision_tenant_schema(payload.bank_id)
+
+        # Step 4: Provision KMS
+        await service.provision_kms_key(payload.bank_id)
+
+        # Step 5: Config
+        config_yaml = service.generate_connector_config(payload.bank_id)
+
+        # Step 6: Activate
+        activated = await service.activate_bank(payload.bank_id)
+
+        return BankOnboardingBundleResponse(
+            bank_id=payload.bank_id,
+            status=activated.status.value
+            if hasattr(activated.status, "value")
+            else str(activated.status),
+            legal_name=payload.legal_name,
+            jurisdiction=payload.jurisdiction,
+            contact_email=payload.contact_email,
+            data_residency_region=payload.data_residency_region,
+            cert_fingerprint=activated.cert_fingerprint or "",
+            mtls_cert_pem=cert_pem,
+            mtls_key_pem=key_pem,
+            connector_config_yaml=config_yaml,
+            coordinator_endpoint="https://coordinator.cf-intelligence.io:50051",
+        )
+
+    except BankAlreadyExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/",
+    response_model=list[BankStatusResponse],
+    summary="List all registered bank nodes",
+)
+async def list_banks(
+    session: AsyncSession = Depends(get_async_session),
+) -> Any:
+    """Return all bank node registrations."""
+    service = BankOnboardingService(session)
+    banks = await service.list_banks()
+    return [
+        BankStatusResponse(
+            bank_id=b.bank_id,
+            legal_name=b.legal_name,
+            jurisdiction=b.jurisdiction,
+            status=b.status.value if hasattr(b.status, "value") else str(b.status),
+            cert_fingerprint=b.cert_fingerprint,
+            vault_key_path=b.vault_key_path,
+            schema_provisioned=b.schema_provisioned,
+            created_at=b.created_at.isoformat(),
+            activated_at=b.activated_at.isoformat() if b.activated_at else None,
+        )
+        for b in banks
+    ]
+
+
+@router.get(
+    "/{bank_id}/status",
+    response_model=BankStatusResponse,
+    summary="Get status of a single bank node",
+)
+async def get_bank_status(
+    bank_id: str,
+    session: AsyncSession = Depends(get_async_session),
+) -> Any:
+    """Return detailed status for a specific bank node."""
+    service = BankOnboardingService(session)
+    b = await service.get_bank(bank_id)
+    if not b:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Bank node {bank_id!r} not found.",
+        )
+    return BankStatusResponse(
+        bank_id=b.bank_id,
+        legal_name=b.legal_name,
+        jurisdiction=b.jurisdiction,
+        status=b.status.value if hasattr(b.status, "value") else str(b.status),
+        cert_fingerprint=b.cert_fingerprint,
+        vault_key_path=b.vault_key_path,
+        schema_provisioned=b.schema_provisioned,
+        created_at=b.created_at.isoformat(),
+        activated_at=b.activated_at.isoformat() if b.activated_at else None,
+    )
+
+
+@router.post(
+    "/{bank_id}/rotate-cert",
+    response_model=CertRotationResponse,
+    summary="Rotate mTLS certificate for a bank node",
+)
+async def rotate_bank_cert(
+    bank_id: str,
+    session: AsyncSession = Depends(get_async_session),
+) -> Any:
+    """Rotate mTLS certificate for an active bank node."""
+    service = BankOnboardingService(session)
+    b = await service.get_bank(bank_id)
+    if not b:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Bank node {bank_id!r} not found.",
+        )
+
+    cert_pem, key_pem = await service.issue_mtls_certificate(bank_id)
+    updated = await service.get_bank(bank_id)
+
+    return CertRotationResponse(
+        bank_id=bank_id,
+        mtls_cert_pem=cert_pem,
+        mtls_key_pem=key_pem,
+        cert_fingerprint=updated.cert_fingerprint if updated else "",
+    )

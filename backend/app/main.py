@@ -371,8 +371,13 @@ from app.infrastructure.telemetry import setup_telemetry
 
 setup_telemetry(app)
 
+# ── Global Core Routers ────────────────────────
+from app.presentation.routers import onboarding
 
-# ── Routers ───────────────────────────────────
+app.include_router(onboarding.router)
+
+
+# ── Service Mode Specific Routers ──────────────
 if service_name == "gateway":
     from app.presentation.routers import gateway
 
@@ -416,12 +421,13 @@ elif service_name.startswith("bank-") or service_name == "bank_client":
     app.include_router(bank_client.router)
     app.include_router(psd2.router)
 
+    from app.presentation.routers import onboarding
 
-else:
-    # Default/Monolith Mode: mount all routers
     app.include_router(health.router)
     app.include_router(maintenance_cron.router)
+    app.include_router(onboarding.router)
     app.include_router(simulation.router)
+
     app.include_router(banks.router)
     app.include_router(training.router)
     app.include_router(model_registry.router)

@@ -1,147 +1,119 @@
-# Bank Node Self-Service Onboarding Guide (`cfi-cli`)
+# 🏦 Bank Node Automated Onboarding & Operations Guide
 
-This guide provides bank IT infrastructure, security, and enterprise deployment teams with step-by-step instructions to onboard a new bank node into the Collaborative Fraud Intelligence (CFI) consortium network using the `cfi-cli` automation tool.
-
----
-
-## 1. Integration Overview & Prerequisites
-
-The bank client daemon (`cfi-bank-client`) operates within the bank's isolated private network zone (VPC/Subnet). It requires **zero inbound open listening ports**, communicating outbound only to the central coordinator over Mutual TLS (mTLS 1.3) streaming gRPC (default port: `50051`).
-
-### Prerequisites
-- **Python**: $\ge 3.10$ installed locally or within the client container image.
-- **Network Connectivity**: Outbound TCP access to the coordinator hostname and port (`50051`).
-- **Dependencies**: Install platform requirements: `pip install -r backend/requirements.txt`.
+This guide details the end-to-end process for onboarding a new financial institution node to the **Collaborative Fraud Intelligence (CF-Intelligence)** platform.
 
 ---
 
-## 2. Step 1: Initialize Local Directory & Configuration (`cfi-cli init`)
+## 1. Prerequisites
 
-Run `cfi-cli init` to generate the local configuration template (`bank_config.yaml`) and create required storage directories:
+Before initiating node registration, the institution's IT/Security team must verify:
+- **Outbound Network Access:** Outbound TCP port `50051` (gRPC mTLS) open to `coordinator.cf-intelligence.io`.
+- **Admin Access:** API key or administrative credentials to issue onboarding calls to `/v1/admin/banks/register`.
+- **System Requirements:** Python 3.12+, Docker/Kubernetes container runtime, and at least 4 GB RAM / 2 vCPUs for local training.
+
+---
+
+## 2. Step 1: API Registration
+
+Issue a registration request to the central coordinator admin endpoint:
 
 ```bash
-python scripts/cfi_cli.py init --bank-id bank_alpha --coordinator coordinator.cfi.internal:50051
+curl -X POST https://api.cf-intelligence.io/v1/admin/banks/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bank_id": "bank_alpha",
+    "legal_name": "Alpha National Bank Inc.",
+    "jurisdiction": "TR",
+    "contact_email": "sec-ops@alphabank.com",
+    "data_residency_region": "eu-west-1"
+  }'
 ```
 
-### Output Directory Structure
-```
-.
-├── bank_config.yaml          # Node configuration file
-├── certs/                    # Directory for X.509 mTLS certificates
-├── data/
-│   └── vault/                # Encrypted local AES-256 state vault
-└── logs/                     # Local daemon execution logs
+### Response Payload Breakdown
+
+The response returns the complete **Onboarding Bundle**:
+- `bank_id`: Confirmed unique bank identifier.
+- `cert_fingerprint`: SHA-256 fingerprint of the issued mTLS certificate.
+- `mtls_cert_pem`: Mutual TLS client certificate (PEM format).
+- `mtls_key_pem`: Private key for mTLS client authentication (PEM format).
+- `connector_config_yaml`: Pre-rendered YAML configuration for the local bank daemon.
+
+---
+
+## 3. Step 2: Certificate Installation
+
+Save the returned certificates securely on the bank's local node:
+
+```bash
+mkdir -p /etc/cfi/certs
+chmod 700 /etc/cfi/certs
+
+# Save certificate and key
+echo "$MTLS_CERT_PEM" > /etc/cfi/certs/bank_alpha.crt
+echo "$MTLS_KEY_PEM" > /etc/cfi/certs/bank_alpha.key
+
+chmod 600 /etc/cfi/certs/bank_alpha.key
 ```
 
-### Configuration Setup (`bank_config.yaml`)
-Edit `bank_config.yaml` to fill in your institution's parameters:
+---
+
+## 4. Step 3: Connector Config
+
+Save the `connector_config_yaml` to `/etc/cfi/config/bank_alpha.yaml`:
+
 ```yaml
 bank_id: "bank_alpha"
-bank_name: "Alpha Bank Corp"
-coordinator_host: "coordinator.cfi.internal"
-coordinator_port: 50051
-
-mtls:
-  enabled: true
-  client_cert_path: "certs/bank.crt"
-  client_key_path:  "certs/bank.key"
-  ca_cert_path:     "certs/consortium_ca.crt"
-
-vault:
-  dir: "data/vault"
-  passphrase: "<YOUR_STRONG_VAULT_PASSPHRASE>"
+coordinator_url: "https://coordinator.cf-intelligence.io:50051"
+cert_path: "/etc/cfi/certs/bank_alpha.crt"
+key_path: "/etc/cfi/certs/bank_alpha.key"
+ca_cert_path: "/etc/cfi/certs/ca.crt"
+connector_type: "PARQUET"
+batch_size: 1000
+dp_epsilon: 0.5
+clip_norm: 1.0
+health_port: 8080
 ```
 
 ---
 
-## 3. Step 2: Generate Certificate Signing Request (`cfi-cli cert generate-csr`)
+## 5. Step 4: Start the Daemon
 
-Generate a 4096-bit RSA private key (`bank.key`) and an X.509 Certificate Signing Request (`bank.csr`) formatted for mTLS authentication:
-
-```bash
-python scripts/cfi_cli.py cert generate-csr --bank-id bank_alpha --output-dir ./certs
-```
-
-### Output JSON Response
-```json
-{
-  "status": "ok",
-  "command": "cert generate-csr",
-  "bank_id": "bank_alpha",
-  "key_file": "certs/bank.key",
-  "csr_file": "certs/bank.csr",
-  "key_bits": 4096,
-  "signature_algorithm": "SHA256withRSA"
-}
-```
-
-> [!IMPORTANT]
-> Keep `certs/bank.key` secret and secure! Submit `certs/bank.csr` to your consortium CA administrator or HashiCorp Vault PKI engine (`/v1/pki/sign`). Once signed, place `bank.crt` and `consortium_ca.crt` into the `certs/` directory.
-
----
-
-## 4. Step 3: Verify Network Connectivity & mTLS SLA (`cfi-cli test-connection`)
-
-Test outbound gRPC reachability, network latency, and coordinator readiness:
+Launch the local training daemon process:
 
 ```bash
-python scripts/cfi_cli.py test-connection --host coordinator.cfi.internal --port 50051
-```
+# Using CLI tool
+cfi-cli join --bank-id bank_alpha --coordinator-url https://coordinator.cf-intelligence.io
 
-### Response Attributes
-- `tcp_reachable`: `true` indicates TCP handshake succeeded.
-- `latency_ms`: Outbound round-trip time (target SLA: $< 100\text{ms}$).
-- `latency_sla`: `PASS` or `WARN`.
-
----
-
-## 5. Step 4: Run Self-Service Integration Sandbox (`cfi-cli sandbox run`)
-
-Benchmark local feature store throughput, data contract normalization, and PyTorch GPU/CPU accelerator compatibility prior to joining active federated training rounds:
-
-```bash
-python scripts/cfi_cli.py sandbox run --transactions 5000
-```
-
-### Benchmark Output
-```json
-{
-  "status": "ok",
-  "command": "sandbox run",
-  "transactions_generated": 5000,
-  "fraud_transactions": 104,
-  "fraud_rate_pct": 2.08,
-  "total_elapsed_sec": 0.0421,
-  "throughput_tps": 118764.8,
-  "throughput_sla": "PASS",
-  "hardware": {
-    "pytorch_available": true,
-    "pytorch_version": "2.4.0",
-    "cuda_available": true,
-    "cuda_device": "NVIDIA GeForce RTX 4090",
-    "recommended_device": "cuda"
-  }
-}
+# Or launch daemon directly
+cfi-daemon --config /etc/cfi/config/bank_alpha.yaml
 ```
 
 ---
 
-## 6. Step 5: Launch Client Daemon (`cfi-bank-client`)
+## 6. Step 5: Verify Connection
 
-Once sandbox benchmarks and mTLS certificate installation pass, launch the production client daemon:
+Check the node operational status:
 
 ```bash
-python backend/app/infrastructure/client_daemon/daemon.py --config bank_config.yaml
+cfi-cli status --bank-id bank_alpha
 ```
 
-Or run via Docker:
-```bash
-docker run -d \
-  --name cfi-bank-client-alpha \
-  -v $(pwd)/bank_config.yaml:/app/bank_config.yaml \
-  -v $(pwd)/certs:/app/certs \
-  -v $(pwd)/data/vault:/app/data/vault \
-  cfi-bank-client:latest
+Expected output:
+```text
++---------------+------------------------+---------+-------------------+
+| Bank ID       | Legal Name             | Status  | Schema            |
++---------------+------------------------+---------+-------------------+
+| bank_alpha    | Alpha National Bank    | ACTIVE  | tenant_bank_alpha |
++---------------+------------------------+---------+-------------------+
 ```
 
-The daemon will initiate an outbound gRPC stream to the coordinator, complete registration, and join active federated learning rounds automatically.
+---
+
+## 7. Troubleshooting
+
+| Issue | Root Cause | Resolution |
+|---|---|---|
+| `UNAUTHENTICATED: Certificate expired` | Cert TTL elapsed | Run `cfi-cli rotate-certs --bank-id <id>` |
+| `PERMISSION_DENIED: Bank not active` | Registration pending verification | Contact coordinator admin to activate node |
+| `UNAVAILABLE: Name resolution failed` | Port 50051 blocked | Verify firewall rules for TCP 50051 |
+| `QuorumNotMetError` | Insufficient participating banks | Wait for additional consortium members to join round |

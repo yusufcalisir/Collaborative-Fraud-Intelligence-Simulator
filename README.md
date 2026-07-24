@@ -648,7 +648,25 @@ docker-compose up -d postgres
 alembic upgrade head
 ```
 
+### 17.4 Registering a Bank Node
+
+```bash
+# Register a new bank node via administrative API
+curl -X POST http://localhost:8000/v1/admin/banks/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bank_id": "bank_alpha",
+    "legal_name": "Alpha National Bank",
+    "jurisdiction": "TR",
+    "contact_email": "security@alphabank.com",
+    "data_residency_region": "eu-west-1"
+  }'
+
+# Response includes mtls_cert_pem, mtls_key_pem, and connector_config_yaml
+```
+
 ---
+
 
 
 ## 18. Verification & Quality Testing Suite

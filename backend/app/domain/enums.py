@@ -207,3 +207,15 @@ class GNNArchitecture(StrEnum):
     """Graph Neural Network architecture for federated graph embedding."""
 
     GRAPHSAGE = "graphsage"
+
+
+# ── Phase 36: Bank Onboarding ─────────────────
+
+
+class BankStatus(StrEnum):
+    """Enterprise status of a participating bank node."""
+
+    PENDING_VERIFICATION = "pending_verification"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    OFFBOARDED = "offboarded"

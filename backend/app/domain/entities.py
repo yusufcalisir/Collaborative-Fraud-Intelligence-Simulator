@@ -123,3 +123,20 @@ class TrainingRound:
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     canary_info: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class BankRegistration:
+    """Enterprise registration record of a participating bank node."""
+
+    bank_id: str
+    legal_name: str
+    jurisdiction: str
+    contact_email: str
+    data_residency_region: str
+    status: Any = "pending_verification"
+    cert_fingerprint: str | None = None
+    vault_key_path: str | None = None
+    schema_provisioned: bool = False
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    activated_at: datetime | None = None
