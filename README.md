@@ -8,43 +8,117 @@
 [![Python Version](https://img.shields.io/badge/python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2.0-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org)
-[![Uptime SLA](https://img.shields.io/badge/SLA-99.9%25-brightgreen.svg?style=flat&logo=prometheus&logoColor=white)](#-track-3-real-time-scoring-gateway--high-availability-sla)
+[![Uptime SLA](https://img.shields.io/badge/SLA-99.9%25-brightgreen.svg?style=flat&logo=prometheus&logoColor=white)](#5-track-3-real-time-scoring-gateway--high-availability-sla)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Abstract](#-abstract--institutional-business-case) • [Architecture](#-system-architecture--structural-foundations) • [Track Breakdown](#-track-1-privacy-preserving-federated-learning--differential-privacy) • [Feature Matrix](#-enterprise-feature-matrix--verification-mapping) • [Threat Model](#-threat-modeling-summary-stride-matrix) • [Directory Tree](#-complete-clean-architecture-directory-structure) • [API Specs](#-api-endpoint-blueprints--json-schemas) • [Quick Start](#-step-by-step-operator-quick-start-guide)
+[Abstract](#1-executive-abstract--institutional-business-case) • [Architecture](#2-core-architectural-philosophy--system-topology) • [Track 1](#3-track-1-privacy-preserving-federated-learning--differential-privacy) • [Track 2](#4-track-2-collaborative-aml-intelligence--9-signal-risk-engine) • [Track 3](#5-track-3-real-time-scoring-gateway--high-availability-sla) • [Track 4](#6-track-4-mlops-governance-operations--security) • [Directory Tree](#10-complete-clean-architecture-directory-structure) • [API Specs](#11-api-endpoint-blueprints--json-schemas)
 
 </div>
 
 ---
 
-## 📖 Abstract & Institutional Business Case
+## Table of Contents
 
-Financial institutions worldwide operate under a fundamental systemic paradox: while money laundering and organized financial crime operate across institutional boundaries, anti-fraud defense mechanisms remain strictly siloed. Modern financial criminals exploit information asymmetry between financial entities through structured velocity fraud, multi-bank mule networks, and smurfing techniques designed to remain below single-bank detection thresholds.
-
-Centralizing cross-bank transaction logs to eliminate this blind spot is prohibited by global regulatory frameworks, including:
-- **GDPR (General Data Protection Regulation):** Articles 6 (Lawful Processing) and 17 (Right to Erasure / Zeroization).
-- **CCPA (California Consumer Privacy Act):** Consumer PII disclosure restrictions.
-- **Banking Secrecy Laws & National Financial Privacy Statutes:** Strict statutory bans on sharing raw customer account records across institutional perimeters.
-
-The **Collaborative Fraud Intelligence Platform** resolves this paradox. By integrating **Federated Machine Learning (FL)**, **Differential Privacy ($\epsilon, \delta$)**, **Secure Aggregation (SecAgg)**, **Byzantine-Robust Consensus**, and **Zero-Trust Microservices**, participating institutions train high-performance global fraud detection models collaboratively without ever centralizing, exposing, or decrypting raw transaction data.
+- [1. Executive Abstract & Institutional Business Case](#1-executive-abstract--institutional-business-case)
+  - [1.1 The Cross-Bank Information Asymmetry Dilemma](#11-the-cross-bank-information-asymmetry-dilemma)
+  - [1.2 Typologies of Cross-Institutional Financial Crime](#12-typologies-of-cross-institutional-financial-crime)
+  - [1.3 The Regulatory Conflict: Privacy vs. AML Mandates](#13-the-regulatory-conflict-privacy-vs-aml-mandates)
+  - [1.4 The Federated Solution](#14-the-federated-solution)
+- [2. Core Architectural Philosophy & System Topology](#2-core-architectural-philosophy--system-topology)
+  - [2.1 Decoupled Clean Architecture](#21-decoupled-clean-architecture)
+  - [2.2 High-Level System ASCII Topology](#22-high-level-system-ascii-topology)
+  - [2.3 Federated Learning Round Workflow](#23-federated-learning-round-workflow)
+  - [2.4 Real-Time Scoring & Inference Sequence](#24-real-time-scoring--inference-sequence)
+  - [2.5 Case Investigation State Lifecycle](#25-case-investigation-state-lifecycle)
+  - [2.6 Multi-Region Disaster Recovery Sequence](#26-multi-region-disaster-recovery-sequence)
+- [3. Track 1: Privacy-Preserving Federated Learning & Differential Privacy](#3-track-1-privacy-preserving-federated-learning--differential-privacy)
+  - [3.1 Local PyTorch Training & Private Datasets](#31-local-pytorch-training--private-datasets)
+  - [3.2 Formal Differential Privacy ($\epsilon, \delta$) Formulation](#32-formal-differential-privacy-\epsilon-\delta-formulation)
+  - [3.3 Secure Aggregation (SecAgg) Seed Masking](#33-secure-aggregation-secagg-seed-masking)
+  - [3.4 Byzantine-Robust Server Aggregation Schemes](#34-byzantine-robust-server-aggregation-schemes)
+  - [3.5 Outbound Outlier Guard & Spectral Poisoning Defense](#35-outbound-outlier-guard--spectral-poisoning-defense)
+  - [3.6 Canary Evaluation Quality Gate](#36-canary-evaluation-quality-gate)
+  - [3.7 Champion/Challenger Shadow Prediction Routing](#37-championchallenger-shadow-prediction-routing)
+  - [3.8 Automatic Performance Rollback Manager](#38-automatic-performance-rollback-manager)
+  - [3.9 PSI Drift-Triggered Retraining Pipeline](#39-psi-drift-triggered-retraining-pipeline)
+- [4. Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine](#4-track-2-collaborative-aml-intelligence--9-signal-risk-engine)
+  - [4.1 Detailed Breakdown of the 9 Risk Signals](#41-detailed-breakdown-of-the-9-risk-signals)
+  - [4.2 Mathematical Composite Risk Scoring Formula](#42-mathematical-composite-risk-scoring-formula)
+  - [4.3 FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing](#43-fincen-bsa-suspicious-activity-report-sar-xml-e-filing)
+  - [4.4 Cryptographic Event Hash Chaining](#44-cryptographic-event-hash-chaining)
+  - [4.5 Evidence Registry & Chain-of-Custody Hashing](#45-evidence-registry--chain-of-custody-hashing)
+  - [4.6 Web3 & CBDC Smart Contract Incentive Settlement](#46-web3--cbdc-smart-contract-incentive-settlement)
+  - [4.7 On-Chain Quarantine Locks for Poisoners](#47-on-chain-quarantine-locks-for-poisoners)
+- [5. Track 3: Real-Time Scoring Gateway & High-Availability SLA](#5-track-3-real-time-scoring-gateway--high-availability-sla)
+  - [5.1 Real-Time Fraud Scoring API Router](#51-real-time-fraud-scoring-api-router)
+  - [5.2 Sub-Millisecond Fast Feature Explainer](#52-sub-millisecond-fast-feature-explainer)
+  - [5.3 High-Availability Inference Fallback Engine](#53-high-availability-inference-fallback-engine)
+  - [5.4 Real-Time SLA Latency Monitor](#54-real-time-sla-latency-monitor)
+  - [5.5 SLA/SLO Contract Enforcement & Billing Credit Engine](#55-slaslo-contract-enforcement--billing-credit-engine)
+- [6. Track 4: MLOps, Governance, Operations & Security](#6-track-4-mlops-governance-operations--security)
+  - [6.1 Human-in-the-Loop Case Management Workbench](#61-human-in-the-loop-case-management-workbench)
+  - [6.2 Four-Eyes Supervisor Dual-Authorization](#62-four-eyes-supervisor-dual-authorization)
+  - [6.3 Privacy-Preserving Label Feedback Loop & DP Noise Guard](#63-privacy-preserving-label-feedback-loop--dp-noise-guard)
+  - [6.4 Enterprise Data Retention & GDPR Article 17 Erasure Engine](#64-enterprise-data-retention--gdpr-article-17-erasure-engine)
+  - [6.5 Active-Passive Multi-Region Coordinator Failover](#65-active-passive-multi-region-coordinator-failover)
+  - [6.6 Backup Integrity Verifier & Sandbox Restore Probes](#66-backup-integrity-verifier--sandbox-restore-probes)
+  - [6.7 Developer Webhook Gateway & HMAC-SHA256 Payload Signing](#67-developer-webhook-gateway--hmac-sha256-payload-signing)
+  - [6.8 SRE Operational Runbooks & SEV1-SEV4 Incident Triage Engine](#68-sre-operational-runbooks--sev1-sev4-incident-triage-engine)
+  - [6.9 Zero-Downtime Platform Upgrade Manager](#69-zero-downtime-platform-upgrade-manager)
+  - [6.10 Commercial Multi-Role Web Management Console](#610-commercial-multi-role-web-management-console)
+  - [6.11 Official PyPI Operator CLI Utility (`cfi-cli`)](#611-official-pypi-operator-cli-utility-cfi-cli)
+  - [6.12 Edge Security Perimeter WAF Guard](#612-edge-security-perimeter-waf-guard)
+  - [6.13 Air-Gapped Installer Package Builder](#613-air-gapped-installer-package-builder)
+  - [6.14 Enterprise Security Attestations Auditor](#614-enterprise-security-attestations-auditor)
+  - [6.15 Responsible Vulnerability Disclosure Policy (`SECURITY.md`)](#615-responsible-vulnerability-disclosure-policy-securitymd)
+  - [6.16 SIEM Log Exporter (Syslog CEF / Splunk / Datadog)](#616-siem-log-exporter-syslog-cef--splunk--datadog)
+  - [6.17 Support Diagnostic Compiler with PII Redaction](#617-support-diagnostic-compiler-with-pii-redaction)
+- [7. Enterprise Feature Comparison & Compliance Matrix](#7-enterprise-feature-comparison--compliance-matrix)
+- [8. Threat Modeling Summary (STRIDE Matrix)](#8-threat-modeling-summary-stride-matrix)
+- [9. Regulatory Compliance Mapping Matrix](#9-regulatory-compliance-mapping-matrix)
+- [10. Complete Clean Architecture Directory Structure](#10-complete-clean-architecture-directory-structure)
+- [11. API Endpoint Blueprints & JSON Schemas](#11-api-endpoint-blueprints--json-schemas)
+- [12. CLI Tooling Usage Guide (`cfi-cli`)](#12-cli-tooling-usage-guide-cfi-cli)
+- [13. Configuration Reference & Environment Variables](#13-configuration-reference--environment-variables)
+- [14. Step-by-Step Operator Quick Start Guide](#14-step-by-step-operator-quick-start-guide)
+- [15. Automated Verification & Test Suite Execution](#15-automated-verification--test-suite-execution)
+- [16. License & Academic Citation](#16-license--academic-citation)
 
 ---
 
-## 🏛️ System Architecture & Structural Foundations
+## 1. Executive Abstract & Institutional Business Case
 
-The platform is engineered around a decoupled clean architecture, enforcing strict separation of concerns across four domain tracks:
+### 1.1 The Cross-Bank Information Asymmetry Dilemma
+Financial institutions operate under a fundamental systemic vulnerability: while financial crimes, illicit syndicates, and money laundering schemes span across dozens of banking institutions simultaneously, anti-fraud defense mechanisms remain locked within individual bank data silos. Each financial institution trains machine learning models exclusively on its own local transaction records. As a consequence, malicious actors exploit the structural blind spots between institutions.
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                   Collaborative Fraud Intelligence Core                  │
-├───────────────────┬───────────────────┬───────────────────┬──────────────┤
-│      Track 1      │      Track 2      │      Track 3      │   Track 4    │
-│    Federated      │   9-Signal Risk   │   Microservices & │    MLOps &   │
-│     Learning      │   Engine & AML    │   API Gateway     │  Governance  │
-└───────────────────┴───────────────────┴───────────────────┴──────────────┘
-```
+### 1.2 Typologies of Cross-Institutional Financial Crime
+- **Cross-Bank Velocity Fraud:** Fraudsters rapidly transfer stolen funds sequentially through Bank Alpha -> Bank Beta -> Bank Gamma within minutes, clearing accounts before any individual bank's internal rules trigger.
+- **Structured Mule Networks:** Money laundering syndicates distribute structured micro-transactions ("smurfing") across dozens of participating institutions, ensuring each transaction remains below the single-bank mandatory reporting threshold (e.g., $10,000 USD).
+- **Synthetic Identity Rings:** Fraudsters create synthetic credit profiles across multiple banks concurrently, maximizing credit line defaults before detection.
 
-### High-Level System ASCII Topology
+### 1.3 The Regulatory Conflict: Privacy vs. AML Mandates
+Consolidating raw customer transaction records into a centralized database to eliminate cross-bank blind spots is strictly prohibited by international law:
+- **GDPR (General Data Protection Regulation):** Articles 6 (Lawfulness of Processing) and 17 (Right to Erasure / Zeroization).
+- **CCPA (California Consumer Privacy Act):** Unlawful disclosure of personally identifiable financial data.
+- **Banking Secrecy Laws & National Financial Privacy Statutes:** Criminal liability for unauthorized customer account disclosures across institutional borders.
+
+Conversely, regulatory bodies enforce strict Anti-Money Laundering (AML) mandates, requiring financial institutions to detect, freeze, and report suspicious activities via FinCEN BSA Suspicious Activity Reports (SARs).
+
+### 1.4 The Federated Solution
+The **Collaborative Fraud Intelligence Platform** resolves this conflict. By employing **Federated Learning (FL)**, **Differential Privacy ($\epsilon, \delta$)**, and **Secure Aggregation (SecAgg)**, financial institutions train a global fraud detection model collaboratively—without ever sharing, centralizing, or decrypting raw customer transaction records.
+
+---
+
+## 2. Core Architectural Philosophy & System Topology
+
+### 2.1 Decoupled Clean Architecture
+The platform enforces strict separation of concerns into four clean architecture layers:
+1. **Domain Layer (`backend/app/domain/`):** Pure python business entities, value objects, state machines, and domain contracts without external infrastructure dependencies.
+2. **Application Layer (`backend/app/application/`):** Use cases, service orchestrators, federated engine pipelines, and workflow handlers.
+3. **Infrastructure Layer (`backend/app/infrastructure/`):** Security perimeter guards, WAF rules, disaster recovery failover managers, SIEM exporters, and air-gapped bundle builders.
+4. **Presentation Layer (`backend/app/presentation/`):** REST API routers, CLI utilities (`cfi-cli`), and web console endpoints.
+
+### 2.2 High-Level System ASCII Topology
 
 ```
                                   ┌─────────────────────────────────────────────────────────────┐
@@ -104,7 +178,7 @@ The platform is engineered around a decoupled clean architecture, enforcing stri
                                   └─────────────────────────────────────────────────────────────┘
 ```
 
-### End-to-End Federated Learning Round Workflow
+### 2.3 Federated Learning Round Workflow
 
 ```mermaid
 flowchart TD
@@ -139,43 +213,7 @@ flowchart TD
     end
 ```
 
----
-
-## 🔬 Track 1: Privacy-Preserving Federated Learning & Differential Privacy
-
-### 1.1 Local Model Architectures & Private Datasets
-Each bank node trains local deep learning models—including Multi-Layer Perceptrons (MLP), PyTorch Streaming Graph Neural Networks (GNN), and Federated XGBoost—on local transaction databases. Local data remains strictly within the bank's security perimeter.
-
-### 1.2 Formal Differential Privacy ($\epsilon, \delta$) Formulation
-To prevent gradient inversion and reconstruction attacks, local gradient updates are protected using Gaussian Differential Privacy. The noise scale $\sigma$ is computed as:
-$$\sigma = \frac{\sqrt{2 \ln(1.25/\delta)}}{\epsilon}$$
-Where:
-- $\epsilon$ is the privacy budget ($\epsilon \le 2.0$ enforced).
-- $\delta$ is the failure probability ($\delta \le 10^{-5}$).
-- $C$ is the maximum $L_2$ gradient norm bound: $\bar{g}_i = g_i / \max\left(1, \frac{\|g_i\|_2}{C}\right)$.
-
-### 1.3 Secure Aggregation (SecAgg) & Outbound Outlier Guard
-Outbound model parameter updates are masked using pairwise secret seeds prior to network transmission:
-$$y_k = w_k + \sum_{j > k} s_{kj} - \sum_{j < k} s_{jk} \pmod{2^{32}}$$
-When summed across all $N$ participating nodes, the pairwise masks $s_{kj}$ cancel out exactly ($\sum_{k=1}^N y_k = \sum_{k=1}^N w_k$), enabling the central coordinator to aggregate global weights without revealing individual node updates.
-
-### 1.4 Byzantine-Robust Server Aggregation Algorithms
-The coordinator implements four robust aggregation schemes to resist adversarial model poisoning:
-1. **FedAvg (Federated Averaging):** Standard sample-weighted parameter averaging.
-2. **Krum & Multi-Krum:** Selects update vectors that minimize the sum of Euclidean distances to their $n - f - 2$ nearest neighbors.
-3. **Trimmed Mean:** Computes coordinate-wise averages after trimming the highest and lowest $\beta$ percentile values.
-4. **Coordinate-wise Median:** Computes the coordinate-wise median vector, resisting up to 50% Byzantine malicious nodes.
-5. **Spectral Anomaly Poisoning Defense (`spectral_defense.py`):** Uses top singular value decomposition (SVD) of the weight matrix to identify and discard poisoners.
-
-### 1.5 Canary Evaluation Quality Gate & Performance Rollback
-- **Canary Test Gate:** Aggregated candidate models are evaluated against a global validation dataset. Promotion requires $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{active}} - \text{tolerance}$.
-- **Shadow Prediction Routing:** Directs 10% of live production inference traffic to candidate models in shadow mode for real-time validation.
-- **Automatic Rollback Manager (`auto_rollback.py`):** Instantly reverts to the previous stable champion model if live metrics breach thresholds ($\text{AUC} < 0.65$, $p95 \text{ Latency} > 200\text{ms}$, or $\text{FPR} > 5\%$).
-- **PSI Drift-Triggered Retraining (`automated_retraining.py`):** Automatically initiates a new federated training round when Population Stability Index exceeds threshold ($\text{PSI} \ge 0.20$).
-
----
-
-## 🧠 Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine
+### 2.4 Real-Time Scoring & Inference Sequence
 
 ```mermaid
 sequenceDiagram
@@ -198,54 +236,7 @@ sequenceDiagram
     end
 ```
 
-### 2.1 9-Signal Composite Risk Scoring Formula
-The platform computes a composite risk score ($0 - 1000$) incorporating 9 distinct anti-fraud signals:
-$$\text{Risk Score} = w_1 S_{\text{local}} + w_2 S_{\text{velocity}} + w_3 S_{\text{graph}} + w_4 S_{\text{typology}} + w_5 S_{\text{amount}} + w_6 S_{\text{device}} + w_7 S_{\text{temporal}} + w_8 S_{\text{mule}} + w_9 S_{\text{structuring}}$$
-
-Where:
-1. $S_{\text{local}}$: Local PyTorch model risk output.
-2. $S_{\text{velocity}}$: Cross-bank 1-hour transaction velocity anomaly.
-3. $S_{\text{graph}}$: Graph neural network entity centrality risk index.
-4. $S_{\text{typology}}$: Match score against known money laundering typologies.
-5. $S_{\text{amount}}$: Z-score transaction amount deviation from historical baseline.
-6. $S_{\text{device}}$: Device fingerprint and IP reputation risk index.
-7. $S_{\text{temporal}}$: Off-hours and rapid temporal clustering score.
-8. $S_{\text{mule}}$: Probabilistic mule account classification score.
-9. $S_{\text{structuring}}$: Structuring / smurfing pattern detection index.
-
-### 2.2 FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing
-`regulatory_reporter.py` automatically serializes Suspicious Activity Report (SAR) XML documents conforming to FinCEN BSA Electronic Filing specifications when a case transitions to `RESOLVED_CONFIRMED_FRAUD`.
-
-### 2.3 Cryptographic Event Hash Chaining
-Analyst actions, evidence uploads, and status transitions are chained using SHA-256 block hashing:
-$$H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$$
-This guarantees an immutable audit trail suitable for regulatory submission and judicial admissibility.
-
-### 2.4 Web3 & CBDC Smart Contract Incentive Settlement
-The EVM smart contract (`ConsortiumIncentiveSettlement.sol`) distributes financial rewards (`wCBDC`, `USDC`, `e-TRY`) to participating banks based on Leave-One-Out (LOO) Shapley contribution values. Nodes submitting low-quality or poisoned updates trigger on-chain quarantine locks (`BLOCKED_QUARANTINE`).
-
----
-
-## ⚡ Track 3: Real-Time Scoring Gateway & High-Availability SLA
-
-### 3.1 Real-Time Scoring Gateway (`/v1/inference/score`)
-The high-throughput FastAPI inference router processes incoming transaction scoring requests under a sub-100ms SLA ($p95$). It assigns real-time decisions: `ALLOW` (Score < 300), `REVIEW` (300 <= Score < 700), or `BLOCK` (Score >= 700).
-
-### 3.2 Sub-Millisecond Feature Attributions (`realtime_explainer.py`)
-`FastInferenceExplainer` computes real-time Shapley feature contributions in under 1ms, identifying top contributing risk factors for instant analyst interpretability.
-
-### 3.3 Inference Fallback Engine (`inference_fallback.py`)
-Provides high-availability heuristic decision fallbacks if primary model latency exceeds 150ms or if model service degradation occurs.
-
-### 3.4 SLA/SLO Contract Enforcement (`sla_contract_engine.py`)
-Monitors overall system availability (99.9% uptime SLA target) and latency SLOs (<100ms $p95$). If monthly uptime drops below 99.9%, `SLAContractEngine` automatically generates a contractual `PenaltyReport` issuing percentage-based billing service credits.
-
----
-
-## 🛠️ Track 4: MLOps, Governance, Security & Operations
-
-### 🕵️ Human-in-the-Loop Case Management & Workbench
-- **6-Stage State Machine:** `CaseLifecycleStateMachine` governs case progression (`NEW` -> `ASSIGNED` -> `UNDER_INVESTIGATION` -> `ESCALATED` -> `RESOLVED_CONFIRMED_FRAUD` / `RESOLVED_FALSE_POSITIVE`).
+### 2.5 Case Investigation State Lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -259,54 +250,185 @@ stateDiagram-v2
     RESOLVED_FALSE_POSITIVE --> [*]
 ```
 
-> [!IMPORTANT]
-> **Four-Eyes Supervisor Dual Sign-Off:** Case resolution (`RESOLVED_CONFIRMED_FRAUD` or `RESOLVED_FALSE_POSITIVE`) strictly requires a supervisor cryptographic signature starting with `SIG_SUPERVISOR_*`. Requisitions lacking this authorization are rejected with HTTP `403 Forbidden`.
+### 2.6 Multi-Region Disaster Recovery Sequence
 
-### 🔒 Privacy-Preserving Label Feedback Loop & DP Noise Guard
-- **Label Privacy Guard:** `LabelPrivacyGuard` validates incoming label feedback, enforcing zero-PII leak constraints (HMAC-SHA256 checks and raw PII blocking).
-- **Federated Gradient Update:** `LocalLabelFeedbackPipeline` computes Gaussian Differential Privacy noise-protected local gradient deltas ($\epsilon \le 2.0$).
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Banking Application
+    participant Primary as Primary Coordinator (Region A)
+    participant Monitor as DR Failover Manager
+    participant Secondary as Standby Coordinator (Region B)
 
-### 🗑️ Enterprise Data Retention & GDPR Article 17 Erasure Engine
-- **Automated Retention Engine:** `AutomatedRetentionEngine` configures per-tenant Time-To-Live (TTL) policies and purges expired records across data categories.
-- **GDPR Article 17 Right-to-be-Forgotten:** Executes cryptographic zeroization for requested customer identifiers and outputs an immutable `ErasureAuditRecord`.
-
-### 🌍 Active-Passive Multi-Region Coordinator Failover
-- **Multi-Region Failover Manager:** `MultiRegionFailoverManager` monitors active primary and passive standby coordinator nodes, executing automated failover ($RTO < 30\text{s}$, $RPO = 0$) upon primary heartbeat failure (>15s).
-
-### 🛡️ Automated Backup Verification & Sandbox Restore Probes
-- **Backup Integrity Verifier:** `BackupVerifier` validates SHA-256 checksums and executes automated sandbox restore dry-runs (`run_sandbox_restore_probe`).
-
-### 🔌 Public Integration API & Webhook Gateway
-- **Webhook Gateway Router:** `POST /v1/webhooks/subscriptions` registers developer webhook endpoints for event notifications (`ALERT_CREATED`, `CASE_RESOLVED`, `MODEL_PROMOTED`, `DRIFT_DETECTED`).
-- **HMAC-SHA256 Payload Signing:** All webhook deliveries compute and append a cryptographic `X-CFI-Signature` header (`HMAC_SHA256(secret_key, payload_body)`).
-
-### 🚨 SRE Operational Runbooks & Incident Playbooks
-- **Incident Triage Engine:** `IncidentTriageEngine` automatically classifies system alerts into severity levels (`SEV1` to `SEV4`) and attaches step-by-step SRE remediation commands (`PlaybookAction`).
-
-### 🔄 Zero-Downtime Platform Upgrades & Client Compatibility
-- **Deployment Manager:** `ZeroDowntimeDeploymentManager` orchestrates 5-stage rolling releases (`DRAINING_CONNECTIONS` -> `ROLLING_UPGRADE` -> `DUAL_VERSION_ACTIVE` -> `UPGRADE_COMPLETED`) with a 48-hour dual-version compatibility window (`UpgradeWindow`).
-
-### 🎛️ Commercial Multi-Role Web Management Console
-- **Tailored Personas:** Serves 4 distinct enterprise personas (`EXECUTIVE`, `COMPLIANCE_OFFICER`, `ML_ENGINEER`, `FRAUD_INVESTIGATOR`) via `GET /v1/admin/dashboard/role-config`.
-
-### 💻 Official CLI Tooling (`cfi-cli`)
-- **Standardized Operator Commands:** Provides terminal subcommands (`cfi-cli status`, `cfi-cli health`, `cfi-cli export-diagnostics`, `cfi-cli deploy`).
-
-### 🛡️ Edge Security Perimeter & Air-Gapped Deployment Bundle
-- **Perimeter WAF Guard:** `PerimeterWAFGuard` filters malicious SQLi, XSS, and enforces strict IP whitelisting at the edge.
-- **Air-Gapped Installer Builder:** `AirGapBundleBuilder` packages self-contained, zero-internet tarball bundles validated with SHA-256 manifests.
-
-### 📑 Enterprise Security Attestations & Compliance Matrix
-- **Compliance Auditor Engine:** `SecurityComplianceEngine` audits platform controls against SOC2 Type II, ISO 27001, and GDPR Art. 17 standards.
-- **Responsible Vulnerability Disclosure:** Policy and PGP key details published in [SECURITY.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/SECURITY.md).
-
-### 📊 SIEM Log Forwarding & Automated Support Telemetry
-- **SIEM CEF Exporter:** `SIEMLogExporter` exports audit events in Syslog Common Event Format (CEF), Splunk HEC, and Datadog JSON formats.
-- **Support Diagnostic Compiler:** `SupportDiagnosticCompiler` packages PII-redacted, SHA-256 signed telemetry bundles for customer support.
+    Client->>Primary: Active Federated / Scoring Requests
+    Primary->>Monitor: Heartbeat Ping (Every 5s)
+    
+    Note over Primary,Monitor: Primary Coordinator Outage / Network Partition
+    Monitor->>Monitor: Primary Heartbeat Timeout (>15s)
+    Monitor->>Secondary: Trigger Promotion to Active Primary
+    Secondary->>Secondary: Update State (RTO < 30s, RPO = 0)
+    Monitor-->>Client: Reroute Traffic to Region B Coordinator
+    Client->>Secondary: Resume Active Platform Traffic
+```
 
 ---
 
-## 📊 Enterprise Feature Matrix & Verification Mapping
+## 3. Track 1: Privacy-Preserving Federated Learning & Differential Privacy
+
+### 3.1 Local PyTorch Training & Private Datasets
+Each participating bank node trains local deep learning models—including Multi-Layer Perceptrons (MLP), PyTorch Streaming Graph Neural Networks (GNN), and Federated XGBoost—on isolated transaction stores. Raw financial records never leave the institution's local perimeter.
+
+### 3.2 Formal Differential Privacy ($\epsilon, \delta$) Formulation
+To prevent gradient inversion and reconstruction attacks, local gradient updates are protected using Gaussian Differential Privacy. The noise scale $\sigma$ is computed as:
+$$\sigma = \frac{\sqrt{2 \ln(1.25/\delta)}}{\epsilon}$$
+Where:
+- $\epsilon$ is the privacy budget ($\epsilon \le 2.0$ enforced).
+- $\delta$ is the failure probability ($\delta \le 10^{-5}$).
+- $C$ is the maximum $L_2$ gradient norm bound: $\bar{g}_i = g_i / \max\left(1, \frac{\|g_i\|_2}{C}\right)$.
+
+### 3.3 Secure Aggregation (SecAgg) Seed Masking
+Outbound model parameter updates are masked using pairwise secret seeds prior to network transmission:
+$$y_k = w_k + \sum_{j > k} s_{kj} - \sum_{j < k} s_{jk} \pmod{2^{32}}$$
+When summed across all $N$ participating nodes, the pairwise masks $s_{kj}$ cancel out exactly ($\sum_{k=1}^N y_k = \sum_{k=1}^N w_k$), enabling the central coordinator to aggregate global weights without revealing individual node updates.
+
+### 3.4 Byzantine-Robust Server Aggregation Schemes
+The coordinator implements four robust aggregation schemes to resist adversarial model poisoning:
+1. **FedAvg (Federated Averaging):** Standard sample-weighted parameter averaging.
+2. **Krum & Multi-Krum:** Selects update vectors that minimize the sum of Euclidean distances to their $n - f - 2$ nearest neighbors.
+3. **Trimmed Mean:** Computes coordinate-wise averages after trimming the highest and lowest $\beta$ percentile values.
+4. **Coordinate-wise Median:** Computes the coordinate-wise median vector, resisting up to 50% Byzantine malicious nodes.
+
+### 3.5 Outbound Outlier Guard & Spectral Poisoning Defense
+`spectral_defense.py` uses top singular value decomposition (SVD) of the weight gradient matrix to identify and discard malicious poisoners before aggregation.
+
+### 3.6 Canary Evaluation Quality Gate
+Newly aggregated candidate models are benchmarked against a global validation dataset. Promotion requires $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{active}} - \text{tolerance}$.
+
+### 3.7 Champion/Challenger Shadow Prediction Routing
+Routes 10% of live production inference traffic to candidate models in shadow mode for real-time validation without affecting production decisions.
+
+### 3.8 Automatic Performance Rollback Manager
+`auto_rollback.py` instantly reverts to the previous stable champion model if live metrics breach safety thresholds ($\text{AUC} < 0.65$, $p95 \text{ Latency} > 200\text{ms}$, or $\text{FPR} > 5\%$).
+
+### 3.9 PSI Drift-Triggered Retraining Pipeline
+`automated_retraining.py` automatically initiates a new federated training round when Population Stability Index exceeds threshold ($\text{PSI} \ge 0.20$).
+
+---
+
+## 4. Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine
+
+### 4.1 Detailed Breakdown of the 9 Risk Signals
+The platform computes a composite risk score ($0 - 1000$) incorporating 9 distinct anti-fraud signals:
+1. $S_{\text{local}}$: Local PyTorch model risk output ($0.0 - 1.0$).
+2. $S_{\text{velocity}}$: Cross-bank 1-hour transaction velocity anomaly.
+3. $S_{\text{graph}}$: Graph neural network entity centrality risk index.
+4. $S_{\text{typology}}$: Match score against known money laundering typologies.
+5. $S_{\text{amount}}$: Z-score transaction amount deviation from historical baseline.
+6. $S_{\text{device}}$: Device fingerprint and IP reputation risk index.
+7. $S_{\text{temporal}}$: Off-hours and rapid temporal clustering score.
+8. $S_{\text{mule}}$: Probabilistic mule account classification score.
+9. $S_{\text{structuring}}$: Structuring / smurfing pattern detection index.
+
+### 4.2 Mathematical Composite Risk Scoring Formula
+$$\text{Risk Score} = \sum_{i=1}^{9} w_i S_i = w_1 S_{\text{local}} + w_2 S_{\text{velocity}} + w_3 S_{\text{graph}} + w_4 S_{\text{typology}} + w_5 S_{\text{amount}} + w_6 S_{\text{device}} + w_7 S_{\text{temporal}} + w_8 S_{\text{mule}} + w_9 S_{\text{structuring}}$$
+
+### 4.3 FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing
+`regulatory_reporter.py` automatically serializes Suspicious Activity Report (SAR) XML documents conforming to FinCEN BSA Electronic Filing specifications when a case transitions to `RESOLVED_CONFIRMED_FRAUD`.
+
+### 4.4 Cryptographic Event Hash Chaining
+Analyst actions, evidence uploads, and status transitions are chained using SHA-256 block hashing:
+$$H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$$
+This guarantees an immutable audit trail suitable for regulatory submission and judicial admissibility.
+
+### 4.5 Evidence Registry & Chain-of-Custody Hashing
+Compiles KYC profiles, transaction logs, and ledger proofs validated with SHA-256 content hashes to establish chain-of-custody.
+
+### 4.6 Web3 & CBDC Smart Contract Incentive Settlement
+The EVM smart contract (`ConsortiumIncentiveSettlement.sol`) distributes financial rewards (`wCBDC`, `USDC`, `e-TRY`) to participating banks based on Leave-One-Out (LOO) Shapley contribution values.
+
+### 4.7 On-Chain Quarantine Locks for Poisoners
+Nodes submitting low-quality or poisoned updates trigger on-chain quarantine locks (`BLOCKED_QUARANTINE`).
+
+---
+
+## 5. Track 3: Real-Time Scoring Gateway & High-Availability SLA
+
+### 5.1 Real-Time Fraud Scoring API Router
+The high-throughput FastAPI inference router (`/v1/inference/score`) processes incoming transaction scoring requests under a sub-100ms SLA ($p95$). It assigns real-time decisions: `ALLOW` (Score < 300), `REVIEW` (300 <= Score < 700), or `BLOCK` (Score >= 700).
+
+### 5.2 Sub-Millisecond Fast Feature Explainer
+`FastInferenceExplainer` (`realtime_explainer.py`) computes real-time Shapley feature contributions in under 1ms, identifying top contributing risk factors for instant analyst interpretability.
+
+### 5.3 High-Availability Inference Fallback Engine
+`InferenceFallbackEngine` (`inference_fallback.py`) provides high-availability heuristic decision fallbacks if primary model latency exceeds 150ms or if model service degradation occurs.
+
+### 5.4 Real-Time SLA Latency Monitor
+`RealtimeSLAMonitor` (`sla_monitor.py`) tracks $p50, p95, p99$ latency percentiles and triggers alerts upon SLA breaches.
+
+### 5.5 SLA/SLO Contract Enforcement & Billing Credit Engine
+`SLAContractEngine` (`sla_contract_engine.py`) monitors overall system availability (99.9% uptime SLA target) and latency SLOs (<100ms $p95$). If monthly uptime drops below 99.9%, `SLAContractEngine` automatically generates a contractual `PenaltyReport` issuing percentage-based billing service credits.
+
+---
+
+## 6. Track 4: MLOps, Governance, Operations & Security
+
+### 6.1 Human-in-the-Loop Case Management Workbench
+`case_workbench.py` orchestrates the 6-stage case lifecycle (`NEW` -> `ASSIGNED` -> `UNDER_INVESTIGATION` -> `ESCALATED` -> `RESOLVED_CONFIRMED_FRAUD` / `RESOLVED_FALSE_POSITIVE`).
+
+### 6.2 Four-Eyes Supervisor Dual-Authorization
+Case resolution (`RESOLVED_CONFIRMED_FRAUD` or `RESOLVED_FALSE_POSITIVE`) strictly requires a supervisor cryptographic signature starting with `SIG_SUPERVISOR_*`. Requisitions lacking this authorization are rejected with HTTP `403 Forbidden`.
+
+### 6.3 Privacy-Preserving Label Feedback Loop & DP Noise Guard
+- **Label Privacy Guard:** `LabelPrivacyGuard` validates incoming label feedback, enforcing zero-PII leak constraints (HMAC-SHA256 checks and raw PII blocking).
+- **Federated Gradient Update:** `LocalLabelFeedbackPipeline` computes Gaussian Differential Privacy noise-protected local gradient deltas ($\epsilon \le 2.0$).
+
+### 6.4 Enterprise Data Retention & GDPR Article 17 Erasure Engine
+- **Automated Retention Engine:** `AutomatedRetentionEngine` configures per-tenant Time-To-Live (TTL) policies and purges expired records across data categories.
+- **GDPR Article 17 Right-to-be-Forgotten:** Executes cryptographic zeroization for requested customer identifiers and outputs an immutable `ErasureAuditRecord`.
+
+### 6.5 Active-Passive Multi-Region Coordinator Failover
+`MultiRegionFailoverManager` monitors active primary and passive standby coordinator nodes, executing automated failover ($RTO < 30\text{s}$, $RPO = 0$) upon primary heartbeat failure (>15s).
+
+### 6.6 Backup Integrity Verifier & Sandbox Restore Probes
+`BackupVerifier` validates SHA-256 checksums and executes automated sandbox restore dry-runs (`run_sandbox_restore_probe`).
+
+### 6.7 Developer Webhook Gateway & HMAC-SHA256 Payload Signing
+- **Webhook Gateway Router:** `POST /v1/webhooks/subscriptions` registers developer webhook endpoints for event notifications (`ALERT_CREATED`, `CASE_RESOLVED`, `MODEL_PROMOTED`, `DRIFT_DETECTED`).
+- **HMAC-SHA256 Payload Signing:** All webhook deliveries compute and append a cryptographic `X-CFI-Signature` header (`HMAC_SHA256(secret_key, payload_body)`).
+
+### 6.8 SRE Operational Runbooks & SEV1-SEV4 Incident Triage Engine
+`IncidentTriageEngine` automatically classifies system alerts into severity levels (`SEV1` to `SEV4`) and attaches step-by-step SRE remediation commands (`PlaybookAction`).
+
+### 6.9 Zero-Downtime Platform Upgrade Manager
+`ZeroDowntimeDeploymentManager` orchestrates 5-stage rolling releases (`DRAINING_CONNECTIONS` -> `ROLLING_UPGRADE` -> `DUAL_VERSION_ACTIVE` -> `UPGRADE_COMPLETED`) with a 48-hour dual-version compatibility window (`UpgradeWindow`).
+
+### 6.10 Commercial Multi-Role Web Management Console
+Serves 4 distinct enterprise personas (`EXECUTIVE`, `COMPLIANCE_OFFICER`, `ML_ENGINEER`, `FRAUD_INVESTIGATOR`) via `GET /v1/admin/dashboard/role-config`.
+
+### 6.11 Official PyPI Operator CLI Utility (`cfi-cli`)
+Provides terminal subcommands (`cfi-cli status`, `cfi-cli health`, `cfi-cli export-diagnostics`, `cfi-cli deploy`).
+
+### 6.12 Edge Security Perimeter WAF Guard
+`PerimeterWAFGuard` filters malicious SQLi, XSS, and enforces strict IP whitelisting at the edge.
+
+### 6.13 Air-Gapped Installer Package Builder
+`AirGapBundleBuilder` packages self-contained, zero-internet tarball bundles validated with SHA-256 manifests.
+
+### 6.14 Enterprise Security Attestations Auditor
+`SecurityComplianceEngine` audits platform controls against SOC2 Type II, ISO 27001, and GDPR Art. 17 standards.
+
+### 6.15 Responsible Vulnerability Disclosure Policy (`SECURITY.md`)
+Policy and PGP key details published in [SECURITY.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/SECURITY.md).
+
+### 6.16 SIEM Log Exporter (Syslog CEF / Splunk / Datadog)
+`SIEMLogExporter` exports audit events in Syslog Common Event Format (CEF), Splunk HEC, and Datadog JSON formats.
+
+### 6.17 Support Diagnostic Compiler with PII Redaction
+`SupportDiagnosticCompiler` packages PII-redacted, SHA-256 signed telemetry bundles for customer support.
+
+---
+
+## 7. Enterprise Feature Comparison & Compliance Matrix
 
 | Feature / Module | Technical Specification | Compliance Standard | Verification File | Status |
 | :--- | :--- | :--- | :--- | :--- |
@@ -330,7 +452,7 @@ stateDiagram-v2
 
 ---
 
-## 🛡️ Threat Modeling Summary (STRIDE Matrix)
+## 8. Threat Modeling Summary (STRIDE Matrix)
 
 | STRIDE Category | Identified Threat | Mitigating Architectural Safeguard | Verification File |
 | :--- | :--- | :--- | :--- |
@@ -343,7 +465,19 @@ stateDiagram-v2
 
 ---
 
-## 📁 Complete Clean Architecture Directory Structure
+## 9. Regulatory Compliance Mapping Matrix
+
+| Framework / Regulation | Mandatory Requirement | Platform Implementation |
+| :--- | :--- | :--- |
+| **GDPR Article 6 & 17** | Lawful processing and Right-to-be-Forgotten zeroization | `retention_engine.py` executes cryptographic zeroization. |
+| **EU AI Act (High-Risk AI)** | Model interpretability, bias evaluation & audit trail | `ai_act_compliance.py` & `realtime_explainer.py`. |
+| **SR 11-7 Model Risk Governance** | Model validation, champion/challenger, and drift monitoring | `model_governance.py` & `automated_retraining.py`. |
+| **FinCEN BSA Regulations** | Suspicious Activity Reporting (SAR) e-filing XML compliance | `regulatory_reporter.py` serializes BSA SAR XML. |
+| **SOC2 Type II & ISO 27001** | Security perimeter, access control, and incident triage | `security_compliance.py` audits 5 core controls. |
+
+---
+
+## 10. Complete Clean Architecture Directory Structure
 
 ```
 Collaborative-Fraud-Intelligence-Simulator/
@@ -494,7 +628,7 @@ Collaborative-Fraud-Intelligence-Simulator/
 
 ---
 
-## 📡 API Endpoint Blueprints & JSON Schemas
+## 11. API Endpoint Blueprints & JSON Schemas
 
 ### 1. Real-Time Inference Scoring Endpoint
 
@@ -574,7 +708,7 @@ Host: api.cfi-platform.org
 
 ---
 
-## 💻 CLI Tooling Usage Guide (`cfi-cli`)
+## 12. CLI Tooling Usage Guide (`cfi-cli`)
 
 The platform includes a standardized PyPI command-line utility (`cfi-cli`) configured in `pyproject.toml`.
 
@@ -594,7 +728,20 @@ cfi-cli deploy --stage rolling --target-version 2.1.0
 
 ---
 
-## 🚀 Step-by-Step Operator Quick Start Guide
+## 13. Configuration Reference & Environment Variables
+
+| Variable Name | Default Value | Description |
+| :--- | :--- | :--- |
+| `CFI_ENV` | `production` | Environment mode (`development`, `staging`, `production`). |
+| `CFI_DP_EPSILON` | `2.0` | Differential Privacy maximum epsilon budget ($\epsilon$). |
+| `CFI_DP_DELTA` | `1e-5` | Differential Privacy delta failure probability ($\delta$). |
+| `CFI_INFERENCE_SLA_MS` | `100.0` | Maximum acceptable latency for scoring inference ($p95$). |
+| `CFI_DISASTER_RECOVERY_ROLE` | `PRIMARY` | Region DR role (`PRIMARY` or `STANDBY`). |
+| `CFI_SECAgg_ENABLED` | `true` | Enables pairwise cryptographic seed masking. |
+
+---
+
+## 14. Step-by-Step Operator Quick Start Guide
 
 ### 1. Prerequisites
 
@@ -616,7 +763,7 @@ pip install -e .
 
 ---
 
-## 🧪 Automated Verification and Quality Suite
+## 15. Automated Verification & Test Suite Execution
 
 Execute full automated unit test suite:
 
@@ -632,7 +779,7 @@ ruff check backend/app/ backend/tests/
 
 ---
 
-## 📄 License & Academic Citation
+## 16. License & Academic Citation
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
