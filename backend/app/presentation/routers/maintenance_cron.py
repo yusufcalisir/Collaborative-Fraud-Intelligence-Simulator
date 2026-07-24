@@ -23,12 +23,12 @@ DEFAULT_CRON_SECRET = "cfi_cron_secret_secure_token_2026"
 def verify_cron_authorization(authorization: str | None = Header(default=None), x_cron_secret: str | None = Header(default=None)) -> bool:
     """Validates incoming cron invocation authorization header against configured secret."""
     expected_secret = os.getenv(CRON_SECRET_ENV_KEY, DEFAULT_CRON_SECRET)
-    
+
     # Check X-Cron-Secret header or Bearer Token
     provided_token = x_cron_secret
     if not provided_token and authorization and authorization.startswith("Bearer "):
         provided_token = authorization.replace("Bearer ", "").strip()
-        
+
     if provided_token != expected_secret:
         logger.warning("Unauthorized CronJob execution attempt detected.")
         raise HTTPException(
@@ -66,7 +66,7 @@ def execute_system_cleanup(
 ) -> dict[str, Any]:
     """Executes scheduled session, temporary artifact, and GDPR TTL retention cleanup."""
     verify_cron_authorization(authorization=authorization, x_cron_secret=x_cron_secret)
-    
+
     logger.info("Executing scheduled system cleanup CronJob...")
 
     # Run GDPR TTL retention purging

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 import pytest_asyncio
-
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.infrastructure.models import Base
@@ -19,7 +18,6 @@ from app.infrastructure.repositories.alert_repository import AlertRepository
 from app.infrastructure.repositories.case_repository import CaseRepository
 from app.infrastructure.repositories.entity_repository import EntityRepository
 from app.infrastructure.repositories.round_repository import RoundRepository
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
