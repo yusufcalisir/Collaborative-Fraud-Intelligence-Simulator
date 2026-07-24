@@ -600,21 +600,90 @@ Host: api.cfi-platform.org
 
 ## 16. CLI Operator Tooling Guide (`cfi-cli`)
 
-The platform includes a standardized PyPI command-line utility (`cfi-cli`) configured in `pyproject.toml`.
+The platform includes a standardized command-line utility (`cfi-cli`) installed via `pip install -e .`.
+All commands communicate with the coordinator over HTTPS; TLS certificate files are stored under `~/.cfi/`.
+
+### Join (Register a Bank Node)
 
 ```bash
-# Check platform cluster status
+cfi-cli join \
+  --bank-id bank_alpha \
+  --coordinator-url https://coordinator.cf-intelligence.io \
+  --legal-name "Alpha National Bank" \
+  --jurisdiction TR \
+  --contact-email security@alphabank.com \
+  --data-residency-region eu-west-1
+
+# ✅ Bank 'bank_alpha' registered successfully.
+#    Cert   → /home/ops/.cfi/certs/bank_alpha.crt
+#    Key    → /home/ops/.cfi/certs/bank_alpha.key
+#    Config → /home/ops/.cfi/config/bank_alpha.yaml
+#    Run: cfi-cli start-daemon --bank-id bank_alpha
+```
+
+### Status (Live Bank Node Status)
+
+```bash
 cfi-cli status
 
-# Execute automated system health checks
+# ┌─ Bank Status ──────────────────────────────────────────
+# │  bank_id        : bank_alpha
+# │  legal_name     : Alpha National Bank
+# │  jurisdiction   : TR
+# │  status         : ACTIVE
+# │  cert_fingerprint: abc123def456789012...
+# │  activated_at   : 2026-07-24T18:05:00
+# └────────────────────────────────────────────────────────
+```
+
+### Rotate Certificates
+
+```bash
+cfi-cli rotate-certs --bank-id bank_alpha
+
+# ✅ Certificate rotated for 'bank_alpha'.
+#    Fingerprint: d4e5f6a7b8c9...
+#    Cert saved → /home/ops/.cfi/certs/bank_alpha.crt
+```
+
+### Export Diagnostics (SHA-256 Signed Bundle)
+
+```bash
+cfi-cli export-diagnostics --output /tmp/cfi_diag.json
+
+# ✅ Diagnostics bundle saved to /tmp/cfi_diag.json
+#    SHA-256: 3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e
+```
+
+### Health Check
+
+```bash
 cfi-cli health
 
-# Export encrypted & redacted support telemetry bundle
-cfi-cli export-diagnostics --output /tmp/cfi_support_bundle.json
-
-# Trigger zero-downtime rolling deployment
-cfi-cli deploy --stage rolling --target-version 2.1.0
+# {
+#   "status": "UP",
+#   "components": {
+#     "inference_engine": "HEALTHY",
+#     "federated_coordinator": "HEALTHY",
+#     "privacy_guard": "HEALTHY",
+#     "dr_manager": "HEALTHY"
+#   }
+# }
 ```
+
+### Rolling Deployment
+
+```bash
+cfi-cli deploy --target-version v2.2.0
+
+# {
+#   "target_version": "v2.2.0",
+#   "stage": "DRAINING_CONNECTIONS",
+#   "message": "Rolling deployment to v2.2.0 initiated."
+# }
+```
+
+> **Full flag reference:** see [`docs/cfi_cli_user_guide.md`](docs/cfi_cli_user_guide.md)
 
 ---
 
