@@ -638,7 +638,18 @@ cd backend
 pip install -e .
 ```
 
+### 17.3 Database Setup
+
+```bash
+# Start PostgreSQL (requires Docker)
+docker-compose up -d postgres
+
+# Apply all database migrations (creates production domain tables)
+alembic upgrade head
+```
+
 ---
+
 
 ## 18. Verification & Quality Testing Suite
 
