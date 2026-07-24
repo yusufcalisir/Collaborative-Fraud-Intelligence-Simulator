@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: 'https://github.com/yusufcalisir/CF-Intelligence.git'
     targetRevision: HEAD
-    path: helm/cfi-platform
+    path: deployments/helm/cfi-platform-root
     helm:
       valueFiles:
         - values.yaml

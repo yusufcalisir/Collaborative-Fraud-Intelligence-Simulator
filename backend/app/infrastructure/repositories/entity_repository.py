@@ -54,9 +54,7 @@ class EntityRepository:
         self.session.add(model)
         await self.session.commit()
         await self.session.refresh(model)
-        logger.info(
-            "Entity created id=%s type=%s bank_id=%s", model.id, entity_type, bank_id
-        )
+        logger.info("Entity created id=%s type=%s bank_id=%s", model.id, entity_type, bank_id)
         return model
 
     async def update_risk_score(
@@ -92,9 +90,7 @@ class EntityRepository:
 
     async def get_by_id(self, entity_id: str) -> EntityModel | None:
         """Fetch a single entity by primary key."""
-        result = await self.session.execute(
-            select(EntityModel).where(EntityModel.id == entity_id)
-        )
+        result = await self.session.execute(select(EntityModel).where(EntityModel.id == entity_id))
         return result.scalar_one_or_none()
 
     async def get_by_privacy_id(self, privacy_id: str) -> EntityModel | None:

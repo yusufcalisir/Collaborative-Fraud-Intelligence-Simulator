@@ -158,9 +158,7 @@ class RoundRepository:
 
     # ── Gradient Submission Read ──────────────────────────────────────
 
-    async def get_accepted_submissions(
-        self, round_id: str
-    ) -> list[GradientSubmissionModel]:
+    async def get_accepted_submissions(self, round_id: str) -> list[GradientSubmissionModel]:
         """Return all ACCEPTED gradient submissions for a round (used by aggregator)."""
         result = await self.session.execute(
             select(GradientSubmissionModel).where(

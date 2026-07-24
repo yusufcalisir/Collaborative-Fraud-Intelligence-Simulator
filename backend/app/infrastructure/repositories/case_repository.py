@@ -97,9 +97,7 @@ class CaseRepository:
 
     async def get_by_id(self, case_id: str) -> CaseModel | None:
         """Fetch a single case by primary key."""
-        result = await self.session.execute(
-            select(CaseModel).where(CaseModel.id == case_id)
-        )
+        result = await self.session.execute(select(CaseModel).where(CaseModel.id == case_id))
         return result.scalar_one_or_none()
 
     async def list_by_assignee(

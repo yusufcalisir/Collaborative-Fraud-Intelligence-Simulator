@@ -21,6 +21,7 @@ from app.infrastructure.repositories.round_repository import RoundRepository
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
     """Provide a transactional AsyncSession backed by in-memory SQLite.

@@ -20,7 +20,10 @@ CRON_SECRET_ENV_KEY = "CFI_CRON_SECRET"
 DEFAULT_CRON_SECRET = "cfi_cron_secret_secure_token_2026"
 
 
-def verify_cron_authorization(authorization: str | None = Header(default=None), x_cron_secret: str | None = Header(default=None)) -> bool:
+def verify_cron_authorization(
+    authorization: str | None = Header(default=None),
+    x_cron_secret: str | None = Header(default=None),
+) -> bool:
     """Validates incoming cron invocation authorization header against configured secret."""
     expected_secret = os.getenv(CRON_SECRET_ENV_KEY, DEFAULT_CRON_SECRET)
 
@@ -42,9 +45,15 @@ class CronCleanupResponse(BaseModel):
     """Structured response output for session & artifact maintenance cleanup."""
 
     status: str = "SUCCESS"
-    expired_sessions_purged: int = Field(default=0, description="Count of expired user/investigator sessions purged")
-    temporary_artifacts_removed: int = Field(default=0, description="Count of stale temporary files removed")
-    gdpr_ttl_erasure_records: int = Field(default=0, description="Count of GDPR TTL erasure records processed")
+    expired_sessions_purged: int = Field(
+        default=0, description="Count of expired user/investigator sessions purged"
+    )
+    temporary_artifacts_removed: int = Field(
+        default=0, description="Count of stale temporary files removed"
+    )
+    gdpr_ttl_erasure_records: int = Field(
+        default=0, description="Count of GDPR TTL erasure records processed"
+    )
     timestamp_iso: str = Field(description="ISO timestamp of cron execution completion")
 
 
@@ -78,6 +87,7 @@ def execute_system_cleanup(
     removed_temp_artifacts_count = 8
 
     from datetime import UTC, datetime
+
     completion_time = datetime.now(UTC).isoformat()
 
     logger.info(
@@ -105,6 +115,7 @@ def execute_scheduled_health_check(
     verify_cron_authorization(authorization=authorization, x_cron_secret=x_cron_secret)
 
     from datetime import UTC, datetime
+
     check_time = datetime.now(UTC).isoformat()
 
     logger.info("Scheduled Health Check CronJob executed successfully.")

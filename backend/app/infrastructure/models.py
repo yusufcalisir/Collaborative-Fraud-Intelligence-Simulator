@@ -255,9 +255,7 @@ class FederatedRoundModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     consortium_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     round_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="collecting_gradients"
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="collecting_gradients")
     # JSON list of bank_ids that submitted gradients so far
     submitted_bank_ids: Mapped[list] = mapped_column(JSON, default=list)
     quorum_required: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
@@ -292,9 +290,7 @@ class GlobalModelModel(Base):
         default=lambda: datetime.now(UTC),
     )
     promoted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    rolled_back_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    rolled_back_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class GradientSubmissionModel(Base):

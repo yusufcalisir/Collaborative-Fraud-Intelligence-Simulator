@@ -116,9 +116,7 @@ def upgrade() -> None:
         sa.Column("jurisdiction", sa.String(10), nullable=False),
         sa.Column("contact_email", sa.String(255), nullable=False),
         sa.Column("data_residency_region", sa.String(30), nullable=False),
-        sa.Column(
-            "status", sa.String(25), nullable=False, server_default="pending_verification"
-        ),
+        sa.Column("status", sa.String(25), nullable=False, server_default="pending_verification"),
         sa.Column("cert_fingerprint", sa.String(64), nullable=True),
         sa.Column("cert_expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("vault_key_path", sa.String(255), nullable=True),

@@ -80,9 +80,7 @@ class AlertRepository:
 
     async def get_by_id(self, alert_id: str) -> AlertModel | None:
         """Fetch a single alert by primary key. Returns None if not found."""
-        result = await self.session.execute(
-            select(AlertModel).where(AlertModel.id == alert_id)
-        )
+        result = await self.session.execute(select(AlertModel).where(AlertModel.id == alert_id))
         return result.scalar_one_or_none()
 
     async def list_by_bank(
