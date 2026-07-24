@@ -10,11 +10,20 @@ logger = logging.getLogger(__name__)
 
 
 class RedisStore:
-    """A synchronous Redis-backed key-value and list storage helper.
+    """Synchronous Redis-backed key-value and list storage helper.
 
-    Falls back to a standard in-memory dictionary if Redis is not connected
-    or fails. This allows the codebase to remain 100% backwards-compatible
-    with environment configurations that do not run Redis (like local unit tests).
+    .. deprecated::
+        RedisStore was the primary domain store before Phase 35.
+        It is now **DEPRECATED** as a persistence layer.
+
+        * Domain reads/writes  → use the AsyncSession repositories
+          (AlertRepository, CaseRepository, EntityRepository, RoundRepository).
+        * Caching              → use ``app.infrastructure.cache.CacheService``.
+        * Pub/Sub              → use ``CacheService.publish_training_event()``.
+
+        RedisStore is retained only for simulation progress tracking in
+        ``simulation_tasks.py`` and rate-limiting in ``gateway.py`` until
+        those are migrated.  All other uses should be removed.
     """
 
     # Class-level flag: once Redis is confirmed unreachable, skip for all instances
