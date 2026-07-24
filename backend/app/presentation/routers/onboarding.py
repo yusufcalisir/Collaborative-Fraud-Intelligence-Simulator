@@ -120,12 +120,21 @@ async def register_bank(
 
         # Step 6: Activate
         activated = await service.activate_bank(payload.bank_id)
+        if activated is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Bank node {payload.bank_id!r} could not be activated — record not found after commit.",
+            )
+
+        activated_status = (
+            activated.status.value  # type: ignore[union-attr]
+            if hasattr(activated.status, "value")
+            else str(activated.status)
+        )
 
         return BankOnboardingBundleResponse(
             bank_id=payload.bank_id,
-            status=activated.status.value
-            if hasattr(activated.status, "value")
-            else str(activated.status),
+            status=activated_status,
             legal_name=payload.legal_name,
             jurisdiction=payload.jurisdiction,
             contact_email=payload.contact_email,
@@ -226,10 +235,15 @@ async def rotate_bank_cert(
 
     cert_pem, key_pem = await service.issue_mtls_certificate(bank_id)
     updated = await service.get_bank(bank_id)
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bank node {bank_id!r} disappeared after cert rotation — state inconsistency.",
+        )
 
     return CertRotationResponse(
         bank_id=bank_id,
         mtls_cert_pem=cert_pem,
         mtls_key_pem=key_pem,
-        cert_fingerprint=updated.cert_fingerprint if updated else "",
+        cert_fingerprint=updated.cert_fingerprint or "",
     )
