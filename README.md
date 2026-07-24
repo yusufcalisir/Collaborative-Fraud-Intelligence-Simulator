@@ -2,7 +2,7 @@
 
 # 🛡️ Collaborative Fraud Intelligence Platform
 
-### *Enterprise-Grade, Privacy-Preserving Cross-Bank Fraud Detection & Collaborative AML Intelligence*
+### *Enterprise-Grade, Privacy-Preserving Cross-Bank Fraud Detection & Collaborative Anti-Money Laundering (AML) Intelligence*
 
 [![CI Build](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions)
 [![Python Version](https://img.shields.io/badge/python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
@@ -11,20 +11,20 @@
 [![Uptime SLA](https://img.shields.io/badge/SLA-99.9%25-brightgreen.svg?style=flat&logo=prometheus&logoColor=white)](#-enterprise-slaslo-monitoring--contract-enforcement)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Architecture Overview](#-architecture-overview) • [Feature Matrix](#-feature-matrix--enterprise-compliance) • [API Reference](#-api-endpoint-blueprints) • [Quick Start](#-quick-start--operator-guide) • [Security & Compliance](#-enterprise-security-attestations--compliance-matrix)
+[Architecture Overview](#-architecture-overview) • [System Tracks](#-track-1-privacy-preserving-federated-learning--differential-privacy) • [Feature Matrix](#-feature-matrix--enterprise-compliance) • [Threat Model](#-threat-modeling-summary-stride-matrix) • [API Blueprints](#-api-endpoint-blueprints--json-schemas) • [Quick Start](#-quick-start--operator-guide)
 
 </div>
 
 ---
 
-## 💡 Executive Summary
+## 💡 Executive Summary & Institutional Business Rationale
 
-Financial institutions operate under strict regulatory constraints (GDPR Art. 6/17, CCPA, Banking Secrecy Act) prohibiting the centralization of raw customer transaction logs. This creates critical operational blind spots:
+Financial institutions operate under strict regulatory constraints (GDPR Art. 6/17, CCPA, Banking Secrecy Act, EU AI Act) prohibiting the pooling of raw customer transaction logs into centralized databases. This creates critical operational vulnerabilities:
 
-- **Cross-Bank Velocity Fraud:** Organized rings rapidly transfer illicit funds across multiple institutions before any single bank can detect the anomaly.
-- **Structured Mule Networks:** Money laundering syndicates distribute transaction volumes below individual bank detection thresholds.
+- **Cross-Bank Velocity Fraud:** Organized crime syndicates exploit the blind spots between institutions, rapidly transferring stolen funds across Bank Alpha, Bank Beta, and Bank Gamma before any single bank detects the pattern.
+- **Structured Mule Networks:** Money laundering networks distribute structured transactions across several institutions to remain below individual bank detection thresholds.
 
-The **Collaborative Fraud Intelligence Platform** resolves this challenge. By combining **Federated Machine Learning (FL)**, **Differential Privacy ($\epsilon, \delta$)**, **Secure Aggregation (SecAgg)**, and **Byzantine-Robust Consensus**, member institutions train a global fraud detection model collaboratively—without ever exposing raw customer data.
+The **Collaborative Fraud Intelligence Platform** resolves this dilemma. By combining **Federated Machine Learning (FL)**, **Differential Privacy ($\epsilon, \delta$)**, **Secure Aggregation (SecAgg)**, and **Byzantine-Robust Consensus**, member institutions train a global fraud detection model collaboratively—without ever exposing raw customer data or violating banking secrecy laws.
 
 ---
 
@@ -47,7 +47,67 @@ The **Collaborative Fraud Intelligence Platform** resolves this challenge. By co
 
 ## 🏗️ Architecture Overview
 
-### Federated Learning & Governance Pipeline
+### High-Level System ASCII Topology
+
+```
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │           3 Participating Client Institutions               │
+                                  │      (Bank Alpha, Bank Beta, and Bank Gamma Nodes)          │
+                                  └───────────────┬─────────────┬─────────────┬─────────────────┘
+                                                  │             │             │
+                                                  ▼             ▼             ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │              Local PyTorch Model Training                   │
+                                  │        (Stratified Private Local Holdout Split)             │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │       Differential Privacy Guard (Gaussian / Opacus)        │
+                                  │        - L2 Gradient Clipping (C) & Noise Scale (σ)         │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │         Outbound Outlier Defense & Secure Aggregation       │
+                                  │         - Pairwise Cryptographic Seed Masking               │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │          Byzantine-Robust Server Aggregation                │
+                                  │   (FedAvg / Krum / Multi-Krum / Coordinate Median)          │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │         Evaluated & Promoted Global Model Weights           │
+                                  │       (Canary Quality Gate: AUC-ROC Validation Check)       │
+                                  └──────────────────────────────┬──────────────────────────────┘
+                                                                 │
+                                           ┌─────────────────────┴─────────────────────┐
+                                           │                                           │
+                                           ▼                                           ▼
+┌────────────────────────────────────────────────────────────────────────┐ ┌────────────────────────────────────────────────────────────────────────┐
+│             Real-Time Inference Gateway (<100ms SLA)                  │ │             Human-in-the-Loop Case Management Workbench               │
+│  - Sub-millisecond Fast Feature SHAP Explainer                         │ │  - 6-Stage State Machine & Four-Eyes Supervisor Dual Sign-Off          │
+│  - Realtime SLA Latency Monitor (p50, p95, p99)                        │ │  - FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing            │
+└────────────────────────────────────────────────────────────────────────┘ └────────────────────────────────────────────────────────────────────────┘
+                                           │                                           │
+                                           └─────────────────────┬─────────────────────┘
+                                                                 │
+                                                                 ▼
+                                  ┌─────────────────────────────────────────────────────────────┐
+                                  │         Enterprise Infrastructure & Security Perimeter       │
+                                  │ - Edge WAF Guard (SQLi / XSS / IP Whitelist)                │
+                                  │ - Active-Passive Multi-Region Coordinator Failover (RTO<30s) │
+                                  │ - Developer Webhook Gateway (HMAC-SHA256 Signed Payloads)    │
+                                  │ - SIEM Log Exporter (Syslog CEF / Splunk / Datadog)          │
+                                  │ - Web3 CBDC Smart Contract Incentive Settlement (.sol)      │
+                                  └─────────────────────────────────────────────────────────────┘
+```
+
+### End-to-End System Execution Flow
 
 ```mermaid
 flowchart TD
@@ -84,12 +144,12 @@ flowchart TD
 
 ---
 
-## 🔬 System Features Deep-Dive
+## 🔬 System Tracks & Technical Specifications
 
-### Track 1: Federated Learning & Cryptographic Privacy
+### Track 1: Privacy-Preserving Federated Learning & Differential Privacy
 
-#### 1.1 Local Model Training & Private Holdout Splits
-Each participating bank node trains local PyTorch models on isolated transaction stores. Raw financial records never leave the institution's security perimeter.
+#### 1.1 Local PyTorch Training Architecture
+Each participating node trains local PyTorch multi-layer perceptron (MLP), Graph Neural Network (GNN), or XGBoost models on isolated transaction stores. Raw financial records never leave the institution's local perimeter.
 
 #### 1.2 Differential Privacy ($\epsilon, \delta$)
 Integrates Opacus Gaussian noise addition and L2 gradient clipping to mathematically bound privacy leakage:
@@ -99,10 +159,19 @@ The noise scale $\sigma$ guarantees differential privacy, preventing reconstruct
 #### 1.3 Secure Aggregation (SecAgg) & Outbound Outlier Guard
 Pairwise cryptographic masking hides individual model updates before transmission:
 $$w_{k} + \sum_{j > k} s_{kj} - \sum_{j < k} s_{jk} \pmod{2^{32}}$$
-The outbound outlier guard flags anomalous weight distributions before inclusion in global model updates.
+The outbound outlier guard (`spectral_defense.py`) flags anomalous weight distributions before inclusion in global model updates.
 
-> [!IMPORTANT]
-> **Canary Quality Gate & Automated Rollback:** Newly aggregated candidate models are benchmarked against a global holdout test set. Promotion only occurs if $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{active}} - \text{tolerance}$. If live prediction performance degrades ($\text{AUC} < 0.65$, latency $> 200\text{ms}$, or $\text{FPR} > 5\%$), `AutoRollbackManager` instantly reverts to the previous stable champion version.
+#### 1.4 Byzantine-Robust Aggregation Algorithms
+The central coordinator supports multiple aggregation algorithms to resist adversarial poisoning attacks:
+- **FedAvg**: Standard weighted average based on local dataset sizes.
+- **Krum & Multi-Krum**: Selects updates closest to their $n - f - 2$ nearest neighbors.
+- **Trimmed Mean & Coordinate Median**: Computes coordinate-wise trimmed statistics to eliminate extreme malicious outliers.
+
+#### 1.5 Canary Evaluation Quality Gate & Performance Rollback
+- **Canary Gate**: Newly aggregated candidate models are benchmarked against a global holdout test set. Promotion only occurs if $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{active}} - \text{tolerance}$.
+- **Shadow Prediction Routing**: Routes 10% of live prediction traffic to candidate models in shadow mode for evaluation.
+- **Automatic Rollback**: `AutoRollbackManager` instantly demotes champion models if live performance degrades ($\text{AUC} < 0.65$, latency $> 200\text{ms}$, or $\text{FPR} > 5\%$).
+- **PSI Drift-Triggered Retraining**: `automated_retraining.py` automatically triggers a new federated training round when Population Stability Index ($\text{PSI} \ge 0.20$) indicates distribution drift.
 
 ---
 
@@ -131,10 +200,10 @@ sequenceDiagram
 
 #### 2.1 9-Signal Composite Risk Scoring Formula
 Combines local model outputs, cross-bank velocity metrics, and entity graph topologies into a unified risk score ($0 - 1000$):
-$$\text{Risk Score} = w_1 S_{\text{local}} + w_2 S_{\text{velocity}} + w_3 S_{\text{graph}} + \dots + w_9 S_{\text{typology}}$$
+$$\text{Risk Score} = w_1 S_{\text{local}} + w_2 S_{\text{velocity}} + w_3 S_{\text{graph}} + w_4 S_{\text{typology}} + w_5 S_{\text{amount}} + w_6 S_{\text{device}} + w_7 S_{\text{temporal}} + w_8 S_{\text{mule}} + w_9 S_{\text{structuring}}$$
 
-#### 2.2 FinCEN BSA Suspicious Activity Report (SAR) E-Filing
-Automatically serializes Suspicious Activity Report (SAR) XML files conforming to FinCEN BSA e-filing schemas when a case is escalated to `RESOLVED_CONFIRMED_FRAUD`.
+#### 2.2 FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing
+`regulatory_reporter.py` automatically serializes Suspicious Activity Report (SAR) XML files conforming to FinCEN BSA e-filing schemas when a case is escalated to `RESOLVED_CONFIRMED_FRAUD`.
 
 #### 2.3 Cryptographic Event Hash Chaining
 Analyst actions and timeline entries are chained using SHA-256 block hashing:
@@ -171,6 +240,9 @@ stateDiagram-v2
     RESOLVED_CONFIRMED_FRAUD --> [*]
     RESOLVED_FALSE_POSITIVE --> [*]
 ```
+
+> [!IMPORTANT]
+> **Four-Eyes Supervisor Dual Sign-Off:** Final resolution of cases (`RESOLVED_CONFIRMED_FRAUD` or `RESOLVED_FALSE_POSITIVE`) strictly requires a dual-authorization cryptographic signature starting with `SIG_SUPERVISOR_*`. Requests missing this signature are rejected with `403 Forbidden`.
 
 #### 🔒 Privacy-Preserving Label Feedback Loop & DP Noise Guard
 - **Label Privacy Guard**: `LabelPrivacyGuard` validates incoming label feedback, enforcing zero-PII leak constraints (HMAC-SHA256 checks and raw PII blocking).
@@ -407,9 +479,9 @@ Collaborative-Fraud-Intelligence-Simulator/
 
 ---
 
-## 📡 API Endpoint Blueprints
+## 📡 API Endpoint Blueprints & JSON Schemas
 
-### Real-Time Inference Scoring Endpoint
+### 1. Real-Time Inference Scoring Endpoint
 
 ```http
 POST /v1/inference/score HTTP/1.1
@@ -440,7 +512,7 @@ Content-Type: application/json
 }
 ```
 
-### Developer Webhook Registration Endpoint
+### 2. Developer Webhook Registration Endpoint
 
 ```http
 POST /v1/webhooks/subscriptions HTTP/1.1
@@ -463,6 +535,25 @@ Content-Type: application/json
   "target_url": "https://api.bank-alpha.com/webhooks/cfi",
   "secret_key": "whsec_99887766554433221100",
   "events": ["ALERT_CREATED", "CASE_RESOLVED"]
+}
+```
+
+### 3. Commercial Web Management Console Summary Endpoint
+
+```http
+GET /v1/admin/dashboard/summary HTTP/1.1
+Host: api.cfi-platform.org
+```
+
+#### Response (`200 OK`)
+
+```json
+{
+  "active_bank_nodes_count": 3,
+  "federated_rounds_completed": 25,
+  "global_model_auc": 0.885,
+  "total_cases_opened": 42,
+  "sla_compliance_pct": 99.95
 }
 ```
 
