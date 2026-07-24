@@ -60,7 +60,7 @@ A production-grade, enterprise-ready platform delivering privacy-preserving, cro
                      ┌────────────────────────────────────────┐
                      │   MLOps Logging & Telemetry Suite     │
                      │ (Prometheus, Grafana, SIEM CEF, WAF)   │
-                     └────────────────────────────────────────┘
+                     └────────────────────┴───────────────────┘
 ```
 
 ---
@@ -74,30 +74,31 @@ A production-grade, enterprise-ready platform delivering privacy-preserving, cro
 
 - [The Core Challenge: Siloed Fraud Detection](#the-core-challenge-siloed-fraud-detection)
 - [Enterprise Architecture Overview](#enterprise-architecture-overview)
-- [Track 1: Privacy-Preserving Federated Learning](#track-1-privacy-preserving-federated-learning)
+- [Track 1: Privacy-Preserving Federated Learning & Differential Privacy](#track-1-privacy-preserving-federated-learning--differential-privacy)
 - [Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine](#track-2-collaborative-aml-intelligence--9-signal-risk-engine)
 - [Track 3: Microservices, Gateway & High-Availability SLA](#track-3-microservices-gateway--high-availability-sla)
 - [Track 4: MLOps, Governance, Security & Operations](#track-4-mlops-governance-security--operations)
-  - [Real-Time Fraud Risk Scoring Engine & Sub-100ms SLA](#-real-time-fraud-risk-scoring-engine--sub-100ms-sla)
-  - [Human-in-the-Loop Case Management & Workbench](#-human-in-the-loop-case-management--workbench)
-  - [Privacy-Preserving Label Feedback Loop & DP Noise Guard](#-privacy-preserving-label-feedback-loop--dp-noise-guard)
-  - [Enterprise Data Retention & GDPR Article 17 Erasure Engine](#-enterprise-data-retention--gdpr-article-17-erasure-engine)
-  - [Active-Passive Multi-Region Coordinator Failover](#-active-passive-multi-region-coordinator-failover)
-  - [Automated Backup Verification & Sandbox Restore Probes](#-automated-backup-verification--sandbox-restore-probes)
-  - [Public Integration API & Webhook Gateway](#-public-integration-api--webhook-gateway)
-  - [Enterprise SLA/SLO Monitoring & Contract Enforcement](#-enterprise-slaslo-monitoring--contract-enforcement)
-  - [SRE Operational Runbooks & Incident Playbooks](#-sre-operational-runbooks--incident-playbooks)
-  - [Zero-Downtime Platform Upgrades & Client Compatibility](#-zero-downtime-platform-upgrades--client-compatibility)
-  - [Commercial Multi-Role Web Management Console](#-commercial-multi-role-web-management-console)
-  - [Official CLI Tooling (`cfi-cli`)](#-official-cli-tooling-cfi-cli)
-  - [Edge Security Perimeter & Air-Gapped Deployment Bundle](#-edge-security-perimeter--air-gapped-deployment-bundle)
-  - [Enterprise Security Attestations & Compliance Matrix](#-enterprise-security-attestations--compliance-matrix)
-  - [SIEM Log Forwarding & Automated Support Telemetry](#-siem-log-forwarding--automated-support-telemetry)
-  - [Web3 & CBDC Smart Contract Incentive Settlement](#-web3--cbdc-smart-contract-incentive-settlement)
+  - [⚡ Real-Time Fraud Risk Scoring Engine & Sub-100ms SLA](#-real-time-fraud-risk-scoring-engine--sub-100ms-sla)
+  - [🕵️ Human-in-the-Loop Case Management & Workbench](#-human-in-the-loop-case-management--workbench)
+  - [🔒 Privacy-Preserving Label Feedback Loop & DP Noise Guard](#-privacy-preserving-label-feedback-loop--dp-noise-guard)
+  - [🗑️ Enterprise Data Retention & GDPR Article 17 Erasure Engine](#%EF%B8%8F-enterprise-data-retention--gdpr-article-17-erasure-engine)
+  - [🌍 Active-Passive Multi-Region Coordinator Failover](#-active-passive-multi-region-coordinator-failover)
+  - [🛡️ Automated Backup Verification & Sandbox Restore Probes](#%EF%B8%8F-automated-backup-verification--sandbox-restore-probes)
+  - [🔌 Public Integration API & Webhook Gateway](#-public-integration-api--webhook-gateway)
+  - [📊 Enterprise SLA/SLO Monitoring & Contract Enforcement](#-enterprise-slaslo-monitoring--contract-enforcement)
+  - [🚨 SRE Operational Runbooks & Incident Playbooks](#-sre-operational-runbooks--incident-playbooks)
+  - [🔄 Zero-Downtime Platform Upgrades & Client Compatibility](#-zero-downtime-platform-upgrades--client-compatibility)
+  - [🎛️ Commercial Multi-Role Web Management Console](#%EF%B8%8F-commercial-multi-role-web-management-console)
+  - [💻 Official CLI Tooling (`cfi-cli`)](#-official-cli-tooling-cfi-cli)
+  - [🛡️ Edge Security Perimeter & Air-Gapped Deployment Bundle](#%EF%B8%8F-edge-security-perimeter--air-gapped-deployment-bundle)
+  - [📑 Enterprise Security Attestations & Compliance Matrix](#-enterprise-security-attestations--compliance-matrix)
+  - [📊 SIEM Log Forwarding & Automated Support Telemetry](#-siem-log-forwarding--automated-support-telemetry)
+  - [🪙 Web3 & CBDC Smart Contract Incentive Settlement](#-web3--cbdc-smart-contract-incentive-settlement)
 - [Feature Matrix & Enterprise Compliance](#feature-matrix--enterprise-compliance)
+- [Threat Modeling Summary (STRIDE Matrix)](#threat-modeling-summary-stride-matrix)
 - [Clean Architecture Directory Structure](#clean-architecture-directory-structure)
-- [API Endpoint Blueprints](#api-endpoint-blueprints)
-- [Quick Start Guide](#quick-start-guide)
+- [API Endpoint Blueprints & JSON Schemas](#api-endpoint-blueprints--json-schemas)
+- [Quick Start & Operator Guide](#quick-start--operator-guide)
 - [Automated Verification and Quality Suite](#automated-verification-and-quality-suite)
 - [License](#license)
 
@@ -107,9 +108,9 @@ A production-grade, enterprise-ready platform delivering privacy-preserving, cro
 
 Financial institutions historically detect fraud and money laundering in absolute isolation. Each bank trains machine learning models solely on internal transaction data, creating critical vulnerabilities:
 
-- **Cross-Bank Velocity Fraud:** Fraudsters exploit the blind spots between institutions, rapidly transferring stolen funds across Bank A, Bank B, and Bank C before any single bank detects the pattern.
-- **Structured Syndicate Networks:** Mule account rings distribute structured transactions across several institutions to remain below single-bank detection thresholds.
-- **Privacy & Regulatory Barriers:** Strict privacy laws (GDPR Art. 6/17, CCPA, Banking Secrecy Act) prohibit banks from pooling raw customer transaction records into a centralized database.
+1. **Cross-Bank Velocity Fraud:** Fraudsters exploit the blind spots between institutions, rapidly transferring stolen funds across Bank A, Bank B, and Bank C before any single bank detects the pattern.
+2. **Structured Syndicate Networks:** Mule account rings distribute structured transactions across several institutions to remain below single-bank detection thresholds.
+3. **Privacy & Regulatory Barriers:** Strict privacy laws (GDPR Art. 6/17, CCPA, Banking Secrecy Act) prohibit banks from pooling raw customer transaction records into a centralized database.
 
 ---
 
@@ -129,29 +130,64 @@ The platform uses a decoupled clean architecture consisting of four core tracks:
 
 ---
 
-## Track 1: Privacy-Preserving Federated Learning
+## Track 1: Privacy-Preserving Federated Learning & Differential Privacy
 
-1. **Local PyTorch Training:** Participating bank nodes train local models on encrypted, private holdout splits without exporting raw transaction data.
-2. **Differential Privacy ($\epsilon, \delta$):** Integrates Opacus Gaussian noise addition and L2 gradient clipping to mathematically bound privacy leakage.
-3. **Byzantine-Robust Server Aggregation:** The central coordinator supports `FedAvg`, `Krum`, `Trimmed Mean`, and `Coordinate Median` to resist adversarial poisoning attacks.
-4. **Outbound Outlier Defense & Secure Aggregation:** Pairwise cryptographic masks protect outbound weight updates against eavesdropping.
+### 1.1 Local Model Training & Private Datasets
+Each participating bank node (Bank Alpha, Bank Beta, Bank Gamma) trains local PyTorch models on isolated transaction stores. Raw financial records never leave the institution's security perimeter.
+
+### 1.2 Differential Privacy ($\epsilon, \delta$)
+Integrates Opacus Gaussian noise addition and L2 gradient clipping to mathematically bound privacy leakage.
+$$\sigma = \frac{\sqrt{2 \ln(1.25/\delta)}}{\epsilon}$$
+The noise scale $\sigma$ guarantees differential privacy, preventing reconstruction attacks or gradient inversion attempt by untrusted participants.
+
+### 1.3 Secure Aggregation (SecAgg) & Outbound Outlier Guard
+Pairwise cryptographic masking hides individual model updates before transmission:
+$$w_{k} + \sum_{j > k} s_{kj} - \sum_{j < k} s_{jk} \pmod{2^{32}}$$
+The outbound outlier guard flags anomalous weight distributions before inclusion in global model updates.
+
+### 1.4 Byzantine-Robust Aggregation Algorithms
+The central coordinator supports multiple aggregation algorithms to resist adversarial poisoning attacks:
+- **FedAvg**: Standard weighted average based on local dataset sizes.
+- **Krum & Multi-Krum**: Selects updates closest to their $n - f - 2$ nearest neighbors.
+- **Trimmed Mean & Coordinate Median**: Computes coordinate-wise trimmed statistics to eliminate extreme malicious outliers.
+
+### 1.5 Canary Evaluation Quality Gate & Performance Rollback
+- **Canary Gate**: A newly aggregated candidate model is benchmarked against a global holdout set. It is only promoted if $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{active}} - \text{tolerance}$.
+- **Shadow Inference**: Routes 10% of live prediction traffic to candidate models in shadow mode for evaluation.
+- **Automatic Rollback**: Instantly demotes champion models if live performance degrades ($\text{AUC} < 0.65$, latency $> 200\text{ms}$, or $\text{FPR} > 5\%$).
+- **PSI Drift-Triggered Retraining**: Automatically triggers a new federated training round when Population Stability Index ($\text{PSI} \ge 0.20$) indicates distribution drift.
 
 ---
 
 ## Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine
 
-1. **9-Signal Risk Scoring Pipeline:** Computes a composite risk score ($0 - 1000$) combining local model outputs, cross-bank velocity metrics, and entity graph structures.
-2. **FinCEN BSA SAR E-Filing Integration:** Automatically compiles and serializes Suspicious Activity Report (SAR) XML files conforming to FinCEN BSA e-filing schemas upon case escalation.
-3. **Cryptographic Event Hash Chaining:** Timeline actions are chained using SHA-256 block hashing ($H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$) to guarantee judicial admissibility.
-4. **Evidence Registry & Hashing:** Manages KYC profiles and ledger proofs validated with SHA-256 content hashes to establish chain-of-custody.
+### 2.1 9-Signal Composite Risk Scoring Formula
+Combines local model outputs, cross-bank velocity metrics, and entity graph topologies into a unified risk score ($0 - 1000$):
+$$\text{Risk Score} = w_1 S_{\text{local}} + w_2 S_{\text{velocity}} + w_3 S_{\text{graph}} + \dots + w_9 S_{\text{typology}}$$
+
+### 2.2 FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing
+Automatically serializes Suspicious Activity Report (SAR) XML files conforming to FinCEN BSA e-filing schemas when a case is escalated to `RESOLVED_CONFIRMED_FRAUD`.
+
+### 2.3 Cryptographic Event Hash Chaining
+Analyst actions and timeline entries are chained using SHA-256 block hashing:
+$$H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$$
+This establishes an immutable audit trail suitable for judicial admissibility.
+
+### 2.4 Evidence Registry & Hashing
+Compiles KYC profiles, transaction logs, and ledger proofs validated with SHA-256 content hashes to establish chain-of-custody.
 
 ---
 
 ## Track 3: Microservices, Gateway & High-Availability SLA
 
-1. **FastAPI & Async Architecture:** Delivers high-throughput REST and gRPC endpoints for real-time inference and management.
-2. **Token Bucket Rate Limiting:** Enforces per-tenant rate limits to prevent resource exhaustion.
-3. **Prometheus & Grafana Monitoring:** Exports real-time metrics tracking latency, throughput, and error rates.
+### 3.1 FastAPI & Async Architecture
+Delivers high-throughput REST and gRPC endpoints for real-time inference, case management, and system administration.
+
+### 3.2 Token Bucket Rate Limiting
+Enforces per-tenant rate limits to protect system resources during high-traffic spikes.
+
+### 3.3 Prometheus & Grafana Monitoring
+Exports real-time metrics tracking latency, throughput, error rates, and system resource utilization.
 
 ---
 
@@ -263,6 +299,19 @@ The platform uses a decoupled clean architecture consisting of four core tracks:
 
 ---
 
+## Threat Modeling Summary (STRIDE Matrix)
+
+| STRIDE Category | Identified Threat | Mitigating Architectural Safeguard | Verification |
+| :--- | :--- | :--- | :--- |
+| **Spoofing** | Impersonation of a bank node during aggregation | mTLS x509 Mutual Authentication & HMAC-SHA256 signatures | `webhook_service.py` |
+| **Tampering** | Model weight poisoning or dataset corruption | Byzantine-robust Krum / Coordinate Median & SecAgg | `test_disaster_recovery_failover.py` |
+| **Repudiation** | Analyst denying case resolution or SAR filing | SHA-256 event hash chaining & Four-Eyes supervisor auth | `case_workbench.py` |
+| **Information Disclosure** | PII reconstruction from shared gradients | Opacus Gaussian Differential Privacy ($\epsilon \le 2.0$) | `label_privacy_guard.py` |
+| **Denial of Service** | API flooding during peak fraud incidents | Token Bucket rate-limiting & Edge WAF Guard | `perimeter_waf.py` |
+| **Elevation of Privilege** | Analyst executing supervisor case closures | Four-Eyes multi-sig check (`SIG_SUPERVISOR_*`) | `test_case_management_workbench.py` |
+
+---
+
 ## Clean Architecture Directory Structure
 
 ```
@@ -321,7 +370,7 @@ Collaborative-Fraud-Intelligence-Simulator/
 
 ---
 
-## API Endpoint Blueprints
+## API Endpoint Blueprints & JSON Schemas
 
 ### Real-Time Inference Scoring Endpoint
 
@@ -370,7 +419,7 @@ Content-Type: application/json
 
 ---
 
-## Quick Start Guide
+## Quick Start & Operator Guide
 
 ### 1. Prerequisites
 
