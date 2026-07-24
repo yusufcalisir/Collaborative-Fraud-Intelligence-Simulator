@@ -1,284 +1,225 @@
-# Collaborative Fraud Intelligence Platform
+<div align="center">
 
-A production-grade, enterprise-ready platform delivering privacy-preserving, cross-institution financial fraud detection and Collaborative Anti-Money Laundering (AML) intelligence. This platform empowers financial institutions to train federated machine learning models and share real-time risk indicators without exposing customer Personally Identifiable Information (PII) or violating global privacy regulations such as GDPR, CCPA, and banking secrecy laws.
+# 🛡️ Collaborative Fraud Intelligence Platform
 
-[![CI](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.2.0-EE4C2C.svg)](https://pytorch.org)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+### *Enterprise-Grade, Privacy-Preserving Cross-Bank Fraud Detection & Collaborative AML Intelligence*
 
-```
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │           3 Participating Client Institutions               │
-                                  │      (Bank Alpha, Bank Beta, and Bank Gamma Nodes)          │
-                                  └───────────────┬─────────────┬─────────────┬─────────────────┘
-                                                  │             │             │
-                                                  ▼             ▼             ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │              Local PyTorch Model Training                   │
-                                  │        (Stratified Private Local Holdout Split)             │
-                                  └──────────────────────────────┬──────────────────────────────┘
-                                                                 │
-                                                                 ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │       Differential Privacy Guard (Gaussian / Opacus)        │
-                                  │        - L2 Gradient Clipping (C) & Noise Scale (σ)         │
-                                  └──────────────────────────────┬──────────────────────────────┘
-                                                                 │
-                                                                 ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │         Outbound Outlier Defense & Secure Aggregation       │
-                                  │         - Pairwise Cryptographic Seed Masking               │
-                                  └──────────────────────────────┬──────────────────────────────┘
-                                                                 │
-                                                                 ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │          Byzantine-Robust Server Aggregation                │
-                                  │   (FedAvg / Krum / Multi-Krum / Coordinate Median)          │
-                                  └──────────────────────────────┬──────────────────────────────┘
-                                                                 │
-                                                                 ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │         Evaluated & Promoted Global Model Weights           │
-                                  │       (Canary Quality Gate: AUC-ROC Validation Check)       │
-                                  └──────────────────────────────┬──────────────────────────────┘
-                                                                 │
-                                           ┌─────────────────────┴─────────────────────┐
-                                           │                                           │
-                                           ▼                                           ▼
-┌────────────────────────────────────────────────────────────────────────┐ ┌────────────────────────────────────────────────────────────────────────┐
-│             Real-Time Inference Gateway (<100ms SLA)                  │ │             Human-in-the-Loop Case Management Workbench               │
-│  - Sub-millisecond Fast Feature SHAP Explainer                         │ │  - 6-Stage State Machine & Four-Eyes Supervisor Dual Sign-Off          │
-│  - Realtime SLA Latency Monitor (p50, p95, p99)                        │ │  - FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing            │
-└────────────────────────────────────────────────────────────────────────┘ └────────────────────────────────────────────────────────────────────────┘
-                                           │                                           │
-                                           └─────────────────────┬─────────────────────┘
-                                                                 │
-                                                                 ▼
-                                  ┌─────────────────────────────────────────────────────────────┐
-                                  │         Enterprise Infrastructure & Security Perimeter       │
-                                  │ - Edge WAF Guard (SQLi / XSS / IP Whitelist)                │
-                                  │ - Active-Passive Multi-Region Coordinator Failover (RTO<30s) │
-                                  │ - Developer Webhook Gateway (HMAC-SHA256 Signed Payloads)    │
-                                  │ - SIEM Log Exporter (Syslog CEF / Splunk / Datadog)          │
-                                  │ - Web3 CBDC Smart Contract Incentive Settlement (.sol)      │
-                                  └─────────────────────────────────────────────────────────────┘
-```
+[![CI Build](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yusufcalisir/Collaborative-Fraud-Intelligence-Simulator/actions)
+[![Python Version](https://img.shields.io/badge/python-3.12-3776AB.svg?style=flat&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.2.0-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Uptime SLA](https://img.shields.io/badge/SLA-99.9%25-brightgreen.svg?style=flat&logo=prometheus&logoColor=white)](#-enterprise-slaslo-monitoring--contract-enforcement)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+[Architecture Overview](#-architecture-overview) • [Feature Matrix](#-feature-matrix--enterprise-compliance) • [API Reference](#-api-endpoint-blueprints) • [Quick Start](#-quick-start--operator-guide) • [Security & Compliance](#-enterprise-security-attestations--compliance-matrix)
+
+</div>
 
 ---
 
-> [!NOTE]
-> **Enterprise Objective:** This platform resolves the tension between stringent data privacy compliance and cross-bank fraud intelligence. By utilizing distributed Federated Learning (FL), Differential Privacy ($\epsilon, \delta$), and cryptographic risk sharing, financial consortiums collaborate in real time to stop multi-institution fraud syndicates without centralizing or decrypting raw transaction records.
+## 💡 Executive Summary
+
+Financial institutions operate under strict regulatory constraints (GDPR Art. 6/17, CCPA, Banking Secrecy Act) prohibiting the centralization of raw customer transaction logs. This creates critical operational blind spots:
+
+- **Cross-Bank Velocity Fraud:** Organized rings rapidly transfer illicit funds across multiple institutions before any single bank can detect the anomaly.
+- **Structured Mule Networks:** Money laundering syndicates distribute transaction volumes below individual bank detection thresholds.
+
+The **Collaborative Fraud Intelligence Platform** resolves this challenge. By combining **Federated Machine Learning (FL)**, **Differential Privacy ($\epsilon, \delta$)**, **Secure Aggregation (SecAgg)**, and **Byzantine-Robust Consensus**, member institutions train a global fraud detection model collaboratively—without ever exposing raw customer data.
 
 ---
 
-## Table of Contents
+## ⚡ Core Platform Capabilities
 
-- [The Core Challenge: Siloed Fraud Detection](#the-core-challenge-siloed-fraud-detection)
-- [Enterprise Architecture Overview](#enterprise-architecture-overview)
-- [Track 1: Privacy-Preserving Federated Learning & Differential Privacy](#track-1-privacy-preserving-federated-learning--differential-privacy)
-- [Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine](#track-2-collaborative-aml-intelligence--9-signal-risk-engine)
-- [Track 3: Microservices, Gateway & High-Availability SLA](#track-3-microservices-gateway--high-availability-sla)
-- [Track 4: MLOps, Governance, Security & Operations](#track-4-mlops-governance-security--operations)
-  - [⚡ Real-Time Fraud Risk Scoring Engine & Sub-100ms SLA](#-real-time-fraud-risk-scoring-engine--sub-100ms-sla)
-  - [🕵️ Human-in-the-Loop Case Management & Workbench](#-human-in-the-loop-case-management--workbench)
-  - [🔒 Privacy-Preserving Label Feedback Loop & DP Noise Guard](#-privacy-preserving-label-feedback-loop--dp-noise-guard)
-  - [🗑️ Enterprise Data Retention & GDPR Article 17 Erasure Engine](#%EF%B8%8F-enterprise-data-retention--gdpr-article-17-erasure-engine)
-  - [🌍 Active-Passive Multi-Region Coordinator Failover](#-active-passive-multi-region-coordinator-failover)
-  - [🛡️ Automated Backup Verification & Sandbox Restore Probes](#%EF%B8%8F-automated-backup-verification--sandbox-restore-probes)
-  - [🔌 Public Integration API & Webhook Gateway](#-public-integration-api--webhook-gateway)
-  - [📊 Enterprise SLA/SLO Monitoring & Contract Enforcement](#-enterprise-slaslo-monitoring--contract-enforcement)
-  - [🚨 SRE Operational Runbooks & Incident Playbooks](#-sre-operational-runbooks--incident-playbooks)
-  - [🔄 Zero-Downtime Platform Upgrades & Client Compatibility](#-zero-downtime-platform-upgrades--client-compatibility)
-  - [🎛️ Commercial Multi-Role Web Management Console](#%EF%B8%8F-commercial-multi-role-web-management-console)
-  - [💻 Official CLI Tooling (`cfi-cli`)](#-official-cli-tooling-cfi-cli)
-  - [🛡️ Edge Security Perimeter & Air-Gapped Deployment Bundle](#%EF%B8%8F-edge-security-perimeter--air-gapped-deployment-bundle)
-  - [📑 Enterprise Security Attestations & Compliance Matrix](#-enterprise-security-attestations--compliance-matrix)
-  - [📊 SIEM Log Forwarding & Automated Support Telemetry](#-siem-log-forwarding--automated-support-telemetry)
-  - [🪙 Web3 & CBDC Smart Contract Incentive Settlement](#-web3--cbdc-smart-contract-incentive-settlement)
-- [Feature Matrix & Enterprise Compliance](#feature-matrix--enterprise-compliance)
-- [Threat Modeling Summary (STRIDE Matrix)](#threat-modeling-summary-stride-matrix)
-- [Complete Clean Architecture Directory Structure](#complete-clean-architecture-directory-structure)
-- [API Endpoint Blueprints & JSON Schemas](#api-endpoint-blueprints--json-schemas)
-- [Quick Start & Operator Guide](#quick-start--operator-guide)
-- [Automated Verification and Quality Suite](#automated-verification-and-quality-suite)
-- [License](#license)
+| Feature Card | Capability | Technical Highlight | Standard / SLA |
+| :--- | :--- | :--- | :--- |
+| 🔒 **Differential Privacy** | Noise-Protected Gradient Sharing | Opacus Gaussian Noise ($\sigma$) + $L_2$ Gradient Clipping | GDPR / CCPA ($\epsilon \le 2.0$) |
+| ⚡ **Real-Time Scoring** | Low-Latency Fraud Risk Inference | Async Inference Gateway + Sub-ms SHAP Explainer | Sub-100ms SLA ($p95$) |
+| 🕵️ **Case Workbench** | 6-Stage AML Investigation | Four-Eyes Supervisor Dual Sign-Off (`SIG_SUPERVISOR_*`) | FinCEN BSA E-Filing |
+| 🌍 **Multi-Region DR** | High Availability & Coordinator Failover | Active-Passive Regional Promotion + Heartbeat Probe | $RTO < 30\text{s}$, $RPO = 0$ |
+| 🔌 **Webhook Gateway** | Developer Integration Engine | Outgoing HMAC-SHA256 Payload Signing (`X-CFI-Signature`) | Core Banking API |
+| 🎛️ **Multi-Role Console** | Persona-Tailored Web Dashboards | 4 Personas (`EXECUTIVE`, `COMPLIANCE`, `ML_ENGINEER`, `INVESTIGATOR`) | Glassmorphism UI |
+| 💻 **CLI Tooling** | Operator Command-Line Utility | Package Entrypoint (`cfi-cli status`, `health`, `deploy`) | PyPI Package Script |
+| 🛡️ **Edge Security WAF** | Perimeter Protection Guard | Malicious SQLi/XSS Filtering + IP Whitelisting | Edge Security |
+| 📊 **SIEM Exporter** | Centralized Logging & Telemetry | Syslog Common Event Format (`CEF`), Splunk HEC, Datadog JSON | Enterprise SIEM |
+| 🪙 **Web3 Settlement** | Consortium Incentive Disbursement | EVM Smart Contract (`ConsortiumIncentiveSettlement.sol`) | On-Chain Quarantine |
 
 ---
 
-## The Core Challenge: Siloed Fraud Detection
+## 🏗️ Architecture Overview
 
-Financial institutions historically detect fraud and money laundering in absolute isolation. Each bank trains machine learning models solely on internal transaction data, creating critical vulnerabilities:
+### Federated Learning & Governance Pipeline
 
-1. **Cross-Bank Velocity Fraud:** Fraudsters exploit the blind spots between institutions, rapidly transferring stolen funds across Bank A, Bank B, and Bank C before any single bank detects the pattern.
-2. **Structured Syndicate Networks:** Mule account rings distribute structured transactions across several institutions to remain below single-bank detection thresholds.
-3. **Privacy & Regulatory Barriers:** Strict privacy laws (GDPR Art. 6/17, CCPA, Banking Secrecy Act) prohibit banks from pooling raw customer transaction records into a centralized database.
+```mermaid
+flowchart TD
+    subgraph Banks["Participating Financial Institutions"]
+        A[Bank Alpha Node]
+        B[Bank Beta Node]
+        C[Bank Gamma Node]
+    end
 
----
+    subgraph LocalTraining["Local Privacy Boundary"]
+        A -->|Local PyTorch Model| D1[Opacus DP Noise Addition]
+        B -->|Local PyTorch Model| D2[Opacus DP Noise Addition]
+        C -->|Local PyTorch Model| D3[Opacus DP Noise Addition]
+        D1 -->|Pairwise Masking| S1[Outbound Outlier Guard]
+        D2 -->|Pairwise Masking| S2[Outbound Outlier Guard]
+        D3 -->|Pairwise Masking| S3[Outbound Outlier Guard]
+    end
 
-## Enterprise Architecture Overview
+    subgraph Coordinator["Byzantine-Robust Federated Coordinator"]
+        S1 & S2 & S3 --> Agg{Robust Aggregator}
+        Agg -->|FedAvg| G[Candidate Global Model]
+        Agg -->|Krum / Median| G
+        G --> Canary{Canary Test Gate}
+        Canary -->|AUC-ROC Approved| Promoted[Active Champion Model]
+        Canary -->|AUC Degraded| Rollback[Auto-Rollback Trigger]
+    end
 
-The platform uses a decoupled clean architecture consisting of four core tracks:
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                   Collaborative Fraud Intelligence Core                  │
-├───────────────────┬───────────────────┬───────────────────┬──────────────┤
-│      Track 1      │      Track 2      │      Track 3      │   Track 4    │
-│    Federated      │   9-Signal Risk   │   Microservices & │    MLOps &   │
-│     Learning      │   Engine & AML    │   API Gateway     │  Governance  │
-└───────────────────┴───────────────────┴───────────────────┴──────────────┘
+    subgraph Serving["Real-Time Serving & Operations"]
+        Promoted --> InferenceGateway[Real-Time Scoring Gateway]
+        InferenceGateway -->|Sub-100ms SLA| API[POST /v1/inference/score]
+        InferenceGateway --> Explainer[Fast SHAP Explainer]
+    end
 ```
 
 ---
 
-## Track 1: Privacy-Preserving Federated Learning & Differential Privacy
+## 🔬 System Features Deep-Dive
 
-### 1.1 Local Model Training & Private Datasets
-Each participating bank node (Bank Alpha, Bank Beta, Bank Gamma) trains local PyTorch models on isolated transaction stores. Raw financial records never leave the institution's security perimeter.
+### Track 1: Federated Learning & Cryptographic Privacy
 
-### 1.2 Differential Privacy ($\epsilon, \delta$)
-Integrates Opacus Gaussian noise addition and L2 gradient clipping to mathematically bound privacy leakage.
+#### 1.1 Local Model Training & Private Holdout Splits
+Each participating bank node trains local PyTorch models on isolated transaction stores. Raw financial records never leave the institution's security perimeter.
+
+#### 1.2 Differential Privacy ($\epsilon, \delta$)
+Integrates Opacus Gaussian noise addition and L2 gradient clipping to mathematically bound privacy leakage:
 $$\sigma = \frac{\sqrt{2 \ln(1.25/\delta)}}{\epsilon}$$
 The noise scale $\sigma$ guarantees differential privacy, preventing reconstruction attacks or gradient inversion attempts by untrusted participants.
 
-### 1.3 Secure Aggregation (SecAgg) & Outbound Outlier Guard
+#### 1.3 Secure Aggregation (SecAgg) & Outbound Outlier Guard
 Pairwise cryptographic masking hides individual model updates before transmission:
 $$w_{k} + \sum_{j > k} s_{kj} - \sum_{j < k} s_{jk} \pmod{2^{32}}$$
 The outbound outlier guard flags anomalous weight distributions before inclusion in global model updates.
 
-### 1.4 Byzantine-Robust Aggregation Algorithms
-The central coordinator supports multiple aggregation algorithms to resist adversarial poisoning attacks:
-- **FedAvg**: Standard weighted average based on local dataset sizes.
-- **Krum & Multi-Krum**: Selects updates closest to their $n - f - 2$ nearest neighbors.
-- **Trimmed Mean & Coordinate Median**: Computes coordinate-wise trimmed statistics to eliminate extreme malicious outliers.
-
-### 1.5 Canary Evaluation Quality Gate & Performance Rollback
-- **Canary Gate**: A newly aggregated candidate model is benchmarked against a global holdout set. It is only promoted if $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{active}} - \text{tolerance}$.
-- **Shadow Inference**: Routes 10% of live prediction traffic to candidate models in shadow mode for evaluation.
-- **Automatic Rollback**: Instantly demotes champion models if live performance degrades ($\text{AUC} < 0.65$, latency $> 200\text{ms}$, or $\text{FPR} > 5\%$).
-- **PSI Drift-Triggered Retraining**: Automatically triggers a new federated training round when Population Stability Index ($\text{PSI} \ge 0.20$) indicates distribution drift.
+> [!IMPORTANT]
+> **Canary Quality Gate & Automated Rollback:** Newly aggregated candidate models are benchmarked against a global holdout test set. Promotion only occurs if $\text{AUC}_{\text{candidate}} \ge \text{AUC}_{\text{active}} - \text{tolerance}$. If live prediction performance degrades ($\text{AUC} < 0.65$, latency $> 200\text{ms}$, or $\text{FPR} > 5\%$), `AutoRollbackManager` instantly reverts to the previous stable champion version.
 
 ---
 
-## Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine
+### Track 2: Collaborative AML Intelligence & 9-Signal Risk Engine
 
-### 2.1 9-Signal Composite Risk Scoring Formula
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Transaction as Core Banking Transaction
+    participant Gateway as Real-Time Inference Gateway
+    participant RiskEngine as 9-Signal Risk Engine
+    participant Explainer as Fast SHAP Explainer
+    participant Workbench as Investigator Workbench
+
+    Transaction->>Gateway: POST /v1/inference/score
+    Gateway->>RiskEngine: Evaluate Composite Risk Score (0-1000)
+    RiskEngine->>Explainer: Compute Sub-ms Feature Attributions
+    Explainer-->>Gateway: Return Risk Score + Attributions
+    Gateway-->>Transaction: Response (ALLOW / REVIEW / BLOCK)
+    
+    opt If Decision == REVIEW or BLOCK
+        Gateway->>Workbench: Create New Case (Status: NEW)
+        Workbench->>Workbench: Enforce Four-Eyes Supervisor Sign-Off
+    end
+```
+
+#### 2.1 9-Signal Composite Risk Scoring Formula
 Combines local model outputs, cross-bank velocity metrics, and entity graph topologies into a unified risk score ($0 - 1000$):
 $$\text{Risk Score} = w_1 S_{\text{local}} + w_2 S_{\text{velocity}} + w_3 S_{\text{graph}} + \dots + w_9 S_{\text{typology}}$$
 
-### 2.2 FinCEN BSA Suspicious Activity Report (SAR) XML E-Filing
+#### 2.2 FinCEN BSA Suspicious Activity Report (SAR) E-Filing
 Automatically serializes Suspicious Activity Report (SAR) XML files conforming to FinCEN BSA e-filing schemas when a case is escalated to `RESOLVED_CONFIRMED_FRAUD`.
 
-### 2.3 Cryptographic Event Hash Chaining
+#### 2.3 Cryptographic Event Hash Chaining
 Analyst actions and timeline entries are chained using SHA-256 block hashing:
 $$H_i = \text{SHA-256}(L_i \mathbin{\Vert} H_{i-1})$$
 This establishes an immutable audit trail suitable for judicial admissibility.
 
-### 2.4 Evidence Registry & Hashing
-Compiles KYC profiles, transaction logs, and ledger proofs validated with SHA-256 content hashes to establish chain-of-custody.
-
 ---
 
-## Track 3: Microservices, Gateway & High-Availability SLA
+### Track 3: Real-Time Scoring Gateway & High-Availability SLA
 
-### 3.1 FastAPI & Async Architecture
-Delivers high-throughput REST and gRPC endpoints for real-time inference, case management, and system administration.
-
-### 3.2 Token Bucket Rate Limiting
-Enforces per-tenant rate limits to protect system resources during high-traffic spikes.
-
-### 3.3 Prometheus & Grafana Monitoring
-Exports real-time metrics tracking latency, throughput, error rates, and system resource utilization.
-
----
-
-## Track 4: MLOps, Governance, Security & Operations
-
-### ⚡ Real-Time Fraud Risk Scoring Engine & Sub-100ms SLA
 - **Inference Gateway Router**: `POST /v1/inference/score` scores incoming transactions in real time, returning `ALLOW`, `REVIEW`, or `BLOCK` decisions within a sub-100ms SLA.
 - **Sub-Millisecond Feature Attributions**: `FastInferenceExplainer` computes real-time Shapley feature contributions in under 1ms.
 - **Inference Fallback Engine**: `InferenceFallbackEngine` provides high-availability heuristic fallback decisions if model latency exceeds 150ms.
 - **SLA Monitor**: `RealtimeSLAMonitor` tracks $p50, p95, p99$ latency percentiles and triggers alerts upon SLA breaches.
-- **Documentation**: [docs/realtime_inference_api.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/realtime_inference_api.md)
 
-### 🕵️ Human-in-the-Loop Case Management & Workbench
-- **6-Stage Case State Machine**: `CaseLifecycleStateMachine` governs case progression (`NEW` -> `ASSIGNED` -> `UNDER_INVESTIGATION` -> `ESCALATED` -> `RESOLVED_CONFIRMED_FRAUD` / `RESOLVED_FALSE_POSITIVE`).
-- **Four-Eyes Supervisor Dual-Authorization**: Enforces mandatory supervisor cryptographic sign-off (`SIG_SUPERVISOR_*`) before any case can be resolved.
-- **Documentation**: [docs/case_management_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/case_management_spec.md)
-
-### 🔒 Privacy-Preserving Label Feedback Loop & DP Noise Guard
-- **Label Privacy Guard**: `LabelPrivacyGuard` validates incoming label feedback, enforcing zero-PII leak constraints (HMAC-SHA256 checks and raw PII blocking).
-- **Federated Gradient Update**: `LocalLabelFeedbackPipeline` computes Gaussian Differential Privacy noise-protected local gradient deltas ($\epsilon \le 2.0$).
-- **Documentation**: [docs/label_feedback_loop_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/label_feedback_loop_spec.md)
-
-### 🗑️ Enterprise Data Retention & GDPR Article 17 Erasure Engine
-- **Automated Retention Engine**: `AutomatedRetentionEngine` configures per-tenant Time-To-Live (TTL) policies and purges expired records across data categories.
-- **GDPR Article 17 Right-to-be-Forgotten**: Executes cryptographic zeroization for requested customer identifiers and outputs an immutable `ErasureAuditRecord`.
-- **Documentation**: [docs/data_retention_policy_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/data_retention_policy_spec.md)
-
-### 🌍 Active-Passive Multi-Region Coordinator Failover
-- **Multi-Region Failover Manager**: `MultiRegionFailoverManager` monitors active primary and passive standby coordinator nodes, executing automated failover ($RTO < 30s$, $RPO = 0$) upon primary heartbeat failure (>15s).
-- **Documentation**: [docs/disaster_recovery_plan.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/disaster_recovery_plan.md)
-
-### 🛡️ Automated Backup Verification & Sandbox Restore Probes
-- **Backup Integrity Verifier**: `BackupVerifier` validates SHA-256 checksums and executes automated sandbox restore dry-runs (`run_sandbox_restore_probe`).
-- **Corruption Detection**: Instantly flags tampered or degraded backup artifacts as `CORRUPTED` and alerts compliance operators.
-- **Documentation**: [docs/backup_verification_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/backup_verification_spec.md)
-
-### 🔌 Public Integration API & Webhook Gateway
-- **Webhook Gateway Router**: `POST /v1/webhooks/subscriptions` registers developer webhook endpoints for event notifications (`ALERT_CREATED`, `CASE_RESOLVED`, `MODEL_PROMOTED`, `DRIFT_DETECTED`).
-- **HMAC-SHA256 Payload Signing**: All webhook deliveries compute and append a cryptographic `X-CFI-Signature` header (`HMAC_SHA256(secret_key, payload_body)`).
-- **Documentation**: [docs/public_api_webhooks_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/public_api_webhooks_spec.md)
-
-### 📊 Enterprise SLA/SLO Monitoring & Contract Enforcement
-- **Contract Engine**: `SLAContractEngine` tracks error budget burn rates (99.9% uptime SLA, <100ms $p95$ latency SLO).
-- **Automated Service Credits**: Automatically calculates contractual billing credit discounts (`PenaltyReport`) if measured monthly availability drops below 99.9%.
-- **Documentation**: [docs/sla_slo_contract_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/sla_slo_contract_spec.md)
-
-### 🚨 SRE Operational Runbooks & Incident Playbooks
-- **Incident Triage Engine**: `IncidentTriageEngine` automatically classifies system alerts (`PRIVACY_LEAK_ALERT`, `CONSENSUS_FAILURE`, `SLA_BREACH`, `PSI_DRIFT_SPIKE`) into severity levels (`SEV1` to `SEV4`).
-- **Mitigation Playbooks**: Attaches step-by-step SRE remediation commands (`PlaybookAction`) for emergency node isolation, DR failover, and retraining.
-- **Documentation**: [docs/incident_response_playbook.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/incident_response_playbook.md)
-
-### 🔄 Zero-Downtime Platform Upgrades & Client Compatibility
-- **Deployment Manager**: `ZeroDowntimeDeploymentManager` orchestrates 5-stage rolling releases (`DRAINING_CONNECTIONS` -> `ROLLING_UPGRADE` -> `DUAL_VERSION_ACTIVE` -> `UPGRADE_COMPLETED`).
-- **Connection Draining & Compatibility**: Gracefully drains active client connections without dropping requests while providing a 48-hour dual-version compatibility window (`UpgradeWindow`).
-- **Documentation**: [docs/zero_downtime_upgrade_strategy.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/zero_downtime_upgrade_strategy.md)
-
-### 🎛️ Commercial Multi-Role Web Management Console
-- **Tailored Personas**: Serves 4 distinct enterprise personas (`EXECUTIVE`, `COMPLIANCE_OFFICER`, `ML_ENGINEER`, `FRAUD_INVESTIGATOR`) via `GET /v1/admin/dashboard/role-config`.
-- **Unified Summary Metrics**: `GET /v1/admin/dashboard/summary` streams real-time active node counts, global model AUC, open case statistics, and SLA compliance.
-- **Documentation**: [docs/commercial_console_ui_spec.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/commercial_console_ui_spec.md)
-
-### 💻 Official CLI Tooling (`cfi-cli`)
-- **Standardized Operator Commands**: Provides terminal subcommands (`cfi-cli status`, `cfi-cli health`, `cfi-cli export-diagnostics`, `cfi-cli deploy`).
-- **Packaging & Console Script**: PyPI console entrypoint configured in `pyproject.toml` (`app.presentation.cli.cfi_cli:main`).
-- **Documentation**: [docs/cfi_cli_user_guide.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/cfi_cli_user_guide.md)
-
-### 🛡️ Edge Security Perimeter & Air-Gapped Deployment Bundle
-- **Perimeter WAF Guard**: `PerimeterWAFGuard` filters malicious SQLi, XSS, and enforces strict IP whitelisting at the edge.
-- **Air-Gapped Installer Builder**: `AirGapBundleBuilder` packages self-contained, zero-internet tarball bundles validated with SHA-256 manifests.
-- **Documentation**: [docs/airgapped_deployment_guide.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/airgapped_deployment_guide.md)
-
-### 📑 Enterprise Security Attestations & Compliance Matrix
-- **Compliance Auditor Engine**: `SecurityComplianceEngine` audits platform controls against SOC2 Type II, ISO 27001, and GDPR Art. 17 standards.
-- **Responsible Vulnerability Disclosure**: Policy and PGP key details published in [SECURITY.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/SECURITY.md).
-- **Documentation**: [docs/security_controls_matrix.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/security_controls_matrix.md)
-
-### 📊 SIEM Log Forwarding & Automated Support Telemetry
-- **SIEM CEF Exporter**: `SIEMLogExporter` exports audit events in Syslog Common Event Format (CEF), Splunk HEC, and Datadog JSON formats.
-- **Support Diagnostic Compiler**: `SupportDiagnosticCompiler` packages PII-redacted, SHA-256 signed telemetry bundles for customer support.
-- **Documentation**: [docs/siem_and_support_guide.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/docs/siem_and_support_guide.md)
-
-### 🪙 Web3 & CBDC Smart Contract Incentive Settlement
-- **EVM Smart Contract**: `ConsortiumIncentiveSettlement.sol` executes token disbursements (`wCBDC`, `USDC`, `e-TRY`) based on Leave-One-Out (LOO) Shapley contributions.
-- **Free-Rider Quarantine**: Executes on-chain quarantine locks (`BLOCKED_QUARANTINE`) for malicious or low-quality data contributors.
+> [!TIP]
+> **SLA/SLO Contract Enforcement:** `SLAContractEngine` continuously monitors system availability (99.9% uptime target). If monthly uptime drops below 99.9%, the engine automatically generates a `PenaltyReport` calculating percentage-based billing service credits.
 
 ---
 
-## Feature Matrix & Enterprise Compliance
+### Track 4: MLOps, Governance, Security & Operations
+
+#### 🕵️ Human-in-the-Loop Case Management & Workbench
+- **6-Stage State Machine**: `CaseLifecycleStateMachine` governs case progression (`NEW` -> `ASSIGNED` -> `UNDER_INVESTIGATION` -> `ESCALATED` -> `RESOLVED_CONFIRMED_FRAUD` / `RESOLVED_FALSE_POSITIVE`).
+
+```mermaid
+stateDiagram-v2
+    [*] --> NEW
+    NEW --> ASSIGNED: Assign Investigator
+    ASSIGNED --> UNDER_INVESTIGATION: Start Analysis
+    UNDER_INVESTIGATION --> ESCALATED: Escalate to Supervisor
+    ESCALATED --> RESOLVED_CONFIRMED_FRAUD: Supervisor Signature (SIG_SUPERVISOR_*)
+    ESCALATED --> RESOLVED_FALSE_POSITIVE: Supervisor Signature (SIG_SUPERVISOR_*)
+    RESOLVED_CONFIRMED_FRAUD --> [*]
+    RESOLVED_FALSE_POSITIVE --> [*]
+```
+
+#### 🔒 Privacy-Preserving Label Feedback Loop & DP Noise Guard
+- **Label Privacy Guard**: `LabelPrivacyGuard` validates incoming label feedback, enforcing zero-PII leak constraints (HMAC-SHA256 checks and raw PII blocking).
+- **Federated Gradient Update**: `LocalLabelFeedbackPipeline` computes Gaussian Differential Privacy noise-protected local gradient deltas ($\epsilon \le 2.0$).
+
+#### 🗑️ Enterprise Data Retention & GDPR Article 17 Erasure Engine
+- **Automated Retention Engine**: `AutomatedRetentionEngine` configures per-tenant Time-To-Live (TTL) policies and purges expired records across data categories.
+- **GDPR Article 17 Right-to-be-Forgotten**: Executes cryptographic zeroization for requested customer identifiers and outputs an immutable `ErasureAuditRecord`.
+
+#### 🌍 Active-Passive Multi-Region Coordinator Failover
+- **Multi-Region Failover Manager**: `MultiRegionFailoverManager` monitors active primary and passive standby coordinator nodes, executing automated failover ($RTO < 30\text{s}$, $RPO = 0$) upon primary heartbeat failure (>15s).
+
+#### 🛡️ Automated Backup Verification & Sandbox Restore Probes
+- **Backup Integrity Verifier**: `BackupVerifier` validates SHA-256 checksums and executes automated sandbox restore dry-runs (`run_sandbox_restore_probe`).
+
+#### 🔌 Public Integration API & Webhook Gateway
+- **Webhook Gateway Router**: `POST /v1/webhooks/subscriptions` registers developer webhook endpoints for event notifications (`ALERT_CREATED`, `CASE_RESOLVED`, `MODEL_PROMOTED`, `DRIFT_DETECTED`).
+- **HMAC-SHA256 Payload Signing**: All webhook deliveries compute and append a cryptographic `X-CFI-Signature` header (`HMAC_SHA256(secret_key, payload_body)`).
+
+#### 🚨 SRE Operational Runbooks & Incident Playbooks
+- **Incident Triage Engine**: `IncidentTriageEngine` automatically classifies system alerts into severity levels (`SEV1` to `SEV4`) and attaches step-by-step SRE remediation commands (`PlaybookAction`).
+
+#### 🔄 Zero-Downtime Platform Upgrades & Client Compatibility
+- **Deployment Manager**: `ZeroDowntimeDeploymentManager` orchestrates 5-stage rolling releases (`DRAINING_CONNECTIONS` -> `ROLLING_UPGRADE` -> `DUAL_VERSION_ACTIVE` -> `UPGRADE_COMPLETED`) with a 48-hour dual-version compatibility window (`UpgradeWindow`).
+
+#### 🎛️ Commercial Multi-Role Web Management Console
+- **Tailored Personas**: Serves 4 distinct enterprise personas (`EXECUTIVE`, `COMPLIANCE_OFFICER`, `ML_ENGINEER`, `FRAUD_INVESTIGATOR`) via `GET /v1/admin/dashboard/role-config`.
+
+#### 💻 Official CLI Tooling (`cfi-cli`)
+- **Standardized Operator Commands**: Provides terminal subcommands (`cfi-cli status`, `cfi-cli health`, `cfi-cli export-diagnostics`, `cfi-cli deploy`).
+
+#### 🛡️ Edge Security Perimeter & Air-Gapped Deployment Bundle
+- **Perimeter WAF Guard**: `PerimeterWAFGuard` filters malicious SQLi, XSS, and enforces strict IP whitelisting at the edge.
+- **Air-Gapped Installer Builder**: `AirGapBundleBuilder` packages self-contained, zero-internet tarball bundles validated with SHA-256 manifests.
+
+#### 📑 Enterprise Security Attestations & Compliance Matrix
+- **Compliance Auditor Engine**: `SecurityComplianceEngine` audits platform controls against SOC2 Type II, ISO 27001, and GDPR Art. 17 standards.
+- **Responsible Vulnerability Disclosure**: Policy and PGP key details published in [SECURITY.md](file:///c:/Users/Yusuf/Desktop/projects/Privacy-preserving%20cross-bank%20fraud%20detection%20using%20Federated%20Learning/SECURITY.md).
+
+#### 📊 SIEM Log Forwarding & Automated Support Telemetry
+- **SIEM CEF Exporter**: `SIEMLogExporter` exports audit events in Syslog Common Event Format (CEF), Splunk HEC, and Datadog JSON formats.
+- **Support Diagnostic Compiler**: `SupportDiagnosticCompiler` packages PII-redacted, SHA-256 signed telemetry bundles for customer support.
+
+#### 🪙 Web3 & CBDC Smart Contract Incentive Settlement
+- **EVM Smart Contract**: `ConsortiumIncentiveSettlement.sol` executes token disbursements (`wCBDC`, `USDC`, `e-TRY`) based on Leave-One-Out (LOO) Shapley contributions.
+
+---
+
+## 📊 Feature Matrix & Enterprise Compliance
 
 | Feature / Module | Specification | Enterprise Standard | Verification Engine | Status |
 | :--- | :--- | :--- | :--- | :--- |
@@ -287,7 +228,7 @@ Exports real-time metrics tracking latency, throughput, error rates, and system 
 | **Case Management Workbench** | 6-Stage Lifecycle + 4-Eyes Auth | AML Investigation Standards | `case_workbench.py` | `PASS` |
 | **Differential Privacy Guard** | Gaussian Noise ($\epsilon \le 2.0$) | GDPR / CCPA Compliance | `label_privacy_guard.py` | `PASS` |
 | **GDPR Data Retention** | Automated TTL & Right-to-be-Forgotten | GDPR Article 17 | `retention_engine.py` | `PASS` |
-| **Multi-Region Coordinator Failover** | Active-Passive ($RTO < 30s$) | Business Continuity | `region_failover.py` | `PASS` |
+| **Multi-Region Coordinator Failover** | Active-Passive ($RTO < 30\text{s}$) | Business Continuity | `region_failover.py` | `PASS` |
 | **Backup Integrity Verifier** | SHA-256 Checksum + Sandbox Probe | Disaster Recovery | `backup_verifier.py` | `PASS` |
 | **Developer Webhook Gateway** | HMAC-SHA256 Signature Header | Core Banking Webhooks | `webhook_service.py` | `PASS` |
 | **SLA/SLO Contract Engine** | 99.9% Uptime SLA + Billing Credits | Enterprise SLA | `sla_contract_engine.py` | `PASS` |
@@ -302,7 +243,7 @@ Exports real-time metrics tracking latency, throughput, error rates, and system 
 
 ---
 
-## Threat Modeling Summary (STRIDE Matrix)
+## 🛡️ Threat Modeling Summary (STRIDE Matrix)
 
 | STRIDE Category | Identified Threat | Mitigating Architectural Safeguard | Verification |
 | :--- | :--- | :--- | :--- |
@@ -315,7 +256,7 @@ Exports real-time metrics tracking latency, throughput, error rates, and system 
 
 ---
 
-## Complete Clean Architecture Directory Structure
+## 📁 Complete Clean Architecture Directory Structure
 
 ```
 Collaborative-Fraud-Intelligence-Simulator/
@@ -466,7 +407,7 @@ Collaborative-Fraud-Intelligence-Simulator/
 
 ---
 
-## API Endpoint Blueprints & JSON Schemas
+## 📡 API Endpoint Blueprints
 
 ### Real-Time Inference Scoring Endpoint
 
@@ -527,7 +468,7 @@ Content-Type: application/json
 
 ---
 
-## Quick Start & Operator Guide
+## 🚀 Quick Start & Operator Guide
 
 ### 1. Prerequisites
 
@@ -562,7 +503,7 @@ cfi-cli export-diagnostics --output /tmp/cfi_diag.json
 
 ---
 
-## Automated Verification and Quality Suite
+## 🧪 Automated Verification and Quality Suite
 
 Run the full automated unit test suite:
 
@@ -578,6 +519,6 @@ ruff check backend/app/ backend/tests/
 
 ---
 
-## License
+## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for details.
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
